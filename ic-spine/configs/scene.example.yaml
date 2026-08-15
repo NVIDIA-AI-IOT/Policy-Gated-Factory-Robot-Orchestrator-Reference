@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Default floor scene (mock backend). A ROS 2 scene would add per-endpoint topics.
+tables:
+  table_1: [red, green, red]
+racks: { red_rack: 0, green_rack: 0 }
+endpoints:
+  - { id: amr_franka_1, kind: arm+base, battery: 0.92, location: dock_1 }
+  - { id: amr_franka_2, kind: arm+base, battery: 0.78, location: dock_2 }
+  - { id: conveyor_1, kind: conveyor, battery: null, location: line_a }

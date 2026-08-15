@@ -1,0 +1,232 @@
+#usda 1.0
+(
+    defaultPrim = "Workcell"
+    upAxis = "Z"
+    metersPerUnit = 1
+    subLayers = [
+        @https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Environments/Grid/default_environment.usd@
+    ]
+)
+
+def Xform "Workcell"
+{
+    def Xform "BigTable"
+    {
+        def Cube "Top" (
+            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        )
+        {
+            double size = 1
+            color3f[] primvars:displayColor = [(0.45, 0.30, 0.16)]
+            double3 xformOp:translate = (0, 0, 0.90)
+            float3 xformOp:scale = (3.0, 1.5, 0.08)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "Leg_FL" (
+            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        )
+        {
+            double size = 1
+            color3f[] primvars:displayColor = [(0.3, 0.2, 0.1)]
+            double3 xformOp:translate = (-1.4, 0.65, 0.43)
+            float3 xformOp:scale = (0.12, 0.12, 0.86)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "Leg_FR" (
+            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        )
+        {
+            double size = 1
+            color3f[] primvars:displayColor = [(0.3, 0.2, 0.1)]
+            double3 xformOp:translate = (1.4, 0.65, 0.43)
+            float3 xformOp:scale = (0.12, 0.12, 0.86)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "Leg_BL" (
+            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        )
+        {
+            double size = 1
+            color3f[] primvars:displayColor = [(0.3, 0.2, 0.1)]
+            double3 xformOp:translate = (-1.4, -0.65, 0.43)
+            float3 xformOp:scale = (0.12, 0.12, 0.86)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "Leg_BR" (
+            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        )
+        {
+            double size = 1
+            color3f[] primvars:displayColor = [(0.3, 0.2, 0.1)]
+            double3 xformOp:translate = (1.4, -0.65, 0.43)
+            float3 xformOp:scale = (0.12, 0.12, 0.86)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+    }
+
+    def Xform "Rack"
+    {
+        double3 xformOp:translate = (0, 2.6, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+        def Cube "Post_FL" (
+            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        )
+        {
+            double size = 1
+            color3f[] primvars:displayColor = [(0.6, 0.6, 0.62)]
+            double3 xformOp:translate = (-0.78, 0.18, 0.90)
+            float3 xformOp:scale = (0.06, 0.06, 1.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "Post_FR" (
+            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        )
+        {
+            double size = 1
+            color3f[] primvars:displayColor = [(0.6, 0.6, 0.62)]
+            double3 xformOp:translate = (0.78, 0.18, 0.90)
+            float3 xformOp:scale = (0.06, 0.06, 1.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "Post_BL" (
+            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        )
+        {
+            double size = 1
+            color3f[] primvars:displayColor = [(0.6, 0.6, 0.62)]
+            double3 xformOp:translate = (-0.78, -0.18, 0.90)
+            float3 xformOp:scale = (0.06, 0.06, 1.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "Post_BR" (
+            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        )
+        {
+            double size = 1
+            color3f[] primvars:displayColor = [(0.6, 0.6, 0.62)]
+            double3 xformOp:translate = (0.78, -0.18, 0.90)
+            float3 xformOp:scale = (0.06, 0.06, 1.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "Shelf_1" (
+            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        )
+        {
+            double size = 1
+            color3f[] primvars:displayColor = [(0.7, 0.7, 0.72)]
+            double3 xformOp:translate = (0, 0, 0.45)
+            float3 xformOp:scale = (1.62, 0.42, 0.04)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "Shelf_2" (
+            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        )
+        {
+            double size = 1
+            color3f[] primvars:displayColor = [(0.7, 0.7, 0.72)]
+            double3 xformOp:translate = (0, 0, 0.95)
+            float3 xformOp:scale = (1.62, 0.42, 0.04)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "Shelf_3" (
+            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        )
+        {
+            double size = 1
+            color3f[] primvars:displayColor = [(0.7, 0.7, 0.72)]
+            double3 xformOp:translate = (0, 0, 1.45)
+            float3 xformOp:scale = (1.62, 0.42, 0.04)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+    }
+
+    def "Bin" (
+        prepend references = @https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Props/KLT_Bin/small_KLT.usd@
+    )
+    {
+        double3 xformOp:translate = (-0.9, 0.45, 1.0132)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+    def "Block_Red" (
+        prepend references = @https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Props/Blocks/red_block.usd@
+    )
+    {
+        double3 xformOp:translate = (-0.5, 0.0, 0.9635)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+    def "Block_Blue" (
+        prepend references = @https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Props/Blocks/blue_block.usd@
+    )
+    {
+        double3 xformOp:translate = (-0.4, 0.18, 0.9635)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+    def "Block_Green" (
+        prepend references = @https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Props/Blocks/green_block.usd@
+    )
+    {
+        double3 xformOp:translate = (-0.55, -0.18, 0.9635)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+    def "Placed_Red" (
+        prepend references = @https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Props/Blocks/red_block.usd@
+    )
+    {
+        double3 xformOp:translate = (0.35, 2.6, 0.9935)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+    def "Placed_Blue" (
+        prepend references = @https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Props/Blocks/blue_block.usd@
+    )
+    {
+        double3 xformOp:translate = (-0.35, 2.6, 0.9935)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def Xform "Franka_Left" (
+        prepend references = @https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Robots/FrankaRobotics/FrankaPanda/franka.usd@
+    )
+    {
+        double3 xformOp:translate = (-0.9, 0, 0.94)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        over "rootJoint"
+        {
+            point3f physics:localPos1 = (-0.9, 0, 0.94)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+        }
+
+        def "Camera_Azure_Left" (
+            prepend references = @https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Samples/Leonardo/Props/azure_kinect.usd@
+        )
+        {
+            double3 xformOp:translate = (0.477, 1.0507, 0.654)
+            double3 xformOp:rotateZYX = (-160, 0, 180)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZYX"]
+        }
+    }
+
+    def Xform "Franka_Right" (
+        prepend references = @https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Robots/FrankaRobotics/FrankaPanda/franka.usd@
+    )
+    {
+        double3 xformOp:translate = (0.9, 0, 0.94)
+        double xformOp:rotateZ = 180
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+
+        over "rootJoint"
+        {
+            point3f physics:localPos1 = (0.9, 0, 0.94)
+            quatf physics:localRot1 = (0, 0, 0, 1)
+        }
+
+        def "Camera_Azure_Right" (
+            prepend references = @https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Samples/Leonardo/Props/azure_kinect.usd@
+        )
+        {
+            double3 xformOp:translate = (0.477, 1.0507, 0.654)
+            double3 xformOp:rotateZYX = (-160, 0, 180)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZYX"]
+        }
+    }
+}

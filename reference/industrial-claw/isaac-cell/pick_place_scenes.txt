@@ -1,0 +1,13 @@
+READY-MADE PICK-AND-PLACE SCENES (copy one line into Isaac Sim: File -> Open)
+
+# Franka arm stacking blocks (classic pick & place) - START HERE:
+https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Samples/Leonardo/Stage/franka_block_stacking.usd
+
+# UR10 with suction gripper, stacking bins:
+https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Samples/Leonardo/Stage/ur10_bin_stacking_short_suction.usd
+
+# UR10 filling a bin:
+https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Samples/Leonardo/Stage/ur10_bin_filling.usd
+
+# UR10 bin stacking along a conveyor:
+https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Samples/Leonardo/Stage/ur10_bin_stacking_long_conveyor.usd

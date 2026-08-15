@@ -1,0 +1,90 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+schema_version: 2
+status: public
+
+model:
+  name: Industrial Claw Order744-cont24
+  repository_id: mmallick/industrial-claw-groot-order744-cont24
+  revision: 9307ac9cba3a27c9a57ed2d90393ceefb28367e1
+  visibility: public
+  artifact_layout: repository-root
+  default_local_directory: order744-cont24
+  base_model:
+    repository_id: nvidia/GR00T-N1.7-DROID
+    revision: 05e7cc97e40dbd33b0890c35cc0214fcb0547ab5
+  embodiment_tag: OXE_DROID_RELATIVE_EEF_RELATIVE_JOINT
+  serving_instances:
+    - franka_left
+    - franka_right
+  inference_files:
+    - config.json
+    - embodiment_id.json
+    - model-00001-of-00003.safetensors
+    - model-00002-of-00003.safetensors
+    - model-00003-of-00003.safetensors
+    - model.safetensors.index.json
+    - processor_config.json
+    - statistics.json
+
+dataset:
+  name: Industrial Claw Order744-cont24 native DROID
+  repository_id: mmallick/industrial-claw-groot-order744-cont24-dataset
+  revision: da9b6e9a2faf5bd91bc559e7f12babd7102a5863
+  visibility: public
+  format: native-droid
+  license:
+    id: cc-by-4.0
+    name: Creative Commons Attribution 4.0 International
+    url: https://creativecommons.org/licenses/by/4.0/
+  copyright_notice: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+  provenance:
+    environment: NVIDIA Isaac Sim
+    source: Industrial Claw dual-Franka pick-and-place demonstrations
+    conversion: Isaac-GR00T DROID end-effector convention
+    per_root_record: meta/native_droid_provenance.json
+  order744_episodes: 744
+  continuation_episodes: 24
+  continuation_total_episodes: 768
+  training_roots:
+    - path: order744/base/left/red
+      episodes: 120
+    - path: order744/base/right/red
+      episodes: 120
+    - path: order744/base/left/blue
+      episodes: 120
+    - path: order744/base/right/blue
+      episodes: 120
+    - path: order744/base/left/green
+      episodes: 96
+    - path: order744/base/right/green
+      episodes: 96
+    - path: order744/corrective/left/red
+      episodes: 12
+    - path: order744/corrective/right/red
+      episodes: 12
+    - path: order744/corrective/left/blue
+      episodes: 12
+    - path: order744/corrective/right/blue
+      episodes: 12
+    - path: order744/corrective/left/green
+      episodes: 12
+    - path: order744/corrective/right/green
+      episodes: 12
+    - path: cont24/left/blue
+      episodes: 12
+    - path: cont24/right/red
+      episodes: 12
+
+runtime_backbone:
+  repository_id: nvidia/Cosmos-Reason2-2B
+  revision: 9ce19a195e423419c349abfc86fd07178b230561
+  gated: true
+  model_safetensors_sha256: fa5a6e6ef4fce40216b185cc48a3b24d31637ac3e2ba69c107ed1f389c1e6ede
+  access_requirement: accept the NVIDIA model terms on Hugging Face and authenticate as the runtime user
+
+publication:
+  model_repository_env: IC_GROOT_HF_REPO
+  model_revision_env: IC_GROOT_HF_REVISION
+  dataset_repository_env: IC_GROOT_DATASET_REPO
+  dataset_revision_env: IC_GROOT_DATASET_REVISION

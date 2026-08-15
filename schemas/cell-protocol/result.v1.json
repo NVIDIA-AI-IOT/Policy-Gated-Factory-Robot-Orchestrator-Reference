@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ic/cell-protocol/result.v1",
+  "title": "/ic/result payload",
+  "type": "object",
+  "required": [
+    "success",
+    "verified",
+    "reason"
+  ],
+  "properties": {
+    "action": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "args": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "goal_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "echoes the command's goal_id"
+    },
+    "success": {
+      "type": "boolean"
+    },
+    "verified": {
+      "type": "boolean",
+      "description": "true ONLY when physics confirmed the effect \u2014 never trust success alone"
+    },
+    "reason": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

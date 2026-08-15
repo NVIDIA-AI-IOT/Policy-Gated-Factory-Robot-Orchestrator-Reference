@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+[Unit]
+Description=Industrial Claw native DROID relay (%i)
+Requires=ic-groot-policy@%i.service
+After=ic-groot-policy@%i.service
+StartLimitIntervalSec=300
+StartLimitBurst=12
+
+[Service]
+Type=simple
+WorkingDirectory=__IC_HOME__/groot_shadow/Isaac-GR00T
+EnvironmentFile=__IC_HOME__/.config/ic-spine/groot/%i.env
+Environment=PYTHONUNBUFFERED=1
+Environment=NO_ALBUMENTATIONS_UPDATE=1
+Environment=HF_HUB_OFFLINE=1
+Environment=TRANSFORMERS_OFFLINE=1
+Environment=CUDA_HOME=/usr/local/cuda-13.0
+Environment=CUDA_PATH=/usr/local/cuda-13.0
+Environment=TRITON_PTXAS_PATH=/usr/local/cuda-13.0/bin/ptxas
+Environment=LD_LIBRARY_PATH=/usr/local/cuda-13.0/targets/sbsa-linux/lib:__IC_HOME__/groot_shadow/Isaac-GR00T/.venv/lib/python3.12/site-packages/nvidia/cu13/lib:__IC_HOME__/groot_shadow/Isaac-GR00T/.venv/lib/python3.12/site-packages/nvidia/cudnn/lib:__IC_HOME__/groot_shadow/Isaac-GR00T/.venv/lib/python3.12/site-packages/torch/lib
+Environment=IC_RELAY_HOST=127.0.0.1
+Environment=IC_POLICY_HOST=127.0.0.1
+ExecStart=__IC_HOME__/groot_shadow/Isaac-GR00T/.venv/bin/python ${RELAY_SCRIPT}
+Restart=on-failure
+RestartSec=5
+KillMode=control-group
+
+[Install]
+WantedBy=ic-groot-shared-stack.target

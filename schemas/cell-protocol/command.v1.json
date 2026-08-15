@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ic/cell-protocol/command.v1",
+  "title": "/ic/command payload (JSON in std_msgs/String)",
+  "type": "object",
+  "required": [
+    "action"
+  ],
+  "properties": {
+    "action": {
+      "enum": [
+        "move",
+        "move_pair",
+        "pick_and_place",
+        "haul",
+        "inspect",
+        "spawn",
+        "reset",
+        "reset_scene",
+        "cancel"
+      ]
+    },
+    "goal_id": {
+      "type": "string",
+      "minLength": 6,
+      "description": "T4 action-protocol: unique per command; cell dedupes and echoes it"
+    },
+    "endpoint": {
+      "type": "string"
+    },
+    "color": {
+      "enum": [
+        "red",
+        "blue",
+        "green"
+      ]
+    },
+    "source": {
+      "type": "string"
+    },
+    "from": {
+      "type": "string"
+    },
+    "destination": {
+      "type": "string"
+    },
+    "object_id": {
+      "type": "string"
+    },
+    "target_id": {
+      "type": "string"
+    },
+    "location_id": {
+      "type": "string"
+    },
+    "target": {
+      "type": "string"
+    },
+    "n": {
+      "type": [
+        "integer",
+        "string"
+      ]
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ic/cell-protocol/feedback.v1",
+  "title": "/ic/feedback payload (progress stream)",
+  "type": "object",
+  "required": [
+    "goal_id",
+    "phase"
+  ],
+  "properties": {
+    "goal_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "phase": {
+      "type": "string",
+      "description": "accepted | lift | turn | haul | place | release | retract | depart"
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Example workflow (edit in the console's Workflows tab, or by hand — it's just YAML)
+name: sort-one-cube
+version: 0.1.0
+description: Perceive the conveyor, move one cube of the requested color into the tote, prove it.
+owner: ic-workflows
+params:
+  color: cube color (red | blue | green)
+steps:
+- tool: perceive
+  args: {target: conveyor_1}
+- tool: dispatch_task
+  args:
+    action: move
+    endpoint: franka_left
+    color: ${params.color}
+    source: conveyor_1
+    destination: tote
+  max_retries: 1
+- tool: check_predicate
+  args: {predicate: the cube is in its tote compartment, region: tote}
+done_criteria: The cube is physically settled in its color-matched tote compartment (physics-verified).

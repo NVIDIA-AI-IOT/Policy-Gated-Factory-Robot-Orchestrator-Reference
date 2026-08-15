@@ -1,0 +1,2 @@
+import omni.usd
+omni.usd.get_context().open_stage("/isaac-sim/my_pick_place.usda")

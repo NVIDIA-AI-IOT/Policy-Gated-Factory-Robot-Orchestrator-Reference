@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+[project]
+name = "my-mcp"                       # RENAME: your server's package name
+version = "0.1.0"
+license = { text = "Apache-2.0" }
+description = "TEMPLATE — expose <your system> as MCP tools under the Industrial Claw umbrella"
+requires-python = ">=3.10"
+dependencies = ["mcp>=1.2"]
+
+[project.scripts]
+my-mcp = "my_mcp.server:main"         # RENAME both sides
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/my_mcp"]             # RENAME

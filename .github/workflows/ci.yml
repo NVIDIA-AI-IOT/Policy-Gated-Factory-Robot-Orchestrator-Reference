@@ -1,0 +1,72 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+name: Clean-clone validation
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hardware-free:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12.3"
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22.22.3"
+          cache: npm
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          version: "0.11.32"
+          enable-cache: false
+
+      - name: Validate shell sources
+        run: |
+          bash -n ops/*.sh
+          bash -n reference/industrial-claw/groot/thor/install_deps.sh
+
+      - name: Validate locked Node installation
+        run: |
+          npm ci
+          npm test
+
+      - name: Validate IC Chat
+        run: |
+          uv sync --frozen --extra dev --project servers/ic-chat
+          uv run --frozen --project servers/ic-chat pytest -q servers/ic-chat/tests
+
+      - name: Validate IC Workflows
+        run: |
+          uv sync --frozen --extra dev --project servers/ic-workflows
+          uv run --frozen --project servers/ic-workflows pytest -q servers/ic-workflows/tests
+
+      - name: Validate IC Console
+        run: |
+          uv sync --frozen --extra dev --project ic-console
+          uv run --frozen --project ic-console pytest -q ic-console/tests
+
+      - name: Validate MCP server
+        run: |
+          uv sync --frozen --extra dev --project servers/industrial-claw-mcp
+          uv run --frozen --project servers/industrial-claw-mcp pytest -q servers/industrial-claw-mcp/tests
+
+      - name: Validate deployment contracts
+        run: |
+          uv run --frozen --project servers/ic-workflows pytest -q ops/test_deployment_contracts.py ops/test_ic_gpu_exporter.py
+          python -m compileall -q ic-spine/src servers ic-console/src ops

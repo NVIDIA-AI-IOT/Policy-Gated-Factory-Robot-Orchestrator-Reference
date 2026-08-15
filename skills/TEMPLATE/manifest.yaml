@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Skill manifest — the machine-readable half of a skill (validate with:
+#   ic-conformance skill --manifest manifest.yaml)
+name: my-skill                     # RENAME: kebab-case, matches the directory
+version: 0.1.0
+description: >
+  REPLACE ME: one sentence — what class of goal this skill turns into safe,
+  verified floor procedure.
+owner: REPLACE_ME                  # team or person who maintains this skill
+
+# Tool verbs this skill composes (MCP tool names, any certified server)
+requires_tools:
+  - floor_state
+  - perceive
+  - dispatch_task
+  - verify
+
+# Floor actions this skill may dispatch — MUST be agent-class policy actions
+# (the kit refuses operator-only actions like reset/cancel here)
+allowed_actions:
+  - move
+
+# What "done" means — the skill must verify this before reporting success
+done_criteria: >
+  REPLACE ME: the observable end-state, verifiable by perceive/verify
+  (e.g. "conveyor empty and one cube per matching tote compartment").

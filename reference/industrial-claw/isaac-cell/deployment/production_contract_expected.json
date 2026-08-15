@@ -1,0 +1,110 @@
+{
+  "physics_hz": 60,
+  "policy_sample_hz": 12,
+  "action_contract": "absolute 7-DoF joint targets + absolute gripper",
+  "environment_spacing_meters": 30.0,
+  "robot_usd": "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Robots/FrankaRobotics/FrankaPanda/franka.usd",
+  "warehouse_usd": "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Environments/warehouse_20x20_envi/warehouse_20x20_envi.usd",
+  "joint_names": [
+    "panda_joint1",
+    "panda_joint2",
+    "panda_joint3",
+    "panda_joint4",
+    "panda_joint5",
+    "panda_joint6",
+    "panda_joint7",
+    "panda_finger_joint1",
+    "panda_finger_joint2"
+  ],
+  "robot_base_position": [3.64, -7.35, 0.658],
+  "stiffness": [
+    22918.3125,
+    22918.3125,
+    22918.3125,
+    22918.3125,
+    22918.3125,
+    22918.3125,
+    22918.3125,
+    400.0,
+    0.0
+  ],
+  "damping": [
+    4583.7001953125,
+    4583.7001953125,
+    4583.7001953125,
+    4583.7001953125,
+    4583.7001953125,
+    4583.7001953125,
+    4583.7001953125,
+    80.0,
+    0.0
+  ],
+  "cameras": {
+    "outside": {
+      "resolution": [320, 180],
+      "focal_length": 33.0,
+      "horizontal_aperture": 20.954999923706055,
+      "exposure": {
+        "f_stop": 5.0,
+        "responsivity": 1.1026709079742432,
+        "time": 0.019999999552965164
+      },
+      "position": [3.8000000000000007, -5.773468356683304, 3.3742668912965272],
+      "quaternion_opengl_xyzw": [
+        0.0,
+        0.24276340478430616,
+        0.9700855267952054,
+        6.123233995736766e-17
+      ]
+    },
+    "wrist": {
+      "resolution": [320, 180],
+      "focal_length": 16.0,
+      "horizontal_aperture": 20.954999923706055,
+      "exposure": {
+        "f_stop": 5.0,
+        "responsivity": 1.1026709079742432,
+        "time": 0.019999999552965164
+      },
+      "local_transform": [
+        [-0.6598766781886807, -0.12713199711848747, -0.7405404951056687, 0.0],
+        [-0.21496256011728082, 0.9763289043614988, 0.023936755337890026, 0.0],
+        [0.7199679627111908, 0.1749837872974168, -0.6715852938030665, 0.0],
+        [0.2702837941677804, 0.04553113383202111, -0.041818780872994524, 1.0]
+      ]
+    }
+  },
+  "cube": {
+    "size": [0.05, 0.05, 0.05],
+    "mass": 0.05
+  },
+  "production_assets": ["Warehouse", "Workcell", "BigTote", "FrankaPanda"],
+  "production_light_count_per_environment": [15],
+  "production_matte_count_per_environment": [[3, 19]],
+  "sim6_controller_contract": {
+    "controller": "Isaac Sim 6 PickPlaceController/Franka RMPflow",
+    "config_sha256": "fec8f4cdb186630c00685a7293e2527449bf1f8609f0084fe64fdf3403473b6e",
+    "robot_descriptor_sha256": "f91201b9270bea28fe72ae5466365ba410b373e0e46de7ec3fe36c0af9d2dc59",
+    "rmpflow_policy_sha256": "6c03bd3ba5921b0f2057d917a031f8db55c9f7302585740660490c7d559348cf",
+    "urdf_sha256": "e9024642e7952cbcaec0ae14425bf1cd19d674d3c98eeef3793913f63a8101b6",
+    "rmpflow_end_effector_frame": "right_gripper",
+    "rmpflow_maximum_substep_size": 0.00334,
+    "events_dt": [0.008, 0.005, 1.0, 0.1, 0.05, 0.05, 0.0025, 1.0, 0.008, 0.08],
+    "event_ticks_at_60hz": [125, 200, 1, 11, 20, 20, 401, 1, 125, 13],
+    "transit_height": 1.12,
+    "place_height": 0.76,
+    "pick_min_height": 0.72,
+    "grasp_point_local_z": 0.103,
+    "gripper_open": 0.04,
+    "gripper_close": 0.016,
+    "gripper_snug": 0.027,
+    "lock_distance": 0.05,
+    "lock_offset_limit": 0.045,
+    "lock_rise": 0.012,
+    "release_planar_distance": 0.05,
+    "release_hand_height_above_place": 0.16,
+    "end_effector_orientation_euler_xyz": [0.0, 3.141592653589793, 0.0],
+    "physics_hz": 60,
+    "record_hz": 12
+  }
+}

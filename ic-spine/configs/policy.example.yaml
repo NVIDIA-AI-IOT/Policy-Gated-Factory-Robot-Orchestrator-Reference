@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Additive Seam policy. Built-in actions remain present; entries here add a
+# reviewed action or deliberately override one. This file grants authority, so
+# keep it separate from the scene capability advertisement.
+schema_version: 1
+actions:
+  weld_seam:
+    required: [seam_id, recipe_id]
+    role: agent

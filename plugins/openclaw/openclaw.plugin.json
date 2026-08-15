@@ -1,0 +1,16 @@
+{
+  "id": "industrial-claw-floor",
+  "name": "Industrial Claw Floor",
+  "description": "Granular factory-floor primitives (perceive / dispatch_task / floor_state / verify) that IC composes to run missions.",
+  "activation": {
+    "onStartup": true
+  },
+  "enabledByDefault": true,
+  "contracts": {
+    "tools": ["perceive", "dispatch_task", "floor_state", "reset_scene", "verify"]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false
+  }
+}

@@ -1,0 +1,278 @@
+diff --git a/gr00t/configs/finetune_config.py b/gr00t/configs/finetune_config.py
+index 74e6ea1..1956f7b 100644
+--- a/gr00t/configs/finetune_config.py
++++ b/gr00t/configs/finetune_config.py
+@@ -52,12 +52,21 @@ class FinetuneConfig:
+     tune_visual: bool = False
+     """If True, fine-tune the visual encoder (e.g., ViT or CNN backbone)."""
+ 
++    tune_top_llm_layers: int = 0
++    """Number of final language-model layers to fine-tune while keeping the rest frozen."""
++
+     tune_projector: bool = True
+     """If True, fine-tune the multimodal projector layers that map vision/language features to a shared space."""
+ 
+     tune_diffusion_model: bool = True
+     """If True, fine-tune the diffusion-based action decoder (if present in the model)."""
+ 
++    tune_diffusion_last_n_layers: int = 0
++    """When full diffusion tuning is disabled, fine-tune only its final N transformer blocks."""
++
++    tune_vlln: bool = True
++    """If True, fine-tune the vision-language conditioning adapter in the action head."""
++
+     state_dropout_prob: float = 0.2
+     """
+     Dropout probability applied to state inputs for regularization during training.
+@@ -157,6 +166,9 @@ class FinetuneConfig:
+     num_shards_per_epoch: int = int(1e5)
+     """Number of shards to use for the dataset. reduce this number if vram is limited."""
+ 
++    allow_padding: bool = False
++    """Clamp temporal-history indices to episode boundaries instead of wrapping them."""
++
+     save_only_model: bool = False
+     """If True, save only model weights (skip optimizer/scheduler/RNG states). Cannot resume training from these checkpoints."""
+ 
+@@ -172,6 +184,18 @@ class FinetuneConfig:
+     Useful for CI/testing to skip the slow checkpoint shard loading."""
+ 
+     def __post_init__(self) -> None:
++        if self.tune_diffusion_last_n_layers < 0:
++            raise ValueError("tune_diffusion_last_n_layers must be non-negative")
++        if self.tune_diffusion_model and self.tune_diffusion_last_n_layers:
++            raise ValueError(
++                "tune_diffusion_model and tune_diffusion_last_n_layers are mutually exclusive"
++            )
++        if self.tune_top_llm_layers < 0:
++            raise ValueError(
++                f"tune_top_llm_layers must be non-negative, got {self.tune_top_llm_layers}"
++            )
++        if self.tune_llm and self.tune_top_llm_layers:
++            raise ValueError("tune_llm and tune_top_llm_layers are mutually exclusive")
+         if self.gradient_accumulation_steps < 1:
+             raise ValueError(
+                 f"gradient_accumulation_steps must be >= 1, got {self.gradient_accumulation_steps}"
+diff --git a/gr00t/configs/model/gr00t_n1d7.py b/gr00t/configs/model/gr00t_n1d7.py
+index 6026b1f..114fb56 100644
+--- a/gr00t/configs/model/gr00t_n1d7.py
++++ b/gr00t/configs/model/gr00t_n1d7.py
+@@ -112,6 +112,7 @@ class Gr00tN1d7Config(PretrainedConfig):
+     # Training parameters
+     tune_projector: bool = True
+     tune_diffusion_model: bool = True
++    tune_diffusion_last_n_layers: int = 0
+     tune_vlln: bool = True
+ 
+     # State augmentation parameters
+diff --git a/gr00t/eval/open_loop_eval.py b/gr00t/eval/open_loop_eval.py
+index 65c6342..1cace49 100644
+--- a/gr00t/eval/open_loop_eval.py
++++ b/gr00t/eval/open_loop_eval.py
+@@ -160,6 +160,7 @@ def evaluate_single_trajectory(
+     steps=300,
+     action_horizon=16,
+     save_plot_path=None,
++    return_details=False,
+ ):
+     # Ensure steps doesn't exceed trajectory length
+     traj = loader[traj_id]
+@@ -242,6 +243,12 @@ def evaluate_single_trajectory(
+         save_plot_path=save_plot_path or f"/tmp/open_loop_eval/traj_{traj_id}.jpeg",
+     )
+ 
++    if return_details:
++        return mse, mae, {
++            "gt_action": gt_action_across_time,
++            "pred_action": pred_action_across_time,
++            "action_keys": action_keys,
++        }
+     return mse, mae
+ 
+ 
+diff --git a/gr00t/eval/run_gr00t_server.py b/gr00t/eval/run_gr00t_server.py
+index c7d3118..5f0f4aa 100644
+--- a/gr00t/eval/run_gr00t_server.py
++++ b/gr00t/eval/run_gr00t_server.py
+@@ -65,6 +65,9 @@ class ServerConfig:
+     strict: bool = True
+     """Whether to enforce strict input and output validation"""
+ 
++    num_inference_timesteps: int | None = None
++    """Optional flow-integration step override for GR00T inference."""
++
+     use_sim_policy_wrapper: bool = False
+     """Whether to use the sim policy wrapper"""
+ 
+@@ -89,6 +92,12 @@ def main(config: ServerConfig):
+             device=config.device,
+             strict=config.strict,
+         )
++        if config.num_inference_timesteps is not None:
++            if config.num_inference_timesteps <= 0:
++                raise ValueError("--num-inference-timesteps must be positive")
++            policy.model.num_inference_timesteps = config.num_inference_timesteps
++            policy.model.config.num_inference_timesteps = config.num_inference_timesteps
++            print(f"  Flow integration steps: {config.num_inference_timesteps}")
+     elif config.dataset_path is not None:
+         if config.execution_horizon is None:
+             raise ValueError(
+diff --git a/gr00t/experiment/launch_finetune.py b/gr00t/experiment/launch_finetune.py
+index e0e1eb0..b2cbe52 100644
+--- a/gr00t/experiment/launch_finetune.py
++++ b/gr00t/experiment/launch_finetune.py
+@@ -77,8 +77,11 @@ if __name__ == "__main__":
+     # overwrite with finetune config supplied by the user
+     config.model.tune_llm = ft_config.tune_llm
+     config.model.tune_visual = ft_config.tune_visual
++    config.model.tune_top_llm_layers = ft_config.tune_top_llm_layers
+     config.model.tune_projector = ft_config.tune_projector
+     config.model.tune_diffusion_model = ft_config.tune_diffusion_model
++    config.model.tune_diffusion_last_n_layers = ft_config.tune_diffusion_last_n_layers
++    config.model.tune_vlln = ft_config.tune_vlln
+     config.model.state_dropout_prob = ft_config.state_dropout_prob
+     config.model.random_rotation_angle = ft_config.random_rotation_angle
+     config.model.color_jitter_params = ft_config.color_jitter_params
+@@ -113,6 +116,7 @@ if __name__ == "__main__":
+     config.data.shard_size = ft_config.shard_size
+     config.data.episode_sampling_rate = ft_config.episode_sampling_rate
+     config.data.num_shards_per_epoch = ft_config.num_shards_per_epoch
++    config.data.allow_padding = ft_config.allow_padding
+ 
+     config.training.save_only_model = ft_config.save_only_model
+     config.training.resume_from_checkpoint = ft_config.resume_from_checkpoint
+diff --git a/gr00t/experiment/trainer.py b/gr00t/experiment/trainer.py
+index 817a000..6bd5796 100755
+--- a/gr00t/experiment/trainer.py
++++ b/gr00t/experiment/trainer.py
+@@ -282,6 +282,8 @@ class Gr00tTrainer(Trainer):
+ 
+         # Record last loss for testing purposes.
+         self.loss = loss
++        if self.state.global_step % self.args.logging_steps == 0 and self.args.local_rank in (-1, 0):
++            print("[metric] step=%d/%d loss=%.4f" % (self.state.global_step, self.args.max_steps, float(loss)), flush=True)
+ 
+         # --------------------------------------------------------------
+         # Accuracy calculation
+@@ -304,6 +306,7 @@ class Gr00tTrainer(Trainer):
+ 
+             if self.args.local_rank in (-1, 0):
+                 self.log({"train_accuracy": acc_mean})
++                print("[metric] step=%d/%d loss=%.4f train_acc=%.4f" % (self.state.global_step, self.args.max_steps, float(self.loss), acc_mean), flush=True)
+ 
+                 # Log a sample of ground-truth vs predicted action tokens from
+                 # the first batch element so users can verify the model is
+diff --git a/gr00t/model/gr00t_n1d7/gr00t_n1d7.py b/gr00t/model/gr00t_n1d7/gr00t_n1d7.py
+index 346b597..f42c8c0 100644
+--- a/gr00t/model/gr00t_n1d7/gr00t_n1d7.py
++++ b/gr00t/model/gr00t_n1d7/gr00t_n1d7.py
+@@ -115,14 +115,22 @@ class Gr00tN1d7ActionHead(nn.Module):
+         )
+         self.num_timestep_buckets = config.num_timestep_buckets
+         self.set_trainable_parameters(
+-            config.tune_projector, config.tune_diffusion_model, config.tune_vlln
++            config.tune_projector,
++            config.tune_diffusion_model,
++            config.tune_vlln,
++            config.tune_diffusion_last_n_layers,
+         )
+ 
+     def set_trainable_parameters(
+-        self, tune_projector: bool, tune_diffusion_model: bool, tune_vlln: bool
++        self,
++        tune_projector: bool,
++        tune_diffusion_model: bool,
++        tune_vlln: bool,
++        tune_diffusion_last_n_layers: int = 0,
+     ):
+         self.tune_projector = tune_projector
+         self.tune_diffusion_model = tune_diffusion_model
++        self.tune_diffusion_last_n_layers = tune_diffusion_last_n_layers
+         self.tune_vlln = tune_vlln
+         for p in self.parameters():
+             p.requires_grad = True
+@@ -134,11 +142,23 @@ class Gr00tN1d7ActionHead(nn.Module):
+                 self.position_embedding.requires_grad_(False)
+         if not tune_diffusion_model:
+             self.model.requires_grad_(False)
++            blocks = self.model.transformer_blocks
++            if tune_diffusion_last_n_layers > len(blocks):
++                raise ValueError(
++                    f"requested {tune_diffusion_last_n_layers} diffusion layers, "
++                    f"but model has {len(blocks)}"
++                )
++            if tune_diffusion_last_n_layers:
++                for block in blocks[-tune_diffusion_last_n_layers:]:
++                    block.requires_grad_(True)
+         if not tune_vlln:
+             self.vlln.requires_grad_(False)
+             self.vl_self_attention.requires_grad_(False)
+         logger.debug(f"Tune action head projector: {self.tune_projector}")
+         logger.debug(f"Tune action head diffusion model: {self.tune_diffusion_model}")
++        logger.debug(
++            "Tune final diffusion layers: %d", self.tune_diffusion_last_n_layers
++        )
+         logger.debug(f"Tune action head vlln: {self.tune_vlln}")
+         # Check if any parameters are still trainable. If not, log a warning.
+         if not tune_projector and not tune_diffusion_model and not tune_vlln:
+@@ -163,6 +183,11 @@ class Gr00tN1d7ActionHead(nn.Module):
+                     self.position_embedding.eval()
+             if not self.tune_diffusion_model:
+                 self.model.eval()
++                if self.tune_diffusion_last_n_layers:
++                    for block in self.model.transformer_blocks[
++                        -self.tune_diffusion_last_n_layers:
++                    ]:
++                        block.train()
+             if not self.tune_vlln:
+                 self.vlln.eval()
+                 self.vl_self_attention.eval()
+@@ -246,6 +271,12 @@ class Gr00tN1d7ActionHead(nn.Module):
+ 
+         # Join vision, language, state and action embedding along sequence dimension.
+         sa_embs = torch.cat((state_features, action_features), dim=1)
++        # Re-entrant gradient checkpointing needs at least one gradient-bearing
++        # input.  In partial-diffusion mode every upstream module is frozen, so
++        # explicitly enable input gradients without making any upstream weight
++        # trainable.  This lets gradients reach only the selected final blocks.
++        if self.tune_diffusion_last_n_layers and not sa_embs.requires_grad:
++            sa_embs.requires_grad_(True)
+         vl_attn_mask = backbone_output.backbone_attention_mask
+ 
+         if self.config.use_alternate_vl_dit:
+diff --git a/gr00t/model/gr00t_n1d7/setup.py b/gr00t/model/gr00t_n1d7/setup.py
+index 0d2c6f9..2174f6b 100644
+--- a/gr00t/model/gr00t_n1d7/setup.py
++++ b/gr00t/model/gr00t_n1d7/setup.py
+@@ -83,8 +83,10 @@ class Gr00tN1d7Pipeline(ModelPipeline):
+                 self.config.training.start_from_checkpoint,
+                 tune_llm=self.config.model.tune_llm,
+                 tune_visual=self.config.model.tune_visual,
++                tune_top_llm_layers=self.config.model.tune_top_llm_layers,
+                 tune_projector=self.config.model.tune_projector,
+                 tune_diffusion_model=self.config.model.tune_diffusion_model,
++                tune_diffusion_last_n_layers=self.config.model.tune_diffusion_last_n_layers,
+                 tune_vlln=self.config.model.tune_vlln,
+                 state_dropout_prob=self.config.model.state_dropout_prob,
+                 backbone_trainable_params_fp32=self.config.model.backbone_trainable_params_fp32,
+diff --git a/gr00t/policy/gr00t_policy.py b/gr00t/policy/gr00t_policy.py
+index 0abb10e..f2cbab1 100644
+--- a/gr00t/policy/gr00t_policy.py
++++ b/gr00t/policy/gr00t_policy.py
+@@ -404,6 +404,16 @@ class Gr00tPolicy(BasePolicy):
+         collated_inputs = _rec_to_dtype(collated_inputs, dtype=torch.bfloat16)
+ 
+         # Step 4: Run model inference to predict actions
++        inference_seed = options.get("inference_seed") if options is not None else None
++        if inference_seed is not None:
++            if not isinstance(inference_seed, int) or inference_seed < 0:
++                raise ValueError("inference_seed must be a non-negative integer")
++            # PolicyServer handles requests serially.  An explicit seed makes
++            # stochastic diffusion rollouts exactly pairable across checkpoints
++            # without changing the default stochastic deployment behavior.
++            torch.manual_seed(inference_seed)
++            if torch.cuda.is_available():
++                torch.cuda.manual_seed_all(inference_seed)
+         with torch.inference_mode():
+             model_pred = self.model.get_action(**collated_inputs)
+         normalized_action = model_pred["action_pred"].float()

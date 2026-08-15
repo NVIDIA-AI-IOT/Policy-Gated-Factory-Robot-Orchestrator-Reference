@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ic/cell-protocol/floor_state.v1",
+  "title": "/ic/floor_state payload (authoritative world snapshot, ~1Hz)",
+  "type": "object",
+  "required": [
+    "endpoints",
+    "conveyor_1",
+    "tote",
+    "tote_on_rack",
+    "cubes"
+  ],
+  "properties": {
+    "endpoints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "conveyor_1": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "red",
+          "blue",
+          "green"
+        ]
+      }
+    },
+    "tote": {
+      "type": "object"
+    },
+    "tote_on_rack": {
+      "type": "boolean"
+    },
+    "cubes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "color",
+          "where",
+          "x",
+          "y"
+        ],
+        "properties": {
+          "i": {
+            "type": "integer"
+          },
+          "color": {
+            "enum": [
+              "red",
+              "blue",
+              "green"
+            ]
+          },
+          "where": {
+            "enum": [
+              "tote",
+              "conveyor",
+              "off"
+            ]
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "arms": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

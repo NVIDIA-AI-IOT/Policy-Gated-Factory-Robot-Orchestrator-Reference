@@ -1,0 +1,53 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Industrial Claw scene — the fixed Isaac demo cell (HIL / ros2 backend).
+# Franka_Left sorts red/blue/green into a 3-compartment tote; MobileBot AMR hauls it to the rack.
+schema_version: 1
+tables:
+  conveyor_1: [red, blue, green]
+racks:
+  tote_red: 0
+  tote_blue: 0
+  tote_green: 0
+  rack_1: 0
+endpoints:
+  - id: franka_left
+    kind: arm
+    battery: null
+    location: table_1
+    capabilities: &arm_capabilities
+      - name: move
+        description: Sort a colored block into its tote compartment.
+        goal_schema:
+          type: object
+          required: [color, source, destination]
+        result_schema: {type: object}
+      - name: pick_and_place
+        description: Pick an object and place it at a target.
+        goal_schema:
+          type: object
+          required: [object_id, target_id]
+        result_schema: {type: object}
+  - id: franka_right
+    kind: arm
+    battery: null
+    location: table_1
+    capabilities: *arm_capabilities
+  - id: mobilebot
+    kind: arm+base
+    battery: 0.95
+    location: dock_1
+    capabilities:
+      - name: pick_and_place
+        description: Haul an object such as a tote to a target.
+        goal_schema:
+          type: object
+          required: [object_id, target_id]
+        result_schema: {type: object}
+      - name: navigate_to
+        description: Drive the base to a named location.
+        goal_schema:
+          type: object
+          required: [location_id]
+        result_schema: {type: object}

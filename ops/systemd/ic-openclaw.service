@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=Industrial Claw OpenClaw Gateway
+Wants=network-online.target
+Wants=ic-seam.service
+After=network-online.target ic-seam.service
+
+[Service]
+Type=simple
+WorkingDirectory=__IC_REPO__
+EnvironmentFile=__IC_HOME__/.config/ic-spine/openclaw.env
+EnvironmentFile=-__IC_HOME__/.openclaw/secrets.env
+ExecStart=__IC_REPO__/ops/gw.sh --bind loopback
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+KillSignal=SIGTERM
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=__IC_HOME__/.industrial-claw/openclaw __IC_HOME__/ic-journal
+UMask=0077
+
+[Install]
+WantedBy=default.target

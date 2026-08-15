@@ -1,0 +1,95 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+schema_version: 2
+validated_on: 2026-08-08
+
+# These are the exact artifacts used by the validated two-host demo. Tags are
+# retained for readability; pull by digest where the registry permits it.
+runtime:
+  python: "3.12.3"
+  node: "22.22.3"
+  uv: "0.11.32"
+  huggingface_hub: "0.36.2"
+  ros: jazzy
+  openclaw: "2026.7.1"  # also frozen in package-lock.json
+
+containers:
+  isaac_sim:
+    tag: nvcr.io/nvidia/isaac-sim:6.0.0-dev2
+    digest: sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9
+  perception_vllm:
+    tag: vllm/vllm-openai:v0.20.0-ubuntu2404
+    digest: sha256:aff65d7198dd284c37dd0a18a606544cc5e92bfb0d5eb608b77e8b8f1c6b8b0d
+    model: nvidia/NVIDIA-Nemotron-Nano-12B-v2-VL-NVFP4-QAD
+    revision: 312eb94f6d36209f7c6a82eda896e27200d152ee
+    arguments:
+      - --host=127.0.0.1
+      - --port=8001
+      - --dtype=auto
+      - --gpu-memory-utilization=0.16
+      - --max-model-len=8192
+      - --max-num-seqs=128
+      - --trust-remote-code
+
+groot_serving:
+  status: public
+  framework: NVIDIA Isaac-GR00T
+  serving_owner: thor_host
+  authoritative_state_owner: thor_host
+  source_revision: e5749287857afd97b78f1147166137de29746392
+  artifact_manifest: reference/industrial-claw/groot/models/manifest.yaml
+  checkpoint:
+    name: Industrial Claw Order744-cont24
+    repository_id: mmallick/industrial-claw-groot-order744-cont24
+    revision: 9307ac9cba3a27c9a57ed2d90393ceefb28367e1
+    fingerprint: bef1f16e82d87962b6d9659c25ed5cc8e7ec75bf2a7c7bfc5afcfa1af9ca5178
+  embodiment_tag: OXE_DROID_RELATIVE_EEF_RELATIVE_JOINT
+  serving_instances:
+    franka_left:
+      policy_port: 5592
+      relay_port: 5641
+    franka_right:
+      policy_port: 5593
+      relay_port: 5642
+  thor_shared_profiles:
+    installer: ops/install-groot-thor-shared-profiles.sh
+    model_root: ~/industrial-claw-models/order744-cont24
+    authoritative_state_root: ~/.local/share/ic-spine/groot
+    target: ic-groot-shared-stack.target
+    installed_files:
+      - shared-left.env
+      - shared-right.env
+      - ic-groot-shared-stack.target
+    starts_services: false
+  simulation_host_bridge:
+    transport: ssh_loopback_forwards
+    helper: ops/groot-two-host-bridge.py
+    installer: ops/install-groot-two-host-bridge.sh
+    unit: ops/systemd/simulation-host/ic-groot-two-host-bridge.service
+    derived_state_root: ~/.local/share/ic-spine/groot/remote-thor-v36
+    local_forward_ports:
+      franka_left:
+        policy_port: 5792
+        relay_port: 5741
+      franka_right:
+        policy_port: 5793
+        relay_port: 5742
+  relay: reference/industrial-claw/groot/relay/native_droid_relay_batch2.py
+  executor: reference/industrial-claw/groot/runtime/native_droid_work/ic_groot_certified_deployment_v36.py
+
+ports:
+  seam: 8766
+  openclaw: 18790
+  chat: 8620
+  workflows: 8610
+  console: 8600
+  thor_gpu_exporter: 8601
+  perception_vlm: 8001
+
+dependency_locks:
+  node: package-lock.json
+  floor: ic-spine/uv.lock
+  mcp: servers/industrial-claw-mcp/uv.lock
+  console: ic-console/uv.lock
+  chat: servers/ic-chat/uv.lock
+  workflows: servers/ic-workflows/uv.lock

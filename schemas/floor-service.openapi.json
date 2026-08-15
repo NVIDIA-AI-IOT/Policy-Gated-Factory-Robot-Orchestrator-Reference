@@ -1,0 +1,820 @@
+{
+  "components": {
+    "schemas": {
+      "DispatchRequest": {
+        "properties": {
+          "action": {
+            "description": "move | pick_and_place | navigate_to | inspect",
+            "title": "Action",
+            "type": "string"
+          },
+          "args": {
+            "additionalProperties": true,
+            "description": "Device-specific action arguments for scene-declared capabilities. Control-plane fields remain top-level and cannot be overridden here.",
+            "title": "Args",
+            "type": "object"
+          },
+          "arm": {
+            "anyOf": [
+              {
+                "enum": [
+                  "franka_left",
+                  "franka_right",
+                  "both"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arm"
+          },
+          "backend": {
+            "anyOf": [
+              {
+                "const": "groot",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Execution backend: 'groot' routes the move to the learned GR00T policy stack (cell follow-mode + per-color router); None = scripted controller. Restricted to known values so a typo can never silently fall back to the scripted controller while claiming a policy ran.",
+            "title": "Backend"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "destination": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination"
+          },
+          "endpoint": {
+            "description": "Executing endpoint, e.g. franka_left | mobilebot",
+            "title": "Endpoint",
+            "type": "string"
+          },
+          "layout": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layout"
+          },
+          "layout_left": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layout Left"
+          },
+          "layout_right": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layout Right"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
+          },
+          "object_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object Id"
+          },
+          "queue": {
+            "default": false,
+            "description": "Async only: allow stacking behind an in-flight goal. Default False = a second async dispatch while one runs is refused (surprise sequential motions were a real incident).",
+            "title": "Queue",
+            "type": "boolean"
+          },
+          "scene_profile": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ic_two_arm",
+                  "groot_three_object"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scene Profile"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Source region for move (legacy key: 'from')",
+            "title": "Source"
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          },
+          "wait": {
+            "default": true,
+            "description": "False = async dispatch: return a goal_id immediately and poll GET /v1/tasks/{goal_id} for the verified result (ros2 backend only; the mock floor completes synchronously regardless).",
+            "title": "Wait",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "endpoint",
+          "action"
+        ],
+        "title": "DispatchRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ParallelDispatchRequest": {
+        "additionalProperties": false,
+        "description": "Exactly one independently validated move for each Franka arm.",
+        "properties": {
+          "moves": {
+            "items": {
+              "$ref": "#/components/schemas/ParallelMove"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Moves",
+            "type": "array"
+          }
+        },
+        "required": [
+          "moves"
+        ],
+        "title": "ParallelDispatchRequest",
+        "type": "object"
+      },
+      "ParallelMove": {
+        "additionalProperties": false,
+        "description": "One child of the fixed two-arm GR00T transaction.",
+        "properties": {
+          "backend": {
+            "const": "groot",
+            "default": "groot",
+            "title": "Backend",
+            "type": "string"
+          },
+          "color": {
+            "enum": [
+              "red",
+              "blue",
+              "green"
+            ],
+            "title": "Color",
+            "type": "string"
+          },
+          "destination": {
+            "enum": [
+              "tote_red",
+              "tote_blue",
+              "tote_green"
+            ],
+            "title": "Destination",
+            "type": "string"
+          },
+          "endpoint": {
+            "enum": [
+              "franka_left",
+              "franka_right"
+            ],
+            "title": "Endpoint",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "conveyor_1",
+              "conveyor_2"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint",
+          "color",
+          "source",
+          "destination"
+        ],
+        "title": "ParallelMove",
+        "type": "object"
+      },
+      "PerceiveRequest": {
+        "properties": {
+          "target": {
+            "description": "Region to look at: conveyor_1 | tote | rack_1 | table_1",
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target"
+        ],
+        "title": "PerceiveRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VerifyRequest": {
+        "properties": {
+          "predicate": {
+            "description": "Yes/no question about the floor, e.g. 'the tote is on the rack'",
+            "title": "Predicate",
+            "type": "string"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Region whose camera answers it",
+            "title": "Region"
+          }
+        },
+        "required": [
+          "predicate"
+        ],
+        "title": "VerifyRequest",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Persistent HTTP floor service (FastAPI). Holds ONE backend for the process\nlifetime so a ROS 2 connection is established once (not per call).\n\nv1 API \u2014 versioned, request-validated, self-documenting (GET /docs, /openapi.json):\n  POST /v1/floor-state {}                       -> world state + _meta freshness\n  POST /v1/perceive    {target}                 -> symbolic+vision (or vision_only)\n  POST /v1/dispatch    {endpoint, action, ...}  -> always 200; read `dispatched`/`verified`\n  POST /v1/dispatch-parallel {moves:[left,right]} -> one atomic two-server B=1 GR00T pair\n  POST /v1/verify      {predicate, region?}     -> camera yes/no\n  GET  /v1/health                               -> liveness incl. ROS context + freshness\n                                                   (503 when degraded; never blocks)\n\nLegacy aliases are preserved verbatim for existing adapters (gateway plugin, MCP):\nPOST /floor-state /perceive /dispatch /verify \u2014 including dispatch's 400-on-unverified.\n\nAll floor operations serialize through one lock (the cell is a single FIFO queue and\nrequests mutate one shared floor); /v1/health skips the lock so a wedged floor can\nnever hide from monitoring. Every response carries an x-request-id header and an\nerror envelope {\"error\": {\"code\", \"message\", \"request_id\"}} on failure.\n",
+    "title": "Industrial Claw floor service",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/dispatch": {
+      "post": {
+        "operationId": "legacy_dispatch_dispatch_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Legacy Dispatch"
+      }
+    },
+    "/floor-state": {
+      "post": {
+        "operationId": "legacy_floor_state_floor_state_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Legacy Floor State Floor State Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Legacy Floor State"
+      }
+    },
+    "/perceive": {
+      "post": {
+        "operationId": "legacy_perceive_perceive_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Legacy Perceive Perceive Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Legacy Perceive"
+      }
+    },
+    "/v1/dispatch": {
+      "post": {
+        "operationId": "v1_dispatch_v1_dispatch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DispatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response V1 Dispatch V1 Dispatch Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "V1 Dispatch"
+      }
+    },
+    "/v1/dispatch-parallel": {
+      "post": {
+        "operationId": "v1_dispatch_parallel_v1_dispatch_parallel_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParallelDispatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response V1 Dispatch Parallel V1 Dispatch Parallel Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "V1 Dispatch Parallel"
+      }
+    },
+    "/v1/floor-state": {
+      "post": {
+        "operationId": "v1_floor_state_v1_floor_state_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response V1 Floor State V1 Floor State Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "V1 Floor State"
+      }
+    },
+    "/v1/frames/{request_id}": {
+      "get": {
+        "operationId": "v1_frame_v1_frames__request_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "V1 Frame"
+      }
+    },
+    "/v1/health": {
+      "get": {
+        "operationId": "v1_health_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "V1 Health"
+      }
+    },
+    "/v1/missions": {
+      "get": {
+        "operationId": "v1_missions_v1_missions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response V1 Missions V1 Missions Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "V1 Missions"
+      }
+    },
+    "/v1/missions/{mission_id}": {
+      "get": {
+        "operationId": "v1_mission_detail_v1_missions__mission_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response V1 Mission Detail V1 Missions  Mission Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "V1 Mission Detail"
+      }
+    },
+    "/v1/perceive": {
+      "post": {
+        "operationId": "v1_perceive_v1_perceive_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PerceiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response V1 Perceive V1 Perceive Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "V1 Perceive"
+      }
+    },
+    "/v1/tasks/{goal_id}": {
+      "get": {
+        "operationId": "v1_task_status_v1_tasks__goal_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "goal_id",
+            "required": true,
+            "schema": {
+              "title": "Goal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response V1 Task Status V1 Tasks  Goal Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "V1 Task Status"
+      }
+    },
+    "/v1/verify": {
+      "post": {
+        "operationId": "v1_verify_v1_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response V1 Verify V1 Verify Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "V1 Verify"
+      }
+    },
+    "/verify": {
+      "post": {
+        "operationId": "legacy_verify_verify_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Legacy Verify"
+      }
+    }
+  }
+}

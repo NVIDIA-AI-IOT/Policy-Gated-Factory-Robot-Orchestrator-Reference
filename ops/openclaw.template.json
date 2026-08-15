@@ -1,0 +1,88 @@
+{
+  "agents": {
+    "defaults": {
+      "skipBootstrap": true
+    },
+    "list": [
+      {
+        "id": "main",
+        "name": "Industrial Claw",
+        "skills": [],
+        "tools": {
+          "allow": [
+            "ic-floor__*"
+          ]
+        }
+      },
+      {
+        "id": "ic-console",
+        "name": "Industrial Claw Console",
+        "contextInjection": "never",
+        "skills": [],
+        "tools": {
+          "allow": [
+            "ic-floor__*"
+          ],
+          "loopDetection": {
+            "enabled": true,
+            "historySize": 30,
+            "warningThreshold": 6,
+            "unknownToolThreshold": 6,
+            "criticalThreshold": 12,
+            "globalCircuitBreakerThreshold": 20,
+            "detectors": {
+              "genericRepeat": true,
+              "knownPollNoProgress": true,
+              "pingPong": true
+            },
+            "postCompactionGuard": {
+              "windowSize": 3
+            }
+          }
+        }
+      }
+    ]
+  },
+  "mcp": {
+    "servers": {
+      "ic-floor": {
+        "command": "__MCP_COMMAND__",
+        "env": {
+          "IC_FLOOR_SERVICE": "http://127.0.0.1:8766",
+          "IC_MCP_ROLE": "agent",
+          "IC_CERTIFIED_GROOT_ORDER": "1",
+          "IC_GROOT_PARALLEL_ENABLED": "0",
+          "IC_GROOT_FLEXIBLE_ORDER": "0"
+        },
+        "requestTimeoutMs": 280000,
+        "supportsParallelToolCalls": false,
+        "toolFilter": {
+          "include": [
+            "floor_state",
+            "perceive",
+            "dispatch_task",
+            "dispatch_parallel",
+            "certified_groot_sequence",
+            "reset_scene",
+            "verify",
+            "mission_history",
+            "mission_detail"
+          ]
+        }
+      }
+    }
+  },
+  "gateway": {
+    "mode": "local",
+    "http": {
+      "endpoints": {
+        "chatCompletions": {
+          "enabled": true
+        }
+      }
+    },
+    "controlUi": {
+      "enabled": false
+    }
+  }
+}
