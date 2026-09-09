@@ -1,56 +1,112 @@
-# policy-gated-factory-robot-orchestrator-reference-mcp
+# PGFR floor MCP server
 
-The floor seam's tools — `floor_state`, `perceive`, `dispatch_task`,
-`dispatch_parallel`, `certified_groot_sequence`, `reset_scene`, `verify`,
-`mission_history`, and `mission_detail` — exposed as an MCP server (stdio). Any
-MCP client (OpenClaw, Claude Code, Claude Desktop, NIM agents) connects and
-receives, in one handshake, both the tools and the operating manual:
-`skills/policy-gated-factory-robot-orchestrator-reference-orchestrator/PLAYBOOK.md` ships verbatim as the server
-`instructions`.
+This package exposes PGFR Spine through a standard input/output MCP server. It is
+a thin client of `PGFR_FLOOR_SERVICE`, which defaults to
+`http://127.0.0.1:8766`. Action policy and physical verification remain in PGFR
+Spine.
 
-Thin by design: tools proxy the floor service (`IC_FLOOR_SERVICE`, default
-`http://127.0.0.1:8766`). Execution authority and physical safety remain at the
-Seam. When `IC_CERTIFIED_GROOT_ORDER=1`, this MCP boundary additionally enforces
-the validated serial six-move fallback, the configured GR00T backend, one fresh
-exact-object visual proof between physical actions, and at most one retry. The
-optional certified concurrent plan is the separately qualified Order744
-sequence: left blue/right green, left green/right red, then left red/right
-blue. It is never synthesized by grouping the serial fallback by color.
+The server also sends the reference
+[`PLAYBOOK.md`](../../skills/policy-gated-factory-robot-orchestrator-reference-orchestrator/PLAYBOOK.md)
+as MCP handshake instructions. Each server process uses one generated mission
+ID to group requests in the PGFR Spine journal.
 
-## Run (on the brain host, next to the serve)
+## Tools
+
+| Tool | Purpose | Effect |
+|---|---|---|
+| `floor_state` | Read symbolic floor state. | Read-only |
+| `perceive` | Observe a configured camera region. | Read-only |
+| `dispatch_task` | Submit one policy-gated floor action. | Physical action |
+| `dispatch_parallel` | Submit one qualified two-arm GR00T pair. | Physical action |
+| `certified_groot_sequence` | Report the active serial or mixed-pair plan. | Read-only |
+| `reset_scene` | Reset the supported Isaac Sim scene after an explicit operator request. | Operator control |
+| `verify` | Evaluate a yes/no visual predicate and advance a pending proof gate. | Read-only |
+| `mission_history` | List journaled missions. | Read-only |
+| `mission_detail` | Read a mission operation timeline. | Read-only |
+
+## Install and test
+
+From the repository root:
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/pytest                    # unit tests (fake seam, no ROS needed)
-.venv/bin/ic-mcp                    # stdio server
+uv sync --frozen --extra dev \
+  --project servers/policy-gated-factory-robot-orchestrator-reference-mcp
+uv run --frozen \
+  --project servers/policy-gated-factory-robot-orchestrator-reference-mcp \
+  pytest -q servers/policy-gated-factory-robot-orchestrator-reference-mcp/tests
 ```
 
-## Connect Claude Code from another machine
+The unit tests use a local fake PGFR Spine service and do not require ROS 2 or
+Isaac Sim.
+
+## Run on the Jetson control host
+
+PGFR Spine must be reachable at `PGFR_FLOOR_SERVICE`. Start the MCP server with:
 
 ```bash
-claude mcp add ic-floor -- ssh jetson@<thor-ip> ~/Policy-Gated-Factory-Robot-Orchestrator-Reference/servers/policy-gated-factory-robot-orchestrator-reference-mcp/.venv/bin/ic-mcp
+servers/policy-gated-factory-robot-orchestrator-reference-mcp/.venv/bin/pgfr-mcp
 ```
 
-Then give a session a goal like *"Tidy the conveyor, then shelve the tote"* — the
-playbook arrives via instructions; no profile setup, no sync scripts.
+The process waits for an MCP client on standard input/output.
 
-## Env
+## Connect from Claude Code
 
-- `IC_FLOOR_SERVICE` — floor service base URL (default `http://127.0.0.1:8766`)
-- `IC_MCP_TIMEOUT_S` — per-call HTTP timeout (default 280; hauls take ~2.5 min)
-- `IC_MCP_ROLE` — Seam role header (default `agent`; operator use must be explicit)
-- `IC_DEFAULT_BACKEND` — deployment-selected arm executor (`groot` in the hardened demo)
-- `IC_CERTIFIED_GROOT_ORDER=1` — enable certified order/proof/retry enforcement
-- `IC_GROOT_PARALLEL_ENABLED=1` — assert that the independent two-server B=1
-  readiness contract passed; required for any atomic two-arm transaction
-- `IC_GROOT_FLEXIBLE_ORDER=1` — together with certified-order and parallel
-  mode, select the exact three-pair mixed Order744 plan while retaining the
-  same proof/retry gates; leave disabled for the serial fallback
+The following example launches the MCP server through SSH:
 
-All three settings default to `0` in the MCP process. With certified-order
-enforcement enabled but either concurrent flag disabled,
-`certified_groot_sequence` reports and enforces the unchanged serial fallback.
-With all three enabled, it reports the exact mixed transactions, rejects a
-wrong or partial pair before motion, rejects same-color pairs, and refuses to
-expand a pair into serial `dispatch_task` calls. The Seam independently checks
-the same exact next-pair order from authoritative floor state.
+```bash
+claude mcp add pgfr-floor -- ssh jetson@<thor-ip> ~/Policy-Gated-Factory-Robot-Orchestrator-Reference/servers/policy-gated-factory-robot-orchestrator-reference-mcp/.venv/bin/pgfr-mcp
+```
+
+After connecting, start a new client session so it receives the current tools
+and playbook instructions.
+
+## Configuration
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `PGFR_FLOOR_SERVICE` | `http://127.0.0.1:8766` | PGFR Spine base URL. |
+| `PGFR_MCP_TIMEOUT_S` | `280` | Per-call HTTP timeout in seconds. |
+| `PGFR_MCP_ROLE` | `agent` | Role sent for ordinary PGFR Spine requests. Operator use must be explicit. |
+| `PGFR_DEFAULT_BACKEND` | unset | Deployment-selected arm executor. The qualified deployment sets `groot`. |
+| `PGFR_CERTIFIED_GROOT_ORDER` | `0` | Enables the fixed serial order and proof/retry gates. |
+| `PGFR_GROOT_PARALLEL_ENABLED` | `0` | Records that the independent two-server B=1 readiness contract passed. |
+| `PGFR_GROOT_FLEXIBLE_ORDER` | `0` | Selects the qualified mixed-pair plan when the other two flags are also enabled. |
+
+## Certified GR00T modes
+
+With `PGFR_CERTIFIED_GROOT_ORDER=1` and either concurrency flag disabled,
+`certified_groot_sequence` reports the six-move serial fallback:
+
+1. right green;
+2. left green;
+3. right red;
+4. left red;
+5. right blue;
+6. left blue.
+
+Each accepted physical action must be followed by fresh visual proof before the
+next action. A client may submit the same action at most twice; the MCP server
+does not retry physical actions automatically.
+
+The mixed-pair plan is active only when all three flags are `1`. It permits
+these atomic pairs in order:
+
+1. left blue and right green;
+2. left green and right red;
+3. left red and right blue.
+
+Each pair requires separate proof for the left and right tote. The server
+rejects wrong, partial, repeated, and same-color pairs before dispatch, and it
+does not expand a pair into serial `dispatch_task` calls. PGFR Spine independently
+checks the same order against current floor state.
+
+## Security boundary
+
+The MCP process has no network listener or user-authentication layer. Access to
+its standard input/output stream grants use of its exposed tools, including the
+operator scene-reset tool. Restrict SSH and process access to trusted users,
+keep PGFR Spine on loopback, and use the repository's documented remote-access
+patterns.
+
+See [Remote access](../../docs/REMOTE-ACCESS.md) and
+[Validation](../../docs/VALIDATION.md) for deployment and acceptance guidance.

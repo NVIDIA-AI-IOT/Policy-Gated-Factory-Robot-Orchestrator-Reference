@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+pgfr_cell:
+  resources_servers:
+    pgfr_cell:
+      entrypoint: app.py
+      domain: agent
+      verified: false
+      description: Policy-Gated Factory Robot Orchestrator Reference warehouse cell — physics-verified pick/place/haul via the PGFR Spine floor seam
+      seam_base_url: ${oc.env:PGFR_FLOOR_SERVICE,http://127.0.0.1:8766}
+      reset_between_episodes: true
+      reset_endpoint: ${oc.env:PGFR_RESET_ENDPOINT,franka_left}
+pgfr_cell_simple_agent:
+  responses_api_agents:
+    simple_agent:
+      entrypoint: app.py
+      resources_server: {type: resources_servers, name: pgfr_cell}
+      model_server: {type: responses_api_models, name: policy_model}
+      datasets:
+      - name: example
+        type: example
+        jsonl_fpath: resources_servers/pgfr_cell/data/example.jsonl

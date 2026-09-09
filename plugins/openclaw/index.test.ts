@@ -92,7 +92,7 @@ describe("floor before_tool_call enforcement", () => {
     expect(typeof loadBeforeToolCallHook()).toBe("function");
   });
 
-  it("allows a safe dispatch_task (returns no block)", () => {
+  it("allows a permitted dispatch_task (returns no block)", () => {
     const hook = loadBeforeToolCallHook();
     expect(hook({ toolName: "dispatch_task", params: move })).toBeUndefined();
   });
@@ -108,11 +108,11 @@ describe("floor before_tool_call enforcement", () => {
     expect(hook({ toolName: "dispatch_task", params: haul })).toBeUndefined();
   });
 
-  it("blocks an unsafe dispatch_task with a reason", () => {
+  it("blocks an unpermitted dispatch_task with a reason", () => {
     const hook = loadBeforeToolCallHook();
     const result = hook({ toolName: "dispatch_task", params: { ...move, destination: "human" } });
     expect(result?.block).toBe(true);
-    expect(result?.blockReason).toMatch(/unsafe/i);
+    expect(result?.blockReason).toMatch(/prohibited/i);
   });
 
   it("blocks an unsupported action", () => {

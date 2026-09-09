@@ -1,16 +1,20 @@
-# Upgrade after the full-form product rename
+# Upgrade after the product and project-prefix rename
 
-This guide covers an existing installation that used the full-form
-`Industrial Claw` names and is moving to **Policy-Gated Factory Robot
-Orchestrator Reference**. This is a maintenance-window upgrade, not an
-in-place hot reload. Stop both hosts before changing paths or installed files.
+This guide covers an existing installation that used the former
+`Industrial Claw` product name, the `IC` project prefix, or both. The current
+name is **Policy-Gated Factory Robot Orchestrator Reference**, abbreviated
+**PGFR** in project-owned interfaces.
 
-The rename deliberately preserves the abbreviated compatibility surface:
-`IC_*` environment variables, `ic-*` services and containers, `ic_*` Python
-packages other than the main IC Spine package, and `/ic/*` ROS topics and
-schemas do not change.
+This is a maintenance-window upgrade, not an in-place hot reload. The cutover
+has no runtime compatibility alias: `IC_*` becomes `PGFR_*`, `ic-*` becomes
+`pgfr-*`, `ic_*` becomes `pgfr_*`, and `/ic/*` becomes `/pgfr/*`. The change
+also covers package names, command-line tools, HTTP headers, OpenClaw IDs,
+readiness markers, schema IDs, persistent paths, and generated configuration.
+Stop both hosts before changing paths or installed files. Never run legacy and
+PGFR services against the same ports or writable state.
 
-The two published Hugging Face identifiers also do not change:
+The two published Hugging Face identifiers are the only legacy product slugs
+used by the runtime and do not change:
 
 - `mmallick/industrial-claw-groot-order744-cont24`
 - `mmallick/industrial-claw-groot-order744-cont24-dataset`
@@ -22,9 +26,20 @@ environment file, model manifest, cache metadata, or downloaded snapshot.
 
 | Legacy name or default | New name or default | Action |
 |---|---|---|
-| `industrial_claw` Python distribution, import, and executable | `policy_gated_factory_robot_orchestrator_reference` | Recreate the IC Spine environment and update callers. There is no compatibility alias. |
+| `industrial_claw` Python distribution, import, and executable | `policy_gated_factory_robot_orchestrator_reference` | Recreate the PGFR Spine environment and update callers. There is no compatibility alias. |
+| `ic-spine/`, `ic-console/`, `servers/ic-chat/`, `servers/ic-workflows/` | `pgfr-spine/`, `pgfr-console/`, `servers/pgfr-chat/`, `servers/pgfr-workflows/` | Recreate all four environments from their renamed lockfiles. |
+| `ic_chat`, `ic_console`, `ic_workflows`, `ic_mcp`, `ic_conformance`, `ic_connector_sdk` | The equivalent `pgfr_*` imports | Update Python imports, editable sources, and entry points together. |
+| `ic-chat`, `ic-console`, `ic-workflows`, `ic-mcp`, `ic-conformance`, `ic-connector-sdk` | The equivalent `pgfr-*` distribution and command names | Update scripts and automation; no compatibility executables are installed. |
+| `IC_*` environment variables and `__IC_*__` template fields | `PGFR_*` and `__PGFR_*__` | Rename every project-owned key in copied configuration and secrets. NVIDIA, Hugging Face, ROS, and OpenClaw variables do not change. |
+| `ic-*` user units, containers, readiness records, and log markers | `pgfr-*` names and `PGFR_*` markers | Stop and retire the old owners before installing or starting the new ones. |
+| `X-IC-Chat`, `X-IC-Workflows` | `X-PGFR-Chat`, `X-PGFR-Workflows` | Update callers, CORS configuration, and service tokens atomically. |
+| OpenClaw `ic-console`, `ic-floor`, and `ic-floor__*` IDs | `pgfr-console`, `pgfr-floor`, and `pgfr-floor__*` | Regenerate the OpenClaw configuration; do not copy the old generated file over it. |
+| `/ic/*` ROS topics and `ic/...` schema IDs | `/pgfr/*` and `pgfr/...` | Rebuild the Isaac scripts mount and update both ROS hosts from the same revision. |
+| `~/.config/ic-spine/` | `~/.config/pgfr-spine/` | Move the stopped configuration tree, then rename every project-owned environment key. |
+| `~/.local/share/ic-spine/` | `~/.local/share/pgfr-spine/` | Move sessions, GPU history, GR00T state, and readiness records before rerunning installers. |
+| `~/ic-journal/`, `~/ic_gpu_telemetry/`, `~/.ic_chat_sessions/` | The equivalent `pgfr` paths | Preserve mission evidence and history; do not merge old and new trees. |
 | `reference/industrial-claw/` | `reference/policy-gated-factory-robot-orchestrator-reference/` | Use the new checkout; do not retain scripts that point into the old source tree. |
-| `servers/industrial-claw-mcp/` | `servers/policy-gated-factory-robot-orchestrator-reference-mcp/` | Recreate the MCP virtual environment and update MCP client commands. The executable remains `ic-mcp`. |
+| `servers/industrial-claw-mcp/` | `servers/policy-gated-factory-robot-orchestrator-reference-mcp/` | Recreate the MCP virtual environment and update MCP client commands. The executable remains `pgfr-mcp`. |
 | `skills/industrial-claw-orchestrator/` | `skills/policy-gated-factory-robot-orchestrator-reference-orchestrator/` | Re-run `ops/sync-playbook.sh` after installation. |
 | `~/.industrial_claw/` | `~/.policy_gated_factory_robot_orchestrator_reference/` | Move CLI run and mock floor-state data if it must be retained. |
 | `~/.industrial-claw/openclaw/` | `~/.policy-gated-factory-robot-orchestrator-reference/openclaw/` | Move the OpenClaw workspace while its services are stopped, then regenerate `openclaw.json` from the new template and reapply reviewed provider settings. |
@@ -32,11 +47,13 @@ environment file, model manifest, cache metadata, or downloaded snapshot.
 | `~/.local/lib/industrial-claw/` | `~/.local/lib/policy-gated-factory-robot-orchestrator-reference/` | Reinstall the simulation-host bridge; do not copy the generated helper forward. |
 | A checkout such as `~/industrial-claw/` | `~/Policy-Gated-Factory-Robot-Orchestrator-Reference/` | Use a clean checkout of the exact release commit. Rerender every path-bound unit. |
 
-The following locations keep their current names: `~/.config/ic-spine/`,
-`~/.local/share/ic-spine/`, `~/.openclaw/secrets.env`, `~/ic-journal/`,
-`~/groot_shadow/Isaac-GR00T/`, and the `ic-*` user-unit names. They still need
-to be backed up and inspected because their contents can refer to the old
-checkout, package, model, or OpenClaw paths.
+The paths that do not carry the project prefix keep their names, including
+`~/.openclaw/secrets.env`, `~/groot_shadow/Isaac-GR00T/`, the two published
+Hugging Face cache identities, and the full-form product paths in the table.
+Their contents still require review: the secrets file can contain `IC_*` keys,
+and generated OpenClaw configuration can contain old agent, MCP, or executable
+identifiers. The `pgfr-*` units and `pgfr` state paths are new destinations, not
+preserved aliases.
 
 Do not rename an existing Isaac scripts mount while a container is using it.
 Prepare a fresh exact mount with `ops/isaac-sim-workstation.sh --prepare` for
@@ -55,8 +72,8 @@ Record the enabled state and current revisions on each host:
 ```bash
 git -C "$HOME/Policy-Gated-Factory-Robot-Orchestrator-Reference" status --short --branch
 git -C "$HOME/Policy-Gated-Factory-Robot-Orchestrator-Reference" rev-parse HEAD
-systemctl --user list-unit-files 'ic-*'
-systemctl --user list-units --all 'ic-*'
+systemctl --user list-unit-files 'ic-*' 'pgfr-*'
+systemctl --user list-units --all 'ic-*' 'pgfr-*'
 docker ps --format '{{.Names}}\t{{.Image}}\t{{.Status}}'
 ```
 
@@ -64,7 +81,7 @@ If the legacy checkout has another path, substitute it in the two Git
 commands. Save the output with the change record. Confirm that no mission,
 reset, physical action, model request, or evidence write is in flight.
 
-On Thor, explicitly stop every owner that can use a path being migrated:
+On Thor, explicitly stop every legacy owner that can use a path being migrated:
 
 ```bash
 systemctl --user stop \
@@ -88,6 +105,10 @@ docker ps --format '{{.Names}}' | grep -E '^(isaac-sim|ic-isaac-sim-baseline)$' 
 docker stop isaac-sim
 ```
 
+If the inventory shows units from an incomplete PGFR installation, stop those
+exact `pgfr-*` units as well. Do not guess: record and stop only units owned by
+this deployment.
+
 Do not identify or terminate an arbitrary process only by port number. Verify
 that all listed user units are inactive and that no container is using the
 scripts mount before continuing.
@@ -99,11 +120,13 @@ create a mode-0700 backup outside both the checkout and the directories being
 migrated. Back up these items without printing their contents:
 
 - `~/.config/ic-spine/` and `~/.config/systemd/user/ic-*`
+- any `~/.config/pgfr-spine/` or `pgfr-*` unit files left by a partial attempt
 - `~/.openclaw/secrets.env`
 - `~/.industrial_claw/` and `~/.industrial-claw/`, when present
-- `~/.local/share/ic-spine/` and `~/ic-journal/`
+- `~/.local/share/ic-spine/`, `~/ic-journal/`, and any partial PGFR state
 - `~/industrial-claw-models/`
-- the simulation-host bridge configuration and external Isaac/GR00T state
+- the legacy simulation-host bridge helper/configuration and external
+  Isaac/GR00T state
 - the old checkout's revision, dirty-file list, and any operator-owned changes
 
 Model weights and Isaac caches can be large. A same-filesystem rename is not a
@@ -121,6 +144,22 @@ test -d "$UPGRADE_BACKUP"
 test -O "$UPGRADE_BACKUP"
 test "$(stat -c '%a' "$UPGRADE_BACKUP")" = 700
 ```
+
+After the backup is verified, disable the legacy units that were enabled in the
+inventory. This prevents a reboot from starting old owners on the PGFR ports:
+
+```bash
+systemctl --user disable \
+  ic-console.service ic-chat.service ic-workflows.service \
+  ic-openclaw.service ic-seam.service ic-gpu-exporter.service \
+  ic-perception-vlm.service ic-groot-shared-stack.target \
+  ic-groot-two-host-bridge.service
+systemctl --user daemon-reload
+```
+
+Keep the stopped unit files in the backup until rollback is no longer needed.
+If a listed unit was never installed on that host, omit it rather than masking
+the error.
 
 ## 3. Install the exact new checkout
 
@@ -172,6 +211,35 @@ if [ -e "$HOME/industrial-claw-models" ]; then
 fi
 ```
 
+Migrate the abbreviated project state separately. Run only a block whose source
+exists, and stop if its destination already exists:
+
+```bash
+if [ -e "$HOME/.config/ic-spine" ]; then
+  test ! -e "$HOME/.config/pgfr-spine"
+  mv -- "$HOME/.config/ic-spine" "$HOME/.config/pgfr-spine"
+fi
+if [ -e "$HOME/.local/share/ic-spine" ]; then
+  test ! -e "$HOME/.local/share/pgfr-spine"
+  mv -- "$HOME/.local/share/ic-spine" "$HOME/.local/share/pgfr-spine"
+fi
+if [ -e "$HOME/ic-journal" ]; then
+  test ! -e "$HOME/pgfr-journal"
+  mv -- "$HOME/ic-journal" "$HOME/pgfr-journal"
+fi
+if [ -e "$HOME/ic_gpu_telemetry" ]; then
+  test ! -e "$HOME/pgfr_gpu_telemetry"
+  mv -- "$HOME/ic_gpu_telemetry" "$HOME/pgfr_gpu_telemetry"
+fi
+if [ -e "$HOME/.ic_chat_sessions" ]; then
+  test ! -e "$HOME/.pgfr_chat_sessions"
+  mv -- "$HOME/.ic_chat_sessions" "$HOME/.pgfr_chat_sessions"
+fi
+```
+
+Do not rename installed `ic-*` unit files into place. Keep them stopped for
+rollback; the installer renders fresh `pgfr-*` units from the candidate source.
+
 If a destination already exists, stop and compare it against the backup; do
 not overwrite or combine it. Verify the model tree after moving it:
 
@@ -180,28 +248,34 @@ ops/verify-groot-models.sh \
   "$HOME/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24"
 ```
 
-The bootstrap preserves existing operator environment files instead of
-overwriting them. Audit the preserved files before reinstalling:
+The bootstrap seeds missing environment files but preserves existing operator
+configuration. After moving the configuration tree, rename every project-owned
+`IC_*` key to the equivalent `PGFR_*` key. Do the same for project keys in
+`~/.openclaw/secrets.env`; leave `NVIDIA_API_KEY`, `HF_*`, `OPENCLAW_*`,
+`ROS_*`, and `RMW_*` keys unchanged. List files that still require review
+without printing their values:
 
 ```bash
-rg -n 'Industrial Claw|industrial_claw|industrial-claw' \
-  "$HOME/.config/ic-spine" "$HOME/.config/systemd/user" || true
+rg -l '^IC_[A-Z0-9_]*=' \
+  "$HOME/.config/pgfr-spine" "$HOME/.openclaw/secrets.env" || true
+rg -l 'Industrial Claw|industrial_claw|industrial-claw|ic-spine|ic-console|ic-chat|ic-workflows' \
+  "$HOME/.config/pgfr-spine" "$HOME/.config/systemd/user" || true
 ```
 
 Update old checkout, import/executable, model, source, patch, OpenClaw, and
-bridge-helper paths. In particular, IC Chat and OpenClaw must converge on:
+bridge-helper paths. In particular, PGFR Chat and OpenClaw must converge on:
 
 ```dotenv
-IC_OPENCLAW_CONFIG=/home/YOUR_USER/.policy-gated-factory-robot-orchestrator-reference/openclaw/openclaw.json
+PGFR_OPENCLAW_CONFIG=/home/YOUR_USER/.policy-gated-factory-robot-orchestrator-reference/openclaw/openclaw.json
 OPENCLAW_STATE_DIR=/home/YOUR_USER/.policy-gated-factory-robot-orchestrator-reference/openclaw
 OPENCLAW_CONFIG_PATH=/home/YOUR_USER/.policy-gated-factory-robot-orchestrator-reference/openclaw/openclaw.json
 ```
 
-Do not change an `IC_*`, `ic-*`, `/ic/*`, or `ic_*` compatibility identifier
-merely because it contains `ic`. Do not change either published
+Do not rename third-party variables or ordinary words that happen to contain
+the same letters. Do not change either published
 `mmallick/industrial-claw-groot-order744-cont24` Hugging Face identifier. Treat
-any other remaining full-form legacy value as an item that requires explicit
-review, not an invitation to run a repository-wide substitution.
+any other remaining legacy value as an item for explicit review, not an
+invitation to run an unrestricted repository-wide substitution.
 
 The migrated OpenClaw `openclaw.json` can contain an absolute command path to
 the former MCP directory. Preserve a copy, then move that one generated config
@@ -221,13 +295,25 @@ configuration interface.
 
 Archive generated readiness records so a pre-upgrade success cannot satisfy a
 post-upgrade check. On Thor, move `shared-left.json` and `shared-right.json`
-from `~/.local/share/ic-spine/groot/` into the backup. On the simulation host,
-move the same two files from
-`~/.local/share/ic-spine/groot/remote-thor-v36/`, plus
-`~/.config/ic-spine/groot-two-host-bridge.env` and the generated
-`~/.local/lib/industrial-claw/` helper directory, into that host's backup.
-Keep mission journals, Chat sessions, and evidence in place; they are
-persistent records, not readiness signals.
+from the migrated `~/.local/share/pgfr-spine/groot/` tree into the backup. On
+the simulation host, move the same two files from
+`~/.local/share/pgfr-spine/groot/remote-thor-v36/`, plus the migrated
+`~/.config/pgfr-spine/groot-two-host-bridge.env`. Archive any generated bridge
+helper found under either full-form path in the migration table; the new
+installer recreates it from the candidate source. Keep mission journals, Chat
+sessions, and evidence in place; they are persistent records, not readiness
+signals.
+
+Operator-authored `skills/wf-*` directories in the old checkout are deployment
+data. Copy them into the candidate one at a time only after checking for a name
+collision and reviewing the manifest. Rename their ownership marker from
+`.ic-workflows-owned` to `.pgfr-workflows-owned`; PGFR Workflows deliberately
+refuses to publish over a directory without the current marker. Do not copy or
+merge the complete old `skills/` tree.
+
+The playbook synchronizer migrates either the legacy or current marked block to
+one current `PGFR-PLAYBOOK` block. Keep its timestamped backup until the new
+OpenClaw configuration and tool list pass validation.
 
 ## 5. Recreate environments and rerender installed files
 
@@ -265,7 +351,7 @@ ops/install-groot-thor-shared-profiles.sh
 
 `bootstrap-brain.sh --install` recreates the repository-owned environments
 and rerenders the user units with the new checkout path, but preserves existing
-`~/.config/ic-spine/*.env` values. That is why the environment audit in the
+`~/.config/pgfr-spine/*.env` values. That is why the environment audit in the
 previous step is mandatory. Recreate the conformance-kit environment
 separately as shown in [`REPRODUCIBLE-DEMO.md`](REPRODUCIBLE-DEMO.md).
 
@@ -274,9 +360,9 @@ Gateway/Seam owners, reapply reviewed provider settings, and synchronize the
 playbook:
 
 ```bash
-systemctl --user start ic-openclaw.service
+systemctl --user start pgfr-openclaw.service
 test -s "$HOME/.policy-gated-factory-robot-orchestrator-reference/openclaw/openclaw.json"
-systemctl --user stop ic-openclaw.service ic-seam.service
+systemctl --user stop pgfr-openclaw.service pgfr-seam.service
 ops/sync-playbook.sh
 ```
 
@@ -295,7 +381,7 @@ ops/install-groot-two-host-bridge.sh \
   --thor-ssh YOUR_THOR_USER@YOUR_THOR_IP \
   --remote-checkpoint \
     /home/YOUR_THOR_USER/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24 \
-  --remote-state-root /home/YOUR_THOR_USER/.local/share/ic-spine/groot
+  --remote-state-root /home/YOUR_THOR_USER/.local/share/pgfr-spine/groot
 ```
 
 The bridge installer refuses a differing existing configuration or generated
@@ -305,7 +391,7 @@ item with the backup and stop; do not delete a file merely to bypass a refusal.
 
 ## 6. Validate both migration paths
 
-A release is not upgrade-safe until both of these independent gates pass on
+A release is not ready for an in-place upgrade until both of these independent gates pass on
 the exact published commit:
 
 1. **Clean installation:** start from clean supported RTX and Thor hosts (or
@@ -331,10 +417,10 @@ Before either start, inspect installed files for stale source paths:
 
 ```bash
 rg -n 'industrial_claw|industrial-claw' \
-  "$HOME/.config/ic-spine" "$HOME/.config/systemd/user" \
+  "$HOME/.config/pgfr-spine" "$HOME/.config/systemd/user" \
   "$HOME/.local/lib/policy-gated-factory-robot-orchestrator-reference" || true
 systemctl --user daemon-reload
-systemctl --user cat ic-seam.service ic-openclaw.service ic-chat.service
+systemctl --user cat pgfr-seam.service pgfr-openclaw.service pgfr-chat.service
 ```
 
 The Isaac launcher also refuses to reuse a stopped container. Before removing
@@ -350,12 +436,12 @@ scene reset, and the serial `full-groot-dual-tote` workflow. Confirm the exact
 mission in authoritative state, journal, VLM evidence, and current-container
 logs; a service catalog or model-list response alone is not acceptance.
 
-Also verify the intentional CLI break in a newly created IC Spine environment:
+Also verify the intentional CLI break in a newly created PGFR Spine environment:
 
 ```bash
-ic-spine/.venv/bin/policy_gated_factory_robot_orchestrator_reference --help
-test ! -e ic-spine/.venv/bin/industrial_claw
-ic-spine/.venv/bin/python -c \
+pgfr-spine/.venv/bin/policy_gated_factory_robot_orchestrator_reference --help
+test ! -e pgfr-spine/.venv/bin/industrial_claw
+pgfr-spine/.venv/bin/python -c \
   'import policy_gated_factory_robot_orchestrator_reference'
 ```
 

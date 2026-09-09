@@ -5,7 +5,7 @@
 name: sort-one-cube
 version: 0.1.0
 description: Perceive the conveyor, move one cube of the requested color into the tote, prove it.
-owner: ic-workflows
+owner: pgfr-workflows
 params:
   color: cube color (red | blue | green)
 steps:

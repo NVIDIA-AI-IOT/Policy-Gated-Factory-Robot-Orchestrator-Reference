@@ -1,10 +1,31 @@
-# Connectors — the enterprise catalog
+# Connectors
 
-Systems the brain reaches out to, wrapped on `ic-connector-sdk` and proven with
-`assert_connector_compliant`. Create your own: [`TEMPLATE/`](TEMPLATE/README.md).
+Connectors provide typed, read-mostly access to external systems such as video
+analytics, manufacturing execution systems, and quality databases. They return
+context and evidence to an orchestrator; they do not dispatch robot actions.
+Physical actions remain subject to PGFR Spine policy and verification.
 
-| Connector | Wraps | Status |
+## Available integrations
+
+| Integration | Interface | Purpose |
 |---|---|---|
-| [`TEMPLATE`](TEMPLATE/) | — | the paved road |
-| [`nemo-gym`](nemo-gym/) | NeMo Gym environment for benchmark and training runs | optional integration |
-| (planned) `vss-video` | VSS video analytics | design |
+| [Connector template](TEMPLATE/README.md) | [`pgfr-connector-sdk`](../packages/connector-sdk/README.md) | Starting point for a custom external-system adapter. |
+| [NeMo Gym](nemo-gym/README.md) | NeMo Gym resource server | Exposes the reference cell as an environment for evaluation and rollout collection. |
+
+The repository does not provide automatic connector discovery or a connector
+runtime. A deployment must instantiate its connectors and expose the required
+capabilities through its chosen service boundary.
+
+## Connector contract
+
+An SDK connector implements three methods:
+
+- `health()` reports availability and data freshness.
+- `capabilities()` returns named operations with JSON Schema parameter contracts.
+- `call()` executes one capability and raises `KeyError` for an unknown name.
+
+Connector results should include a source identifier and timestamp. Store
+endpoints and credentials in the deployment environment, never in source files.
+
+See the [connector template](TEMPLATE/README.md) for implementation and test
+instructions.

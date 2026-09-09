@@ -96,7 +96,7 @@ def _step(dt):
                 cu.set_world_pose(np.array(hp)+S["off"], IDENT); cu.set_linear_velocity(np.zeros(3)); cu.set_angular_velocity(np.zeros(3))
         S["t"]+=1
         if ctrl.is_done() or S["t"]>2400:
-            if S["ast"]=="carry":   # safety: controller finished but never opened — drop into slot
+            if S["ast"]=="carry":   # controller completed without opening — apply fallback placement
                 c=COMP[k]; cu.set_world_pose(np.array([c[0],c[1],0.70]), IDENT); cu.set_linear_velocity(np.zeros(3)); cu.set_angular_velocity(np.zeros(3))
             fp,_=cu.get_world_pose(); c=COMP[k]; off=float(((fp[0]-c[0])**2+(fp[1]-c[1])**2)**0.5)
             print("SORT %s done off=%.3f final=(%.2f,%.2f,%.2f)"%(k,off,fp[0],fp[1],fp[2]),flush=True)

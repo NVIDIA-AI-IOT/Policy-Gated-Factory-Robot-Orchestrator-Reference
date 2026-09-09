@@ -55,8 +55,8 @@ def test_groot_launcher_is_private_fail_closed_and_multi_host_ready() -> None:
     assert 'ROS_DOMAIN_ID="$ROS_DOMAIN_ID_VALUE"' in launcher
     assert '-v "$FAST_DDS_PROFILE:/etc/policy-gated-factory-robot-orchestrator-reference/fastdds.xml:ro"' in launcher
     assert '-v "$MOUNT:/scripts:ro"' in launcher
-    assert 'IC_ISAAC_IMAGE="$IMAGE"' in launcher
-    assert 'IC_ISAAC_IMAGE_DIGEST="$IMAGE_DIGEST"' in launcher
+    assert 'PGFR_ISAAC_IMAGE="$IMAGE"' in launcher
+    assert 'PGFR_ISAAC_IMAGE_DIGEST="$IMAGE_DIGEST"' in launcher
     assert '"$REPO/ops/check-sim-host.sh" --profile x11 \\\n' in launcher
     assert '--state-root "$ISAAC_ROOT" --mount "$MOUNT"' in launcher
 
@@ -69,8 +69,8 @@ def test_groot_launcher_is_private_fail_closed_and_multi_host_ready() -> None:
     assert "xhost +local:" not in launcher
     assert "no X11 authorization cookie exists" in launcher
 
-    assert "IC_GROOT_READY_TIMEOUT" in launcher
-    assert "IC_GROOT_RUNTIME_READY" in launcher
+    assert "PGFR_GROOT_READY_TIMEOUT" in launcher
+    assert "PGFR_GROOT_RUNTIME_READY" in launcher
     assert "STARTUP_DONE full_scene+runner" in launcher
     assert "ERROR_MARKER_RE='[A-Z][A-Z0-9_]*_(ERR|ERROR)" in launcher
     assert launcher.count('grep -Eq "$ERROR_MARKER_RE"') == 2
@@ -93,7 +93,7 @@ def test_groot_readiness_scans_early_error_before_large_log_tail(
     harness.write_text(
         "#!/bin/bash\n"
         "set -euo pipefail\n"
-        "CONTAINER_NAME=ic-groot-readiness-test\n"
+        "CONTAINER_NAME=pgfr-groot-readiness-test\n"
         "READY_TIMEOUT=5\n"
         "ERROR_MARKER_RE='[A-Z][A-Z0-9_]*_(ERR|ERROR)(:|[[:space:]=]|$)'\n"
         "fail() { printf 'FAIL: %s\\n' \"$*\" >&2; exit 2; }\n"
@@ -113,13 +113,13 @@ if [ "$1 $2" = "logs --tail" ]; then
   exit 0
 fi
 if [ "$1" = logs ]; then
-  printf 'IC_STEP_ERR: early deterministic failure\\n'
+  printf 'PGFR_STEP_ERR: early deterministic failure\\n'
   line=0
   while [ "$line" -lt 4200 ]; do
     printf 'benign noisy Isaac Kit startup line %s padding padding padding\\n' "$line"
     line=$((line + 1))
   done
-  printf 'IC_GROOT_RUNTIME_READY\\n'
+  printf 'PGFR_GROOT_RUNTIME_READY\\n'
   printf 'STARTUP_DONE full_scene+runner\\n'
   exit 0
 fi
@@ -147,7 +147,7 @@ exit 90
 
     assert result.returncode == 2
     assert "startup or physics error" in result.stderr
-    assert "IC_GROOT_ISAAC_READY" not in result.stdout
+    assert "PGFR_GROOT_ISAAC_READY" not in result.stdout
 
 
 def test_groot_launcher_executes_the_state_root_checker_cli(tmp_path: Path) -> None:
@@ -156,13 +156,14 @@ def test_groot_launcher_executes_the_state_root_checker_cli(tmp_path: Path) -> N
     ops.mkdir(parents=True)
     launcher = ops / "launch-groot-isaac.sh"
     shutil.copy2(ROOT / "ops" / "launch-groot-isaac.sh", launcher)
+    shutil.copy2(ROOT / "ops" / "pgfr-legacy-guard.sh", ops / "pgfr-legacy-guard.sh")
     (ops / "fastdds-multi-host.xml").write_text("<profiles/>\n", encoding="utf-8")
     checker = ops / "check-sim-host.sh"
     checker.write_text(
         "#!/bin/sh\n"
         "printf '%s\\n' \"$@\" > \"$CHECK_CALL\"\n"
-        "printf 'image=%s\\ndigest=%s\\n' \"$IC_ISAAC_IMAGE\" "
-        "\"$IC_ISAAC_IMAGE_DIGEST\" > \"$CHECK_ENV\"\n"
+        "printf 'image=%s\\ndigest=%s\\n' \"$PGFR_ISAAC_IMAGE\" "
+        "\"$PGFR_ISAAC_IMAGE_DIGEST\" > \"$CHECK_ENV\"\n"
         "exit 73\n",
         encoding="utf-8",
     )
@@ -181,14 +182,24 @@ def test_groot_launcher_executes_the_state_root_checker_cli(tmp_path: Path) -> N
     for name in ("shared-left.json", "shared-right.json"):
         (groot_state / name).write_text("{}\n", encoding="utf-8")
     isaac_state = tmp_path / "isaac-state"
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    for name, body in (
+        ("systemctl", 'if [ "$2" = list-units ]; then exit 0; fi\nexit 1'),
+        ("docker", 'if [ "$1 $2" = "ps --format" ]; then exit 0; fi\nexit 90'),
+    ):
+        command = fake_bin / name
+        command.write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
+        command.chmod(0o755)
 
     environment = {
         **os.environ,
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
         "CHECK_CALL": str(tmp_path / "checker.args"),
         "CHECK_ENV": str(tmp_path / "checker.env"),
         "DISPLAY": ":1",
-        "IC_GROOT_STATE_ROOT": str(groot_state),
-        "IC_ISAAC_ROOT": str(isaac_state),
+        "PGFR_GROOT_STATE_ROOT": str(groot_state),
+        "PGFR_ISAAC_ROOT": str(isaac_state),
     }
     result = subprocess.run(
         [str(launcher), str(mount)],
@@ -248,7 +259,7 @@ def test_thor_seam_uses_the_same_fastdds_profile() -> None:
     assert "RMW_IMPLEMENTATION=rmw_fastrtps_cpp" in environment
     assert (
         "FASTRTPS_DEFAULT_PROFILES_FILE="
-        "__IC_REPO__/ops/fastdds-multi-host.xml"
+        "__PGFR_REPO__/ops/fastdds-multi-host.xml"
     ) in environment
 
 
@@ -256,27 +267,27 @@ def test_parallel_capability_defaults_and_enablement_propagation() -> None:
     seam_environment = text("ops/systemd/seam.env")
     workflows_environment = text("ops/systemd/workflows.env")
     openclaw_template = text("ops/openclaw.template.json")
-    guide = text("docs/REPRODUCIBLE-DEMO.md")
-    seam_readme = text("ic-spine/README.md")
+    guide = text("docs/VALIDATION.md")
+    seam_readme = text("pgfr-spine/README.md")
 
     for environment in (seam_environment, workflows_environment):
-        assert environment.count("IC_GROOT_PARALLEL_ENABLED=0") == 1
-        assert environment.count("IC_GROOT_FLEXIBLE_ORDER=0") == 1
-    assert '"IC_GROOT_PARALLEL_ENABLED": "0"' in openclaw_template
-    assert '"IC_GROOT_FLEXIBLE_ORDER": "0"' in openclaw_template
-    assert '"IC_CERTIFIED_GROOT_ORDER": "1"' in openclaw_template
+        assert environment.count("PGFR_GROOT_PARALLEL_ENABLED=0") == 1
+        assert environment.count("PGFR_GROOT_FLEXIBLE_ORDER=0") == 1
+    assert '"PGFR_GROOT_PARALLEL_ENABLED": "0"' in openclaw_template
+    assert '"PGFR_GROOT_FLEXIBLE_ORDER": "0"' in openclaw_template
+    assert '"PGFR_CERTIFIED_GROOT_ORDER": "1"' in openclaw_template
 
-    assert '"$HOME/.config/ic-spine/seam.env"' in guide
-    assert '"$HOME/.config/ic-spine/workflows.env"' in guide
-    assert "IC_GROOT_PARALLEL_ENABLED=1" in guide
-    assert "IC_GROOT_FLEXIBLE_ORDER=1" in guide
-    assert "mcp.servers.ic-floor.env.IC_CERTIFIED_GROOT_ORDER" in guide
+    assert '"$HOME/.config/pgfr-spine/seam.env"' in guide
+    assert '"$HOME/.config/pgfr-spine/workflows.env"' in guide
+    assert "PGFR_GROOT_PARALLEL_ENABLED=1" in guide
+    assert "PGFR_GROOT_FLEXIBLE_ORDER=1" in guide
+    assert "mcp.servers.pgfr-floor.env.PGFR_CERTIFIED_GROOT_ORDER" in guide
     assert (
-        "ic-seam.service ic-workflows.service ic-openclaw.service" in guide
+        "pgfr-seam.service pgfr-workflows.service pgfr-openclaw.service" in guide
     )
     assert 'curl --fail http://127.0.0.1:8766/v1/health' in guide
     assert 'curl --fail http://127.0.0.1:8610/api/health' in guide
-    assert 'grep -Ex \'IC_GROOT_(PARALLEL_ENABLED|FLEXIBLE_ORDER)=1\'' in guide
+    assert 'grep -Ex \'PGFR_GROOT_(PARALLEL_ENABLED|FLEXIBLE_ORDER)=1\'' in guide
     assert "Same-color, partial, skipped" in guide
     assert "Both flags default to `0`" in seam_readme
     assert "State measurement and dispatch share one route lock" in seam_readme
@@ -284,6 +295,7 @@ def test_parallel_capability_defaults_and_enablement_propagation() -> None:
 
 def test_two_host_runbook_describes_separate_mount_and_bounded_readiness() -> None:
     guide = text("docs/REPRODUCIBLE-DEMO.md")
+    validation = text("docs/VALIDATION.md")
 
     assert "Use a separate scripts mount for the GR00T deployment" in guide
     assert "standalone baseline has been explicitly stopped" in guide
@@ -293,61 +305,72 @@ def test_two_host_runbook_describes_separate_mount_and_bounded_readiness() -> No
     assert "sudo ufw allow in" in guide
     assert "from \"$THOR_IP\" to any port 7400:7609" in guide
     assert "Do not disable either" in guide
-    assert "ROS2CLI_NO_DAEMON=1" in guide
-    assert "require Publisher count: 1" in guide
-    assert "ros2 topic echo /ic/floor_state" in guide
+    assert "ROS2CLI_NO_DAEMON=1" in validation
+    assert "require Publisher count: 1" in validation
+    assert "ros2 topic echo /pgfr/floor_state" in validation
 
 
 def test_two_host_runbook_preserves_fail_closed_first_run_order() -> None:
     guide = text("docs/REPRODUCIBLE-DEMO.md")
+    providers = text("docs/MODEL-PROVIDERS.md")
+    remote_access = text("docs/REMOTE-ACCESS.md")
+    validation = text("docs/VALIDATION.md")
 
-    assert guide.index("systemctl --user start ic-openclaw.service") < guide.index(
+    assert providers.index(
+        "systemctl --user start pgfr-openclaw.service"
+    ) < providers.index(
         "./node_modules/.bin/openclaw models set"
     )
-    assert "/api/workflows/full-groot-dual-tote/run" in guide
-    assert "IC_GROOT_PARALLEL_ENABLED=0" in guide
-    assert "IC_GROOT_FLEXIBLE_ORDER=0" in guide
-    assert 'docker logs --since "$ISAAC_STARTED_AT"' in guide
-    assert "[A-Z][A-Z0-9_]*_(ERR|ERROR)(:|[[:space:]=]|$)" in guide
-    assert "Isaac Sim current run contains a project error marker" in guide
-    assert "/tmp/ic-reference-mission-id" in guide
-    assert '"http://127.0.0.1:8766/v1/missions/$MISSION_ID?limit=100"' in guide
-    assert 'data.get("started_steps") == 20' in guide
-    assert 'len(operations) == 20' in guide
-    assert 'assert len(dispatches) == 8' in guide
+    assert "/api/workflows/full-groot-dual-tote/run" in validation
+    assert "PGFR_GROOT_PARALLEL_ENABLED=0" in validation
+    assert "PGFR_GROOT_FLEXIBLE_ORDER=0" in validation
+    assert "automatically redispatches a physical command" in validation
+    assert "Neither path invokes the second dispatch itself" in validation
+    assert 'docker logs --since "$ISAAC_STARTED_AT"' in validation
+    assert "[A-Z][A-Z0-9_]*_(ERR|ERROR)(:|[[:space:]=]|$)" in validation
+    assert "Isaac Sim current run contains a project error marker" in validation
+    assert "/tmp/pgfr-reference-mission-id" in validation
+    assert '"http://127.0.0.1:8766/v1/missions/$MISSION_ID?limit=100"' in validation
+    assert 'data.get("started_steps") == 20' in validation
+    assert 'len(operations) == 20' in validation
+    assert 'assert len(dispatches) == 8' in validation
     assert (
         'op.get("verified") is True and '
         '(op.get("result") or {}).get("verified") is True'
-    ) in guide
-    assert 'assert len(proofs) == 9' in guide
-    assert 'startswith("frames/") for op in proofs' in guide
-    assert 'state.get("tote_r_on_rack") is True' in guide
-    assert "prompt wording\nis not an authorization boundary" in guide
-    assert "/tmp/ic-openclaw-read-smoke.json" not in guide
-    assert guide.count('IC_GROOT_ISAAC_MOUNT="$IC_GROOT_ISAAC_ROOT/scripts"') >= 3
+    ) in validation
+    assert 'assert len(proofs) == 9' in validation
+    assert 'startswith("frames/") for op in proofs' in validation
+    assert 'state.get("tote_r_on_rack") is True' in validation
+    assert "prompt wording is not an authorization boundary" in validation
+    assert "/tmp/pgfr-openclaw-read-smoke.json" not in validation
+    assert guide.count('PGFR_GROOT_ISAAC_MOUNT="$PGFR_GROOT_ISAAC_ROOT/scripts"') >= 3
     assert 'xauth -f "$XAUTHORITY" nlist "$DISPLAY"' in guide
 
-    direct = guide[guide.index("For direct-IP, read-only observability") :]
+    direct = remote_access[
+        remote_access.index("Establish an exact source-address") :
+    ]
     assert direct.index("sudo ufw allow in") < direct.index(
-        "IC_CONSOLE_HOST=0.0.0.0"
+        "PGFR_CONSOLE_HOST=0.0.0.0"
     )
 
 
 def test_two_host_runbook_pins_publication_and_runs_both_conformance_checks() -> None:
     guide = text("docs/REPRODUCIBLE-DEMO.md")
+    providers = text("docs/MODEL-PROVIDERS.md")
+    validation = text("docs/VALIDATION.md")
 
     assert "VALIDATED_COMMIT=REPLACE_WITH_PUBLISHED_COMMIT" in guide
     assert guide.count('[[ "$VALIDATED_COMMIT" =~ ^[0-9a-f]{40}$ ]]') == 2
     assert 'git checkout --detach "$VALIDATED_COMMIT"' in guide
     assert 'test "$(git rev-parse HEAD)" = "$VALIDATED_COMMIT"' in guide
-    assert "packages/conformance-kit/.venv/bin/ic-conformance run" in guide
-    assert "packages/conformance-kit/.venv/bin/ic-conformance mcp" in guide
-    assert "CERTIFIED: 9/9" in guide
-    assert "CERTIFIED: 11/11" in guide
-    assert '-H "Authorization: Bearer $NVIDIA_API_KEY"' not in guide
-    assert '-H "@$AUTH_HEADER"' in guide
-    assert "keeps the key out of `curl`'s process" in guide
-    completion = guide[guide.index("Test one actual completion") :]
+    assert "packages/conformance-kit/.venv/bin/pgfr-conformance run" in validation
+    assert "packages/conformance-kit/.venv/bin/pgfr-conformance mcp" in validation
+    assert "CERTIFIED: 9/9" in validation
+    assert "CERTIFIED: 11/11" in validation
+    assert '-H "Authorization: Bearer $NVIDIA_API_KEY"' not in providers
+    assert '-H "@$AUTH_HEADER"' in providers
+    assert "keeps the key out of `curl`'s process" in providers
+    completion = providers[providers.index("Test one real completion") :]
     assert completion.index(
-        "unset NVIDIA_API_KEY IC_CHAT_API_KEY OPENCLAW_GATEWAY_TOKEN"
+        "unset NVIDIA_API_KEY PGFR_CHAT_API_KEY OPENCLAW_GATEWAY_TOKEN"
     ) < completion.index("curl --fail-with-body")

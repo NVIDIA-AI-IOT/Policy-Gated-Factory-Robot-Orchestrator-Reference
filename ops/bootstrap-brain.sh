@@ -12,14 +12,19 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODE="${1:---check}"
 SYSTEMD_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
-ENV_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ic-spine"
-UV_BIN="${IC_UV_BIN:-$HOME/.local/bin/uv}"
+ENV_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/pgfr-spine"
+UV_BIN="${PGFR_UV_BIN:-$HOME/.local/bin/uv}"
 if [ ! -x "$UV_BIN" ]; then
   UV_BIN="$(command -v uv || true)"
 fi
 
 say() { printf 'bootstrap-brain: %s\n' "$*"; }
 fail() { printf 'bootstrap-brain: ERROR: %s\n' "$*" >&2; exit 2; }
+
+LEGACY_GUARD="$REPO/ops/pgfr-legacy-guard.sh"
+[ -r "$LEGACY_GUARD" ] || fail "missing migration guard: $LEGACY_GUARD"
+# shellcheck disable=SC1090
+. "$LEGACY_GUARD"
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "missing command: $1"
@@ -51,11 +56,11 @@ check_prerequisites() {
   local lock
   for lock in \
     package-lock.json \
-    ic-spine/uv.lock \
+    pgfr-spine/uv.lock \
     servers/policy-gated-factory-robot-orchestrator-reference-mcp/uv.lock \
-    ic-console/uv.lock \
-    servers/ic-chat/uv.lock \
-    servers/ic-workflows/uv.lock; do
+    pgfr-console/uv.lock \
+    servers/pgfr-chat/uv.lock \
+    servers/pgfr-workflows/uv.lock; do
     [ -f "$REPO/$lock" ] || fail "missing lockfile: $lock"
   done
   bash -n "$REPO/ops/gw.sh" "$REPO/ops/thor-deploy.sh"
@@ -64,17 +69,19 @@ check_prerequisites() {
 
 refuse_active_install() {
   local unit
-  for unit in ic-seam ic-openclaw ic-chat ic-workflows ic-gpu-exporter ic-console; do
+  pgfr_refuse_active_legacy_units
+  pgfr_refuse_active_legacy_containers
+  for unit in pgfr-seam pgfr-openclaw pgfr-chat pgfr-workflows pgfr-gpu-exporter pgfr-console; do
     if systemctl --user --quiet is-active "$unit.service" 2>/dev/null; then
       fail "$unit.service is active; installation will not replace files beneath a running service"
     fi
   done
   for unit in \
-    ic-groot-shared-stack.target \
-    ic-groot-policy@shared-left.service \
-    ic-groot-policy@shared-right.service \
-    ic-groot-relay@shared-left.service \
-    ic-groot-relay@shared-right.service; do
+    pgfr-groot-shared-stack.target \
+    pgfr-groot-policy@shared-left.service \
+    pgfr-groot-policy@shared-right.service \
+    pgfr-groot-relay@shared-left.service \
+    pgfr-groot-relay@shared-right.service; do
     if systemctl --user --quiet is-active "$unit" 2>/dev/null; then
       fail "$unit is active; installation will not replace files beneath a running service"
     fi
@@ -87,7 +94,7 @@ sync_python_project() {
 }
 
 sync_floor_project() {
-  local project="$REPO/ic-spine"
+  local project="$REPO/pgfr-spine"
   if [ ! -d "$project/.venv" ]; then
     "$UV_BIN" venv --python python3.12 --system-site-packages "$project/.venv"
   elif ! grep -q '^include-system-site-packages = true$' "$project/.venv/pyvenv.cfg"; then
@@ -97,16 +104,16 @@ sync_floor_project() {
 }
 
 render() {
-  sed -e "s#__IC_REPO__#$REPO#g" -e "s#__IC_HOME__#$HOME#g" "$1"
+  sed -e "s#__PGFR_REPO__#$REPO#g" -e "s#__PGFR_HOME__#$HOME#g" "$1"
 }
 
 install_templates() {
   local src name tmp
   mkdir -p "$SYSTEMD_DIR" "$ENV_DIR" "$ENV_DIR/groot" \
-    "$HOME/.openclaw" "$HOME/.policy-gated-factory-robot-orchestrator-reference/openclaw" "$HOME/ic-journal/frames" \
-    "$HOME/.local/share/ic-spine/chat-sessions" \
-    "$HOME/.local/share/ic-spine/groot" \
-    "$HOME/.local/share/ic-spine/gpu" \
+    "$HOME/.openclaw" "$HOME/.policy-gated-factory-robot-orchestrator-reference/openclaw" "$HOME/pgfr-journal/frames" \
+    "$HOME/.local/share/pgfr-spine/chat-sessions" \
+    "$HOME/.local/share/pgfr-spine/groot" \
+    "$HOME/.local/share/pgfr-spine/gpu" \
     "$HOME/.cache/huggingface"
 
   for src in "$REPO"/ops/systemd/*.service; do
@@ -160,7 +167,7 @@ install_templates() {
     chmod 0600 "$secrets_tmp"
     if ! {
       cat "$secrets_file"
-      printf '\n# Shared only by the loopback OpenClaw gateway and IC Chat.\n'
+      printf '\n# Shared only by the loopback OpenClaw gateway and PGFR Chat.\n'
       printf 'OPENCLAW_GATEWAY_TOKEN=%s\n' "$gateway_token"
     } >"$secrets_tmp"; then
       rm -f "$secrets_tmp"
@@ -186,9 +193,9 @@ case "$MODE" in
     (cd "$REPO" && npm ci)
     sync_floor_project
     sync_python_project servers/policy-gated-factory-robot-orchestrator-reference-mcp
-    sync_python_project ic-console
-    sync_python_project servers/ic-chat
-    sync_python_project servers/ic-workflows
+    sync_python_project pgfr-console
+    sync_python_project servers/pgfr-chat
+    sync_python_project servers/pgfr-workflows
     install_templates
     say "installation complete; no service was started"
     say "review $ENV_DIR/*.env, then run: $REPO/ops/thor-deploy.sh --start all"

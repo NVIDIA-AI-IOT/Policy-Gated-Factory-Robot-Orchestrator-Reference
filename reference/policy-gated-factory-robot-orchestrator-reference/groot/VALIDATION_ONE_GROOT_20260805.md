@@ -10,7 +10,7 @@
 
 ## Serial result
 
-All six actions passed through IC Spine with physics-verified release and settle:
+All six actions passed through PGFR Spine with physics-verified release and settle:
 
 | Action | Offset from compartment center |
 |---|---:|

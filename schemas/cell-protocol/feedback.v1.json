@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "ic/cell-protocol/feedback.v1",
-  "title": "/ic/feedback payload (progress stream)",
+  "$id": "pgfr/cell-protocol/feedback.v1",
+  "title": "/pgfr/feedback payload (progress stream)",
   "type": "object",
   "required": [
     "goal_id",

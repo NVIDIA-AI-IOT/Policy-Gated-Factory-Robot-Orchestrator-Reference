@@ -1,7 +1,7 @@
 {
   "id": "policy-gated-factory-robot-orchestrator-reference-floor",
   "name": "Policy-Gated Factory Robot Orchestrator Reference Floor",
-  "description": "Direct factory-floor adapter with six granular tools and a dispatch safety policy.",
+  "description": "Direct factory-floor adapter with six granular tools and a dispatch policy.",
   "activation": {
     "onStartup": true
   },

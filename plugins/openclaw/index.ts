@@ -8,7 +8,7 @@ import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { Type } from "typebox";
 import { evaluateDispatchPolicy } from "./policy.js";
 
-// Granular factory-floor primitives IC composes to run missions. The real
+// Granular factory-floor primitives PGFR composes to run missions. The real
 // behaviour lives in the Python engine (PerceptionAgent / ActionAgent over a
 // persistent mock floor); this plugin is a thin bridge that shells out to the
 // `policy_gated_factory_robot_orchestrator_reference` CLI and relays its JSON. The floor file is the swappable
@@ -16,9 +16,9 @@ import { evaluateDispatchPolicy } from "./policy.js";
 // stay the same.
 //
 // Wiring (set for the gateway via `launchctl setenv`):
-//   IC_FLOOR_CLI    absolute path to the policy_gated_factory_robot_orchestrator_reference binary
-//                   (e.g. <repo>/ic-spine/.venv/bin/policy_gated_factory_robot_orchestrator_reference)
-//   IC_FLOOR_STATE  path to the shared floor-state JSON file the primitives read/write
+//   PGFR_FLOOR_CLI    absolute path to the policy_gated_factory_robot_orchestrator_reference binary
+//                   (e.g. <repo>/pgfr-spine/.venv/bin/policy_gated_factory_robot_orchestrator_reference)
+//   PGFR_FLOOR_STATE  path to the shared floor-state JSON file the primitives read/write
 
 const execFileAsync = promisify(execFile);
 
@@ -29,13 +29,13 @@ const text = (obj: unknown) => ({
 type FloorResult = { ok: true; data: unknown } | { ok: false; error: string };
 
 async function runFloor(args: string[]): Promise<FloorResult> {
-  const bin = process.env.IC_FLOOR_CLI?.trim();
+  const bin = process.env.PGFR_FLOOR_CLI?.trim();
   if (!bin) {
     return {
       ok: false,
       error:
-        "IC_FLOOR_CLI is not set — point it at the policy_gated_factory_robot_orchestrator_reference binary " +
-        "(e.g. <repo>/ic-spine/.venv/bin/policy_gated_factory_robot_orchestrator_reference).",
+        "PGFR_FLOOR_CLI is not set — point it at the policy_gated_factory_robot_orchestrator_reference binary " +
+        "(e.g. <repo>/pgfr-spine/.venv/bin/policy_gated_factory_robot_orchestrator_reference).",
     };
   }
   try {
@@ -43,7 +43,7 @@ async function runFloor(args: string[]): Promise<FloorResult> {
       env: process.env,
       // Long enough for the slowest floor action (the AMR haul ~2min). Sits just above
       // the backend's own result timeout so a genuine stall returns JSON, not a SIGKILL.
-      timeout: Number(process.env.IC_FLOOR_TIMEOUT_MS) || 200_000,
+      timeout: Number(process.env.PGFR_FLOOR_TIMEOUT_MS) || 200_000,
       maxBuffer: 1024 * 1024,
     });
     return { ok: true, data: JSON.parse(stdout) };
@@ -68,7 +68,7 @@ const relay = (r: FloorResult) => text(r.ok ? r.data : { error: r.error });
 // seam journals it per request id and serves it read-only). Best-effort: any
 // failure degrades to the text-only result, never to an error.
 async function fetchFrameB64(rid: string): Promise<string | null> {
-  const svc = process.env.IC_FLOOR_SERVICE?.trim();
+  const svc = process.env.PGFR_FLOOR_SERVICE?.trim();
   if (!svc || !/^[A-Za-z0-9_-]{1,64}$/.test(rid)) return null;
   try {
     const res = await fetch(new URL(`/v1/frames/${rid}`, svc), {
@@ -116,7 +116,7 @@ async function callService(base: string, path: string, body: unknown): Promise<F
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(Number(process.env.IC_FLOOR_TIMEOUT_MS) || 200_000),
+      signal: AbortSignal.timeout(Number(process.env.PGFR_FLOOR_TIMEOUT_MS) || 200_000),
     });
     // The service returns structured JSON even for expected failures (4xx).
     return { ok: true, data: await res.json() };
@@ -125,14 +125,14 @@ async function callService(base: string, path: string, body: unknown): Promise<F
   }
 }
 
-// Route a floor op to the persistent service (IC_FLOOR_SERVICE) when set — that's
+// Route a floor op to the persistent service (PGFR_FLOOR_SERVICE) when set — that's
 // the long-lived ROS 2 node — else spawn the per-call CLI (mock).
 async function floorOp(
   servicePath: string,
   serviceBody: unknown,
   cliArgs: string[],
 ): Promise<FloorResult> {
-  const svc = process.env.IC_FLOOR_SERVICE?.trim();
+  const svc = process.env.PGFR_FLOOR_SERVICE?.trim();
   return svc ? callService(svc, servicePath, serviceBody) : runFloor(cliArgs);
 }
 
@@ -140,11 +140,11 @@ export default definePluginEntry({
   id: "policy-gated-factory-robot-orchestrator-reference-floor",
   name: "Policy-Gated Factory Robot Orchestrator Reference Floor",
   description:
-    "Granular factory-floor primitives IC composes to run missions: perceive, dispatch_task, floor_state. Backed by the Python engine over a persistent mock floor until ROS 2 / Isaac Sim is wired.",
+    "Granular factory-floor primitives PGFR composes to run missions: perceive, dispatch_task, floor_state. Backed by the Python engine over a persistent mock floor until ROS 2 / Isaac Sim is wired.",
   register(api) {
     // Reset the mock floor when the gateway (re)starts so each relaunch is a
     // fresh scene; within a session dispatch_task → perceive still persists.
-    const statePath = process.env.IC_FLOOR_STATE?.trim();
+    const statePath = process.env.PGFR_FLOOR_STATE?.trim();
     if (statePath) {
       void rm(statePath, { force: true }).catch(() => {});
     }
@@ -212,7 +212,7 @@ export default definePluginEntry({
       async execute(_id, params) {
         // Env-gated default: route moves through the learned policy stack.
         // Explicit model choice wins; injected value lands in the journal.
-        const defaultBackend = process.env.IC_DEFAULT_BACKEND;
+        const defaultBackend = process.env.PGFR_DEFAULT_BACKEND;
         if (defaultBackend && params.action === "move" && params.backend === undefined) {
           params = { ...params, backend: defaultBackend };
         }
@@ -251,8 +251,8 @@ export default definePluginEntry({
         "Refuses while a task is running.",
       parameters: Type.Object({}),
       async execute(_id) {
-        const svc = process.env.IC_FLOOR_SERVICE?.trim();
-        if (!svc) return relay({ ok: false, error: "reset_scene needs IC_FLOOR_SERVICE" });
+        const svc = process.env.PGFR_FLOOR_SERVICE?.trim();
+        if (!svc) return relay({ ok: false, error: "reset_scene needs PGFR_FLOOR_SERVICE" });
         try {
           const res = await fetch(new URL("/v1/dispatch", svc), {
             method: "POST",
@@ -286,8 +286,8 @@ export default definePluginEntry({
         goal_id: Type.String({ description: "goal_id returned by the async dispatch." }),
       }),
       async execute(_id, params) {
-        const svc = process.env.IC_FLOOR_SERVICE?.trim();
-        if (!svc) return relay({ ok: false, error: "task_status needs IC_FLOOR_SERVICE" });
+        const svc = process.env.PGFR_FLOOR_SERVICE?.trim();
+        if (!svc) return relay({ ok: false, error: "task_status needs PGFR_FLOOR_SERVICE" });
         try {
           const res = await fetch(new URL(`/v1/tasks/${encodeURIComponent(String(params.goal_id))}`, svc), {
             signal: AbortSignal.timeout(15_000),
@@ -326,9 +326,9 @@ export default definePluginEntry({
       },
     });
 
-    // Enforcement: gate every dispatch_task BEFORE it reaches the floor. IC stays
+    // Enforcement: gate every dispatch_task BEFORE it reaches the floor. PGFR stays
     // agentic (it composes the primitives freely) but the policy is a hard guardrail
-    // — unsafe verbs, malformed moves, and unsafe destinations are blocked here, and
+    // — unsupported verbs, malformed moves, and prohibited destinations are blocked here, and
     // every decision is traced.
     api.on("before_tool_call", (event) => {
       if (event.toolName !== "dispatch_task") {
@@ -341,7 +341,7 @@ export default definePluginEntry({
         );
         return {
           block: true,
-          blockReason: `Floor safety policy blocked this action: ${decision.reason}`,
+          blockReason: `Floor dispatch policy blocked this action: ${decision.reason}`,
         };
       }
       api.logger.info(

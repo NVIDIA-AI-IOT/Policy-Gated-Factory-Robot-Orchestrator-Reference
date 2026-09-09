@@ -23,10 +23,10 @@ import numpy as np
 from gr00t.policy.server_client import PolicyClient
 
 
-HOST = os.environ.get("IC_RELAY_HOST", "127.0.0.1")
-PORT = int(os.environ.get("IC_RELAY_PORT", "5603"))
-POLICY_HOST = os.environ.get("IC_POLICY_HOST", "127.0.0.1")
-POLICY_PORT = int(os.environ.get("IC_POLICY_PORT", "5561"))
+HOST = os.environ.get("PGFR_RELAY_HOST", "127.0.0.1")
+PORT = int(os.environ.get("PGFR_RELAY_PORT", "5603"))
+POLICY_HOST = os.environ.get("PGFR_POLICY_HOST", "127.0.0.1")
+POLICY_PORT = int(os.environ.get("PGFR_POLICY_PORT", "5561"))
 
 
 def _array(value: object) -> np.ndarray:

@@ -1,6 +1,6 @@
 # Policy-Gated Factory Robot Orchestrator Reference — floor playbook (canonical, harness-agnostic)
 
-<!-- Single source of truth for the IC agent's floor behavior, extracted from the
+<!-- Single source of truth for the PGFR agent's floor behavior, extracted from the
      live-validated OpenClaw workspace AGENTS.md (2026-07-06).
      Consumers:
        - OpenClaw profiles: ops/sync-playbook.sh injects it into a workspace AGENTS.md
@@ -71,8 +71,8 @@ arm. If the operator names different colors for the two arms and says
 
 ### Explicit mixed-order evaluation
 
-`IC_GROOT_FLEXIBLE_ORDER=1` does not enable motion by itself. In the certified
-mission it combines with `IC_GROOT_PARALLEL_ENABLED=1` to select the exact
+`PGFR_GROOT_FLEXIBLE_ORDER=1` does not enable motion by itself. In the certified
+mission it combines with `PGFR_GROOT_PARALLEL_ENABLED=1` to select the exact
 three-pair Order744 plan above; the MCP state machine rejects skipped,
 reversed, partial, or serialized pairs. Preserve its barriers: each
 `dispatch_parallel(left_color, right_color)` result and both identity-bound
@@ -104,7 +104,7 @@ You operate a robotic warehouse **sorting cell**: turn a goal into floor actions
 **Tools**
 - `floor_state` — exact symbolic world state (endpoints, conveyor contents, tote contents, whether the tote is on the rack). Fast, authoritative, no camera.
 - `perceive(region)` — looks through that region's camera (Cosmos VLM) and fuses it with the symbolic state; returns `vision`, `vision_discrepancies`, `vision_agrees`. **Symbolic ground truth always wins a conflict — a mismatch is flagged, never applied.**
-- `dispatch_task` — execute ONE action (see Actions). Every dispatch is checked by the safety gate first.
+- `dispatch_task` — execute ONE action (see Actions). Every dispatch is checked by the dispatch policy gate first.
 - `dispatch_parallel(left_color, right_color?)` — when enabled, execute one
   atomic left/right GR00T pair. The certified reference accepts only the next
   transaction returned by `certified_groot_sequence`; it is not a
@@ -148,4 +148,4 @@ Before writing any sentence like "mission complete", re-check this list against 
 - "is it done?" / "did it work?" / "what's the state?" → `floor_state` plus a FOUR-view perceive sweep (`conveyor_1`, `table_1`, `tote`, `rack_1`); report what's where.
 - "what do you see?" → perceive the relevant region(s) and describe.
 
-**Disambiguate, then ask**: if a goal is unclear (which cubes? which destination?), perceive to gather facts first. If it's still ambiguous — or an action looks unsafe — ask the operator instead of guessing.
+**Disambiguate, then ask**: if a goal is unclear (which cubes? which destination?), perceive to gather facts first. If it's still ambiguous — or an action would violate a dispatch constraint — ask the operator instead of guessing.

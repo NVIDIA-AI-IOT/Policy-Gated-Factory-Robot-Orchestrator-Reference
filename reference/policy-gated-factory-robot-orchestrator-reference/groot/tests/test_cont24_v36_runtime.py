@@ -30,7 +30,7 @@ DEPLOYMENT_MANIFEST = REPO / "deploy" / "reproducible-demo.yaml"
 THOR_INSTALLER = GROOT / "thor" / "install_deps.sh"
 THOR_DOCKERFILE = GROOT / "thor" / "Dockerfile"
 PREPARE_GROOT_RUNTIME = REPO / "ops" / "prepare-groot-runtime.sh"
-SERVING_HEALTH = ISAAC_DEPLOYMENT / "ic_serving_health.py"
+SERVING_HEALTH = ISAAC_DEPLOYMENT / "pgfr_serving_health.py"
 
 PYTHON_SOURCES = (
     RUNTIME
@@ -38,8 +38,8 @@ PYTHON_SOURCES = (
     / "executors"
     / "follow_groot_home_convergence_v36.py",
     RUNTIME / "native_droid_work" / "follow_groot_dual_physical_v36.py",
-    RUNTIME / "native_droid_work" / "ic_groot_certified_deployment_v36.py",
-    RUNTIME / "native_droid_work" / "ic_groot_dual_concurrent_mixed.py",
+    RUNTIME / "native_droid_work" / "pgfr_groot_certified_deployment_v36.py",
+    RUNTIME / "native_droid_work" / "pgfr_groot_dual_concurrent_mixed.py",
     RUNTIME / "cell" / "reset_two_arm.py",
     RENDERER,
 )
@@ -61,7 +61,7 @@ class PublicRuntimeTests(unittest.TestCase):
             "policy_port: 5593",
             "relay_port: 5642",
             "native_droid_relay_batch2.py",
-            "ic_groot_certified_deployment_v36.py",
+            "pgfr_groot_certified_deployment_v36.py",
         ):
             self.assertIn(value, manifest)
         self.assertNotIn("canonical_specialists", manifest)
@@ -230,6 +230,10 @@ class PublicRuntimeTests(unittest.TestCase):
             self.assertIn(value, source)
         self.assertIn("raw_requery_margin_max=0.040", source)
         self.assertIn("raw_requery_limit_max=6", source)
+        self.assertIn("GROOT_TARGET_TRACKING_ABORT", source)
+        self.assertIn(
+            "arm target-state error exceeded the configured limit", source
+        )
 
     def test_two_arm_and_mixed_contracts(self) -> None:
         loader = PYTHON_SOURCES[1].read_text(encoding="utf-8")
@@ -239,7 +243,7 @@ class PublicRuntimeTests(unittest.TestCase):
         self.assertIn("/outside_right_cam/image_raw", loader)
         self.assertEqual(concurrent.count("inference_seed_by_arm"), 2)
         self.assertIn("independent-b1-per-arm-v1", concurrent)
-        self.assertIn("_IC_GROOT_CONCURRENT_MIXED_READY", concurrent)
+        self.assertIn("_PGFR_GROOT_CONCURRENT_MIXED_READY", concurrent)
 
     def test_dual_loader_task_gate_allows_only_idle_or_reset(self) -> None:
         loader_path = PYTHON_SOURCES[1]
@@ -249,13 +253,13 @@ class PublicRuntimeTests(unittest.TestCase):
             node
             for node in loader_tree.body
             if isinstance(node, ast.FunctionDef)
-            and node.name == "_ic_groot_install_task_allowed"
+            and node.name == "_pgfr_groot_install_task_allowed"
         )
         helper_module = ast.Module(body=[helper], type_ignores=[])
         ast.fix_missing_locations(helper_module)
         namespace: dict[str, object] = {}
         exec(compile(helper_module, str(loader_path), "exec"), namespace)
-        allowed = namespace["_ic_groot_install_task_allowed"]
+        allowed = namespace["_pgfr_groot_install_task_allowed"]
 
         self.assertTrue(allowed(None))
         self.assertTrue(allowed({"action": "reset_scene"}))
@@ -274,12 +278,12 @@ class PublicRuntimeTests(unittest.TestCase):
         reset = PYTHON_SOURCES[4].read_text(encoding="utf-8")
         for runtime_file in (
             "follow_groot_dual_physical_v36.py",
-            "ic_groot_certified_deployment_v36.py",
-            "ic_groot_dual_concurrent_mixed.py",
+            "pgfr_groot_certified_deployment_v36.py",
+            "pgfr_groot_dual_concurrent_mixed.py",
         ):
             self.assertEqual(reset.count(runtime_file), 1)
         self.assertEqual(reset.count("_shared_executor_requested = True"), 1)
-        self.assertIn("IC_GROOT_RUNTIME_READY", reset)
+        self.assertIn("PGFR_GROOT_RUNTIME_READY", reset)
         self.assertIn("table-camera contract restore failed", reset)
 
     def test_renderer_writes_only_two_contracts(self) -> None:
@@ -417,8 +421,8 @@ class PublicRuntimeTests(unittest.TestCase):
             legacy_cache = {"legacy": True}
             namespace = {
                 "floor_state": original_floor_state,
-                "_IC_SERVING_CONTRACT_PATH": str(contract),
-                "_IC_SERVING_CACHE": (
+                "_PGFR_SERVING_CONTRACT_PATH": str(contract),
+                "_PGFR_SERVING_CACHE": (
                     "thor-relay-listeners-v3-four-published-experts",
                     float("inf"),
                     legacy_cache,
@@ -426,8 +430,8 @@ class PublicRuntimeTests(unittest.TestCase):
             }
             compiled = compile(source, str(SERVING_HEALTH), "exec")
             exec(compiled, namespace)
-            self.assertIs(namespace["_IC_FS_ORIG"], original_floor_state)
-            namespace["_ic_tcp_listeners"] = lambda: {6201, 6202}
+            self.assertIs(namespace["_PGFR_FS_ORIG"], original_floor_state)
+            namespace["_pgfr_tcp_listeners"] = lambda: {6201, 6202}
             healthy = namespace["floor_state"]()["groot_serving"]
             self.assertIsNot(healthy, legacy_cache)
             self.assertEqual(healthy["ports_open"], 2)
@@ -442,15 +446,15 @@ class PublicRuntimeTests(unittest.TestCase):
                 },
             )
 
-            namespace["_IC_SERVING_CACHE"] = None
-            namespace["_ic_tcp_listeners"] = lambda: {6201}
+            namespace["_PGFR_SERVING_CACHE"] = None
+            namespace["_pgfr_tcp_listeners"] = lambda: {6201}
             degraded = namespace["floor_state"]()["groot_serving"]
             self.assertEqual(degraded["ports_open"], 1)
             self.assertEqual(degraded["ports_total"], 2)
             self.assertTrue(degraded["degraded"])
 
             exec(compiled, namespace)
-            self.assertIs(namespace["_IC_FS_ORIG"], original_floor_state)
+            self.assertIs(namespace["_PGFR_FS_ORIG"], original_floor_state)
             calls_before = len(calls)
             self.assertIn("groot_serving", namespace["floor_state"]())
             self.assertEqual(len(calls), calls_before + 1)
@@ -481,7 +485,7 @@ class PublicRuntimeTests(unittest.TestCase):
                     contract.write_text(json.dumps(payload), encoding="utf-8")
                     namespace = {
                         "floor_state": lambda: {},
-                        "_IC_SERVING_CONTRACT_PATH": str(contract),
+                        "_PGFR_SERVING_CONTRACT_PATH": str(contract),
                     }
                     with self.assertRaises(RuntimeError):
                         exec(compiled, namespace)
@@ -492,7 +496,7 @@ class PublicRuntimeTests(unittest.TestCase):
                     compiled,
                     {
                         "floor_state": lambda: {},
-                        "_IC_SERVING_CONTRACT_PATH": str(missing),
+                        "_PGFR_SERVING_CONTRACT_PATH": str(missing),
                     },
                 )
 
@@ -558,12 +562,12 @@ class PublicRuntimeTests(unittest.TestCase):
         )
         self.assertIn("reference/policy-gated-factory-robot-orchestrator-reference/groot/capture_context", installer)
         self.assertIn(
-            '"$RUNTIME/native_droid_work/ic_sync_capture_cell.py"', installer
+            '"$RUNTIME/native_droid_work/pgfr_sync_capture_cell.py"', installer
         )
         self.assertIn("startup.py cmd.py our_factory.usda", installer)
-        self.assertIn("ic_shape_mode.py production_contract_expected.json", installer)
+        self.assertIn("pgfr_shape_mode.py production_contract_expected.json", installer)
         self.assertNotIn("isaac_executor", installer)
-        shape_mode = (ISAAC_DEPLOYMENT / "ic_shape_mode.py").read_text(
+        shape_mode = (ISAAC_DEPLOYMENT / "pgfr_shape_mode.py").read_text(
             encoding="utf-8"
         )
         bootstrap = (ISAAC_DEPLOYMENT / "full_scene_bootstrap.py").read_text(
@@ -575,8 +579,8 @@ class PublicRuntimeTests(unittest.TestCase):
         self.assertIn("groot_three_object", bootstrap)
         self.assertEqual(len(tuple(CAPTURE_CONTEXT.rglob("states.json"))), 18)
         self.assertNotIn("sha256sum", installer)
-        self.assertIn("IC_GROOT_POLICY_ROUTE=shared", launcher)
-        self.assertIn('GROOT_STATE_ROOT="${IC_GROOT_STATE_ROOT:-', launcher)
+        self.assertIn("PGFR_GROOT_POLICY_ROUTE=shared", launcher)
+        self.assertIn('GROOT_STATE_ROOT="${PGFR_GROOT_STATE_ROOT:-', launcher)
         self.assertIn('-v "$GROOT_STATE_ROOT:/groot-state:ro"', launcher)
         self.assertIn("remove it explicitly before launch", launcher)
 
@@ -584,9 +588,9 @@ class PublicRuntimeTests(unittest.TestCase):
         self.assertEqual(
             sorted(path.name for path in GROOT_SYSTEMD.iterdir()),
             [
-                "ic-groot-policy@.service",
-                "ic-groot-relay@.service",
-                "ic-groot-shared-stack.target",
+                "pgfr-groot-policy@.service",
+                "pgfr-groot-relay@.service",
+                "pgfr-groot-shared-stack.target",
                 "shared-left.env",
                 "shared-right.env",
             ],
@@ -598,31 +602,31 @@ class PublicRuntimeTests(unittest.TestCase):
         for name, (policy_port, relay_port, state_name) in expected.items():
             environment = (GROOT_SYSTEMD / name).read_text(encoding="utf-8")
             self.assertIn(
-                "MODEL_PATH=__IC_HOME__/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24",
+                "MODEL_PATH=__PGFR_HOME__/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24",
                 environment,
             )
             self.assertIn(f"POLICY_PORT={policy_port}", environment)
-            self.assertIn(f"IC_RELAY_PORT={relay_port}", environment)
-            self.assertIn("IC_BATCH_WINDOW_MS=0", environment)
-            self.assertIn(f"IC_SERVICE_STATE_PATH=__IC_HOME__/.local/share/ic-spine/groot/{state_name}", environment)
+            self.assertIn(f"PGFR_RELAY_PORT={relay_port}", environment)
+            self.assertIn("PGFR_BATCH_WINDOW_MS=0", environment)
+            self.assertIn(f"PGFR_SERVICE_STATE_PATH=__PGFR_HOME__/.local/share/pgfr-spine/groot/{state_name}", environment)
             self.assertIn("native_droid_relay_batch2.py", environment)
-        policy_unit = (GROOT_SYSTEMD / "ic-groot-policy@.service").read_text(
+        policy_unit = (GROOT_SYSTEMD / "pgfr-groot-policy@.service").read_text(
             encoding="utf-8"
         )
         self.assertIn(
-            "HF_HOME=__IC_HOME__/policy-gated-factory-robot-orchestrator-reference-models/hf-home", policy_unit
+            "HF_HOME=__PGFR_HOME__/policy-gated-factory-robot-orchestrator-reference-models/hf-home", policy_unit
         )
         self.assertIn(
-            "HF_TOKEN_PATH=__IC_HOME__/policy-gated-factory-robot-orchestrator-reference-models/hf-home/token",
+            "HF_TOKEN_PATH=__PGFR_HOME__/policy-gated-factory-robot-orchestrator-reference-models/hf-home/token",
             policy_unit,
         )
         self.assertNotIn("groot_shadow/hf-home", policy_unit)
-        target = (GROOT_SYSTEMD / "ic-groot-shared-stack.target").read_text(
+        target = (GROOT_SYSTEMD / "pgfr-groot-shared-stack.target").read_text(
             encoding="utf-8"
         )
         for instance in ("shared-left", "shared-right"):
-            self.assertIn(f"ic-groot-policy@{instance}.service", target)
-            self.assertIn(f"ic-groot-relay@{instance}.service", target)
+            self.assertIn(f"pgfr-groot-policy@{instance}.service", target)
+            self.assertIn(f"pgfr-groot-relay@{instance}.service", target)
 
 
 if __name__ == "__main__":

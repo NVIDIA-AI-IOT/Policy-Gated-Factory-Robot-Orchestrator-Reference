@@ -84,7 +84,7 @@ runtime_backbone:
   access_requirement: accept the NVIDIA model terms on Hugging Face and authenticate as the runtime user
 
 publication:
-  model_repository_env: IC_GROOT_HF_REPO
-  model_revision_env: IC_GROOT_HF_REVISION
-  dataset_repository_env: IC_GROOT_DATASET_REPO
-  dataset_revision_env: IC_GROOT_DATASET_REVISION
+  model_repository_env: PGFR_GROOT_HF_REPO
+  model_revision_env: PGFR_GROOT_HF_REVISION
+  dataset_repository_env: PGFR_GROOT_DATASET_REPO
+  dataset_revision_env: PGFR_GROOT_DATASET_REVISION

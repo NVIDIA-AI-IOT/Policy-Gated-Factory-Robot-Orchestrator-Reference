@@ -17,12 +17,12 @@ try:
 
     g = globals()
     _full_scene_ready_before_reset = bool(
-        g.get("_IC_FULL_SCENE_READY", False)
+        g.get("_PGFR_FULL_SCENE_READY", False)
     )
-    g["_IC_FULL_SCENE_READY"] = False
-    g["_IC_RESET_SCENE_READY"] = False
-    g["_IC_LAST_RESET_PROFILE"] = None
-    g["_IC_LAST_RESET_SCENE"] = None
+    g["_PGFR_FULL_SCENE_READY"] = False
+    g["_PGFR_RESET_SCENE_READY"] = False
+    g["_PGFR_LAST_RESET_PROFILE"] = None
+    g["_PGFR_LAST_RESET_SCENE"] = None
 
     _task_object = S.get("task") if g.get("S") is not None else None
     _task = _task_object or {}
@@ -31,8 +31,8 @@ try:
     _live_reset = bool(_task and _task.get("action") == "reset_scene")
     _state_identity = id(S)
 
-    _contract = dict(g.get("_IC_SCENE_RESET_CONTRACT") or {})
-    _bootstrap_request = dict(g.get("_IC_RESET_SCENE_REQUEST") or {})
+    _contract = dict(g.get("_PGFR_SCENE_RESET_CONTRACT") or {})
+    _bootstrap_request = dict(g.get("_PGFR_RESET_SCENE_REQUEST") or {})
     if _bootstrap_request:
         _request = dict(_contract)
         _request.update(_bootstrap_request)
@@ -65,67 +65,67 @@ try:
         if "n" in _task:
             _request["seed"] = _task["n"]
     else:
-        _request = {"scene_profile": "ic_two_arm"}
+        _request = {"scene_profile": "pgfr_two_arm"}
 
-    _profile = str(_request.get("scene_profile", "ic_two_arm")).strip().lower()
-    if _profile not in ("ic_two_arm", "groot_three_object"):
+    _profile = str(_request.get("scene_profile", "pgfr_two_arm")).strip().lower()
+    if _profile not in ("pgfr_two_arm", "groot_three_object"):
         raise RuntimeError(
-            "scene_profile must be ic_two_arm or groot_three_object"
+            "scene_profile must be pgfr_two_arm or groot_three_object"
         )
     _camera_profile = str(
         _contract.get(
             "camera_profile",
-            os.environ.get("IC_CAMERA_PROFILE", ""),
+            os.environ.get("PGFR_CAMERA_PROFILE", ""),
         )
     ).strip().lower()
 
     # Remove passive capture wrappers before replacing the follower functions.
     # The modern sync adapter and the older expert-action adapter are mutually
     # exclusive, but clean both defensively so reset is repeatable.
-    _sync_original = g.pop("_IC_SYNC_ORIGINAL_RUN_MOVE", None)
+    _sync_original = g.pop("_PGFR_SYNC_ORIGINAL_RUN_MOVE", None)
     if _sync_original is not None:
         g["run_move"] = _sync_original
-    _sync_publisher = g.pop("_IC_SYNC_SAMPLE_PUBLISHER", None)
+    _sync_publisher = g.pop("_PGFR_SYNC_SAMPLE_PUBLISHER", None)
     if _sync_publisher is not None:
         try:
             node.destroy_publisher(_sync_publisher)
         except Exception:
             pass
     for _key in (
-        "_IC_SYNC_ACTION_TARGET",
-        "_IC_SYNC_SEQUENCE",
-        "_IC_SYNC_CAPTURE_READY",
+        "_PGFR_SYNC_ACTION_TARGET",
+        "_PGFR_SYNC_SEQUENCE",
+        "_PGFR_SYNC_CAPTURE_READY",
     ):
         g.pop(_key, None)
 
-    _legacy_original = g.pop("_IC_EXPERT_ACTION_ORIGINAL_RUN_MOVE", None)
+    _legacy_original = g.pop("_PGFR_EXPERT_ACTION_ORIGINAL_RUN_MOVE", None)
     if _legacy_original is not None:
         g["run_move"] = _legacy_original
-    _legacy_publisher = g.pop("_IC_EXPERT_ACTION_PUB", None)
+    _legacy_publisher = g.pop("_PGFR_EXPERT_ACTION_PUB", None)
     if _legacy_publisher is not None:
         try:
             node.destroy_publisher(_legacy_publisher)
         except Exception:
             pass
     for _key in (
-        "_IC_EXPERT_ACTION_LAST",
-        "_IC_EXPERT_ACTION_TARGET",
-        "_IC_EXPERT_ACTION_SIGNATURES",
-        "_IC_EXPERT_ACTION_RUN_CALLS",
-        "_IC_EXPERT_ACTION_APPLY_CALLS",
+        "_PGFR_EXPERT_ACTION_LAST",
+        "_PGFR_EXPERT_ACTION_TARGET",
+        "_PGFR_EXPERT_ACTION_SIGNATURES",
+        "_PGFR_EXPERT_ACTION_RUN_CALLS",
+        "_PGFR_EXPERT_ACTION_APPLY_CALLS",
     ):
         g.pop(_key, None)
 
     # Tear down a possibly interrupted physical-friction audit completely.
     # Merely dropping its subscription leaves finish() wrapped and can leave
     # set_world_pose/velocity methods monkeypatched on the active rigid handle.
-    _old_a1_sub = g.get("_IC_SHAPE_A1_SUB")
+    _old_a1_sub = g.get("_PGFR_SHAPE_A1_SUB")
     if _old_a1_sub is not None:
         try:
             _old_a1_sub.unsubscribe()
         except Exception:
             pass
-    _a1_state = g.get("_IC_SHAPE_A1") or {}
+    _a1_state = g.get("_PGFR_SHAPE_A1") or {}
     _a1_target = _a1_state.get("target")
     _a1_methods = _a1_state.get("original_methods")
     if _a1_target is not None and _a1_methods is not None:
@@ -134,26 +134,26 @@ try:
         _a1_target.set_angular_velocity = _a1_methods[
             "set_angular_velocity"
         ]
-    _base_finish = g.get("_IC_BASE_FINISH")
-    _a1_original_finish = g.get("_IC_SHAPE_A1_ORIGINAL_FINISH")
+    _base_finish = g.get("_PGFR_BASE_FINISH")
+    _a1_original_finish = g.get("_PGFR_SHAPE_A1_ORIGINAL_FINISH")
     if _base_finish is not None:
         g["finish"] = _base_finish
     elif _a1_original_finish is not None:
         g["finish"] = _a1_original_finish
-    g["_IC_SHAPE_A1_SUB"] = None
-    g["_IC_SHAPE_A1_ORIGINAL_FINISH"] = None
+    g["_PGFR_SHAPE_A1_SUB"] = None
+    g["_PGFR_SHAPE_A1_ORIGINAL_FINISH"] = None
     for _key in (
-        "_IC_SHAPE_A1",
-        "_IC_SHAPE_A1_TRIALS_OVERRIDE",
-        "_IC_SHAPE_FRICTION_TIER",
-        "_IC_SHAPE_PHASE_TELEMETRY",
+        "_PGFR_SHAPE_A1",
+        "_PGFR_SHAPE_A1_TRIALS_OVERRIDE",
+        "_PGFR_SHAPE_FRICTION_TIER",
+        "_PGFR_SHAPE_PHASE_TELEMETRY",
     ):
         g.pop(_key, None)
 
     # Shape mode aliases wr/wrp and wraps start().  Restore its exact snapshot
     # before the baseline reset; otherwise the blue cylinder can be mistaken
     # for the original blue cube and follower reloads leave a stale wrapper.
-    _shape_original = g.get("_IC_SHAPE_ORIG")
+    _shape_original = g.get("_PGFR_SHAPE_ORIG")
     if _shape_original:
         wr.clear()
         wr.update(_shape_original["wr"])
@@ -162,10 +162,10 @@ try:
         g["spawn_scene"] = _shape_original["spawn_scene"]
         g["start"] = _shape_original["start"]
     for _key in (
-        "_IC_GROOT_DEPLOYMENT_ORIGINAL_START",
-        "_IC_GROOT_DEPLOYMENT_READY",
-        "_IC_GROOT_CERTIFIED_CASES",
-        "_ic_groot_certified_start",
+        "_PGFR_GROOT_DEPLOYMENT_ORIGINAL_START",
+        "_PGFR_GROOT_DEPLOYMENT_READY",
+        "_PGFR_GROOT_CERTIFIED_CASES",
+        "_pgfr_groot_certified_start",
     ):
         g.pop(_key, None)
 
@@ -248,12 +248,12 @@ try:
         )
 
     for _key in (
-        "_IC_SHAPE_ORIG",
-        "_IC_SHAPE_ACTIVE",
-        "_IC_SHAPE_LAST_SCENE",
-        "_IC_SHAPE_ASSET_AUDIT",
-        "_IC_SHAPE_DUAL_ASSET_AUDIT",
-        "_IC_SHAPE_MODE_READY",
+        "_PGFR_SHAPE_ORIG",
+        "_PGFR_SHAPE_ACTIVE",
+        "_PGFR_SHAPE_LAST_SCENE",
+        "_PGFR_SHAPE_ASSET_AUDIT",
+        "_PGFR_SHAPE_DUAL_ASSET_AUDIT",
+        "_PGFR_SHAPE_MODE_READY",
         "_shape_rp_red",
         "_shape_rp_blue",
         "_shape_rp_green",
@@ -264,10 +264,10 @@ try:
         "_shape_dual_prims",
         "_shape_spawn_scene",
         "_shape_start",
-        "_IC_SHAPE_SPAWN_BAND",
-        "_IC_SHAPE_SPAWN_XY",
-        "_IC_SHAPE_DISTRACTORS",
-        "_IC_SHAPE_SEED",
+        "_PGFR_SHAPE_SPAWN_BAND",
+        "_PGFR_SHAPE_SPAWN_XY",
+        "_PGFR_SHAPE_DISTRACTORS",
+        "_PGFR_SHAPE_SEED",
         "SHAPE_BANDS",
         "SHAPE_TRIPLE_SLOTS",
         "SHAPE_TRIPLE_LAYOUTS",
@@ -281,14 +281,14 @@ try:
     # A failed/interrupted tote haul can leave both a live FixedJoint and a
     # deferred joint callback behind.  Detach before writing either tote pose,
     # then reload exactly one callback with the canonical haul implementation.
-    _old_joint_sub = g.pop("_IC_JOINTOP_SUB", None)
+    _old_joint_sub = g.pop("_PGFR_JOINTOP_SUB", None)
     if _old_joint_sub is not None:
         try:
             _old_joint_sub.unsubscribe()
         except Exception:
             pass
-    g["_IC_JOINT_REQ"] = None
-    g["_IC_JOINT_ACK"] = None
+    g["_PGFR_JOINT_REQ"] = None
+    g["_PGFR_JOINT_ACK"] = None
     if stage.GetPrimAtPath("/World/HaulJoint").IsValid():
         stage.RemovePrim("/World/HaulJoint")
 
@@ -378,13 +378,13 @@ try:
                 pass
         g[_socket_key] = None
     for _old_contexts in (
-        g.get("_IC_DUAL_GROOT_V25_CONTEXTS") or {},
-        g.get("_IC_DUAL_GROOT_V26_CONTEXTS") or {},
-        g.get("_IC_DUAL_GROOT_V27_CONTEXTS") or {},
-        g.get("_IC_DUAL_GROOT_V28_CONTEXTS") or {},
-        g.get("_IC_DUAL_GROOT_V29_CONTEXTS") or {},
-        g.get("_IC_DUAL_GROOT_V30_CONTEXTS") or {},
-        g.get("_IC_GROOT_CONCURRENT_CONTEXTS") or {},
+        g.get("_PGFR_DUAL_GROOT_V25_CONTEXTS") or {},
+        g.get("_PGFR_DUAL_GROOT_V26_CONTEXTS") or {},
+        g.get("_PGFR_DUAL_GROOT_V27_CONTEXTS") or {},
+        g.get("_PGFR_DUAL_GROOT_V28_CONTEXTS") or {},
+        g.get("_PGFR_DUAL_GROOT_V29_CONTEXTS") or {},
+        g.get("_PGFR_DUAL_GROOT_V30_CONTEXTS") or {},
+        g.get("_PGFR_GROOT_CONCURRENT_CONTEXTS") or {},
     ):
         for _old_context in _old_contexts.values():
             _old_socket = _old_context.get("_GRSOCK")
@@ -394,9 +394,9 @@ try:
                 except Exception:
                     pass
             _old_context["_GRSOCK"] = None
-            if g.get("_IC_BASE_FINISH") is not None:
-                _old_context["finish"] = g["_IC_BASE_FINISH"]
-    _old_concurrent_group = g.get("_IC_GROOT_CONCURRENT_GROUP") or {}
+            if g.get("_PGFR_BASE_FINISH") is not None:
+                _old_context["finish"] = g["_PGFR_BASE_FINISH"]
+    _old_concurrent_group = g.get("_PGFR_GROOT_CONCURRENT_GROUP") or {}
     _old_pair_socket = _old_concurrent_group.get("pair_socket")
     if _old_pair_socket is not None:
         try:
@@ -404,17 +404,17 @@ try:
         except Exception:
             pass
         _old_concurrent_group["pair_socket"] = None
-    _old_query_pool = g.pop("_IC_GROOT_QUERY_POOL", None)
+    _old_query_pool = g.pop("_PGFR_GROOT_QUERY_POOL", None)
     if _old_query_pool is not None:
         _old_query_pool.shutdown(wait=True, cancel_futures=False)
     for _concurrent_key in (
-        "_IC_GROOT_CONCURRENT_CONTEXTS",
-        "_IC_GROOT_CONCURRENT_GROUP",
-        "_IC_GROOT_SERIAL_START",
-        "_IC_GROOT_SERIAL_RUN_MOVE",
-        "_IC_GROOT_CONCURRENT_READY",
-        "_IC_GROOT_CONCURRENT_MIXED_READY",
-        "_IC_GROOT_CONCURRENT_MIXED_REVISION",
+        "_PGFR_GROOT_CONCURRENT_CONTEXTS",
+        "_PGFR_GROOT_CONCURRENT_GROUP",
+        "_PGFR_GROOT_SERIAL_START",
+        "_PGFR_GROOT_SERIAL_RUN_MOVE",
+        "_PGFR_GROOT_CONCURRENT_READY",
+        "_PGFR_GROOT_CONCURRENT_MIXED_READY",
+        "_PGFR_GROOT_CONCURRENT_MIXED_REVISION",
         "_concurrent_start",
         "_concurrent_run_move",
     ):
@@ -423,8 +423,8 @@ try:
     g["_GROOT_AUTO_RECOVERY"] = False
     _shared_executor_requested = True
     if (
-        g.get("_IC_GROOT_POLICY_ROUTE") != "shared"
-        or not isinstance(g.get("_IC_GROOT_SHARED_POLICY_CONTRACT"), dict)
+        g.get("_PGFR_GROOT_POLICY_ROUTE") != "shared"
+        or not isinstance(g.get("_PGFR_GROOT_SHARED_POLICY_CONTRACT"), dict)
     ):
         raise RuntimeError(
             "the public GR00T reset requires the shared policy route and contract"
@@ -434,30 +434,30 @@ try:
     _executor_loader_path = (
         "/scripts/native_droid_work/follow_groot_dual_physical_v36.py"
     )
-    _executor_context_key = "_IC_DUAL_GROOT_V36H_CONTEXTS"
+    _executor_context_key = "_PGFR_DUAL_GROOT_V36H_CONTEXTS"
 
     # The live Isaac globals dictionary is the left executor namespace.  Clear
     # both derivative caches so every reset rebuilds exactly the selected,
     # validated executor instead of taking an older reuse path.
     for _executor_cache_key in (
-        "_IC_DUAL_GROOT_V27_CONTEXTS",
-        "_IC_DUAL_GROOT_V27_STARTS",
-        "_IC_DUAL_GROOT_V27_RUNS",
-        "_IC_DUAL_GROOT_V29_CONTEXTS",
-        "_IC_DUAL_GROOT_V29_STARTS",
-        "_IC_DUAL_GROOT_V29_RUNS",
-        "_IC_DUAL_GROOT_V30_CONTEXTS",
-        "_IC_DUAL_GROOT_V30_STARTS",
-        "_IC_DUAL_GROOT_V30_RUNS",
-        "_IC_DUAL_GROOT_V31_CONTEXTS",
-        "_IC_DUAL_GROOT_V31_STARTS",
-        "_IC_DUAL_GROOT_V31_RUNS",
-        "_IC_DUAL_GROOT_V32_CONTEXTS",
-        "_IC_DUAL_GROOT_V32_STARTS",
-        "_IC_DUAL_GROOT_V32_RUNS",
-        "_IC_DUAL_GROOT_V36H_CONTEXTS",
-        "_IC_DUAL_GROOT_V36H_STARTS",
-        "_IC_DUAL_GROOT_V36H_RUNS",
+        "_PGFR_DUAL_GROOT_V27_CONTEXTS",
+        "_PGFR_DUAL_GROOT_V27_STARTS",
+        "_PGFR_DUAL_GROOT_V27_RUNS",
+        "_PGFR_DUAL_GROOT_V29_CONTEXTS",
+        "_PGFR_DUAL_GROOT_V29_STARTS",
+        "_PGFR_DUAL_GROOT_V29_RUNS",
+        "_PGFR_DUAL_GROOT_V30_CONTEXTS",
+        "_PGFR_DUAL_GROOT_V30_STARTS",
+        "_PGFR_DUAL_GROOT_V30_RUNS",
+        "_PGFR_DUAL_GROOT_V31_CONTEXTS",
+        "_PGFR_DUAL_GROOT_V31_STARTS",
+        "_PGFR_DUAL_GROOT_V31_RUNS",
+        "_PGFR_DUAL_GROOT_V32_CONTEXTS",
+        "_PGFR_DUAL_GROOT_V32_STARTS",
+        "_PGFR_DUAL_GROOT_V32_RUNS",
+        "_PGFR_DUAL_GROOT_V36H_CONTEXTS",
+        "_PGFR_DUAL_GROOT_V36H_STARTS",
+        "_PGFR_DUAL_GROOT_V36H_RUNS",
     ):
         g.pop(_executor_cache_key, None)
 
@@ -470,7 +470,7 @@ try:
     )
     for _path in (
         "/scripts/fix_amr_haul_joint.py",
-        "/scripts/ic_serving_health.py",
+        "/scripts/pgfr_serving_health.py",
     ):
         with open(_path, encoding="utf-8") as _handle:
             exec(compile(_handle.read(), _path, "exec"), g)
@@ -486,7 +486,7 @@ try:
         )
     for _context_arm, _context in _executor_contexts.items():
         if (
-            _context.get("_IC_GROOT_EXECUTION_REVISION")
+            _context.get("_PGFR_GROOT_EXECUTION_REVISION")
             != _executor_runtime_revision
         ):
             raise RuntimeError(
@@ -502,8 +502,8 @@ try:
             % _executor_revision
         )
     if (
-        _source_path(g.get("_IC_BASE_FINISH")) != "/scripts/ic_node_v2.py"
-        or g.get("finish") is not g.get("_IC_BASE_FINISH")
+        _source_path(g.get("_PGFR_BASE_FINISH")) != "/scripts/pgfr_node_v2.py"
+        or g.get("finish") is not g.get("_PGFR_BASE_FINISH")
     ):
         raise RuntimeError("canonical result finalizer was not restored")
 
@@ -546,7 +546,7 @@ try:
         # operator-only reset record admits exactly one no-alignment action on
         # a declared permuted layout, allowing color selection to be measured
         # without a target-aware pre-grasp pose confounding the result.
-        g.pop("_IC_GROOT_SHARED_COLOR_CANARY", None)
+        g.pop("_PGFR_GROOT_SHARED_COLOR_CANARY", None)
         if _shared_color_canary:
             if not _shared_executor_requested:
                 raise RuntimeError(
@@ -568,7 +568,7 @@ try:
                 raise RuntimeError(
                     "shared color canary arm must be franka_left or franka_right"
                 )
-            g["_IC_GROOT_SHARED_COLOR_CANARY"] = {
+            g["_PGFR_GROOT_SHARED_COLOR_CANARY"] = {
                 "schema_version": 1,
                 "mode": "color-slot-canary-v1",
                 "layout": _layout_left,
@@ -578,9 +578,9 @@ try:
                 "used": False,
             }
 
-        with open("/scripts/ic_shape_mode.py", encoding="utf-8") as _handle:
-            exec(compile(_handle.read(), "/scripts/ic_shape_mode.py", "exec"), g)
-        if not g.get("_IC_SHAPE_MODE_READY", False):
+        with open("/scripts/pgfr_shape_mode.py", encoding="utf-8") as _handle:
+            exec(compile(_handle.read(), "/scripts/pgfr_shape_mode.py", "exec"), g)
+        if not g.get("_PGFR_SHAPE_MODE_READY", False):
             raise RuntimeError("shape mode returned without its ready marker")
         if _arm == "both":
             spawn_scene(
@@ -602,7 +602,7 @@ try:
             _expected_active = {0, 2, 4}
             _expected_scene_layout = _layout
             _expected_layouts = None
-        _scene = dict(g.get("_IC_SHAPE_LAST_SCENE") or {})
+        _scene = dict(g.get("_PGFR_SHAPE_LAST_SCENE") or {})
         _protocol = dict(_scene.get("capture_protocol") or {})
         if (
             _scene.get("target") != _color
@@ -623,19 +623,19 @@ try:
             raise RuntimeError(
                 "three-object reset separation is below 0.13 m: %s" % _scene
             )
-        if set(g.get("_IC_SHAPE_ASSET_AUDIT") or {}) != {"blue", "green"}:
+        if set(g.get("_PGFR_SHAPE_ASSET_AUDIT") or {}) != {"blue", "green"}:
             raise RuntimeError(
                 "three-object reset lacks the shape A0 audit: %s"
-                % g.get("_IC_SHAPE_ASSET_AUDIT")
+                % g.get("_PGFR_SHAPE_ASSET_AUDIT")
             )
         if (
             _arm == "both"
-            and set(g.get("_IC_SHAPE_DUAL_ASSET_AUDIT") or {})
+            and set(g.get("_PGFR_SHAPE_DUAL_ASSET_AUDIT") or {})
             != {"blue", "green"}
         ):
             raise RuntimeError(
                 "dual-arm reset lacks duplicate shape audit: %s"
-                % g.get("_IC_SHAPE_DUAL_ASSET_AUDIT")
+                % g.get("_PGFR_SHAPE_DUAL_ASSET_AUDIT")
             )
         if _arm == "both":
             _expected_paths = {
@@ -721,13 +721,13 @@ try:
             raise RuntimeError("shape-aware start wrapper was not installed")
         if g.get("spawn_scene") is not g.get("_shape_spawn_scene"):
             raise RuntimeError("shape-aware spawn wrapper was not installed")
-        _saved_start = (g.get("_IC_SHAPE_ORIG") or {}).get("start")
+        _saved_start = (g.get("_PGFR_SHAPE_ORIG") or {}).get("start")
         if _saved_start is not g.get("_dual_start"):
             raise RuntimeError(
                 "shape mode saved a stale follower start function"
             )
         _deployment_path = (
-            "/scripts/native_droid_work/ic_groot_certified_deployment_v36.py"
+            "/scripts/native_droid_work/pgfr_groot_certified_deployment_v36.py"
         )
         with open(_deployment_path, encoding="utf-8") as _deployment_stream:
             _deployment_source = _deployment_stream.read()
@@ -737,17 +737,17 @@ try:
             g,
         )
         if (
-            not g.get("_IC_GROOT_DEPLOYMENT_READY", False)
-            or g.get("start") is not g.get("_ic_groot_certified_start")
-            or g.get("_IC_GROOT_DEPLOYMENT_ORIGINAL_START")
+            not g.get("_PGFR_GROOT_DEPLOYMENT_READY", False)
+            or g.get("start") is not g.get("_pgfr_groot_certified_start")
+            or g.get("_PGFR_GROOT_DEPLOYMENT_ORIGINAL_START")
             is not g.get("_shape_start")
-            or len(g.get("_IC_GROOT_CERTIFIED_CASES") or {}) != 18
+            or len(g.get("_PGFR_GROOT_CERTIFIED_CASES") or {}) != 18
         ):
             raise RuntimeError(
                 "certified GR00T deployment adapter was not restored"
             )
         _concurrent_path = (
-            "/scripts/native_droid_work/ic_groot_dual_concurrent_mixed.py"
+            "/scripts/native_droid_work/pgfr_groot_dual_concurrent_mixed.py"
         )
         with open(_concurrent_path, encoding="utf-8") as _concurrent_stream:
             _concurrent_source = _concurrent_stream.read()
@@ -757,13 +757,13 @@ try:
             g,
         )
         if (
-            not g.get("_IC_GROOT_CONCURRENT_READY", False)
-            or not g.get("_IC_GROOT_CONCURRENT_MIXED_READY", False)
-            or g.get("_IC_GROOT_CONCURRENT_MIXED_REVISION")
+            not g.get("_PGFR_GROOT_CONCURRENT_READY", False)
+            or not g.get("_PGFR_GROOT_CONCURRENT_MIXED_READY", False)
+            or g.get("_PGFR_GROOT_CONCURRENT_MIXED_REVISION")
             != "per_arm_seed_v1"
             or g.get("start") is not g.get("_concurrent_start")
             or g.get("run_move") is not g.get("_concurrent_run_move")
-            or set(g.get("_IC_GROOT_CONCURRENT_CONTEXTS") or {})
+            or set(g.get("_PGFR_GROOT_CONCURRENT_CONTEXTS") or {})
             != {"franka_left", "franka_right"}
         ):
             raise RuntimeError(
@@ -771,11 +771,11 @@ try:
             )
         _scene_record = _scene
     else:
-        if g.get("_IC_SHAPE_ORIG") is not None:
-            raise RuntimeError("ic_two_arm fallback retained shape aliases")
+        if g.get("_PGFR_SHAPE_ORIG") is not None:
+            raise RuntimeError("pgfr_two_arm fallback retained shape aliases")
         if set(ACTIVE) != {_red_index, _blue_index}:
             raise RuntimeError(
-                "ic_two_arm active set is wrong: %s" % sorted(ACTIVE)
+                "pgfr_two_arm active set is wrong: %s" % sorted(ACTIVE)
             )
         _expected_paths = {
             _red_index: "/World/SortCube_R",
@@ -837,7 +837,7 @@ try:
                     )
                 )
         _scene_record = {
-            "profile": "ic_two_arm",
+            "profile": "pgfr_two_arm",
             "active": sorted(ACTIVE),
             "red_xyz": _red_position.tolist(),
             "blue_xyz": _blue_position.tolist(),
@@ -847,23 +847,23 @@ try:
     # after follower + optional shape wrappers are final.
     if _camera_profile == "capture":
         with open(
-            "/scripts/native_droid_work/ic_sync_capture_cell.py",
+            "/scripts/native_droid_work/pgfr_sync_capture_cell.py",
             encoding="utf-8",
         ) as _handle:
             exec(
                 compile(
                     _handle.read(),
-                    "/scripts/native_droid_work/ic_sync_capture_cell.py",
+                    "/scripts/native_droid_work/pgfr_sync_capture_cell.py",
                     "exec",
                 ),
                 g,
             )
         if (
-            not g.get("_IC_SYNC_CAPTURE_READY", False)
-            or g.get("_IC_SYNC_ORIGINAL_RUN_MOVE") is None
+            not g.get("_PGFR_SYNC_CAPTURE_READY", False)
+            or g.get("_PGFR_SYNC_ORIGINAL_RUN_MOVE") is None
         ):
             raise RuntimeError("capture telemetry was not restored")
-    elif g.get("_IC_SYNC_ORIGINAL_RUN_MOVE") is not None:
+    elif g.get("_PGFR_SYNC_ORIGINAL_RUN_MOVE") is not None:
         raise RuntimeError("production reset unexpectedly retained capture telemetry")
 
     # Validate the physical reset markers after every profile.
@@ -928,8 +928,8 @@ try:
     # scene resets.  Fail the reset if another command moved Cam_Table or
     # removed its viewport-independent publisher, rather than silently
     # returning a scene whose operator view differs from the hardened contract.
-    _table_contract = g.get("_IC_TABLE_CAM_CONTRACT") or {}
-    _camera_topic_contract = g.get("_IC_CAMERA_TOPIC_CONTRACT") or {}
+    _table_contract = g.get("_PGFR_TABLE_CAM_CONTRACT") or {}
+    _camera_topic_contract = g.get("_PGFR_CAMERA_TOPIC_CONTRACT") or {}
     _expected_image_topics = {
         "wrist": "/wrist_cam/image_raw",
         "outside": "/outside_cam/image_raw",
@@ -940,7 +940,7 @@ try:
         "rack": "/rack_cam/image_raw",
     }
     if (
-        not g.get("_IC_CAMS_RP_READY", False)
+        not g.get("_PGFR_CAMS_RP_READY", False)
         or _camera_topic_contract.get("image_topics")
         != _expected_image_topics
         or _camera_topic_contract.get("unique_render_product_count") != 6
@@ -1041,7 +1041,7 @@ try:
         )
         _table_ops = _read_table_ops()
         print(
-            "IC_TABLE_CAMERA_RESTORED before=%s after=%s"
+            "PGFR_TABLE_CAMERA_RESTORED before=%s after=%s"
             % (
                 _table_ops_before_restore,
                 {
@@ -1069,7 +1069,7 @@ try:
     if _live_reset:
         if id(S) != _state_identity or S.get("task") is not _task_object:
             raise RuntimeError("reset transaction replaced or lost its task state")
-        if g.get("_IC_PENDING_RESET") is not None:
+        if g.get("_PGFR_PENDING_RESET") is not None:
             raise RuntimeError("pending reset marker survived reset execution")
 
     # Never let the first policy query reuse images from the prior pose/layout.
@@ -1086,20 +1086,20 @@ try:
         _frame_map = _context.get("_GRF")
         if isinstance(_frame_map, dict):
             _frame_map.clear()
-    g["_IC_SCENE_SETTLE_UNTIL_TICK"] = int(S.get("n", 0)) + 30
+    g["_PGFR_SCENE_SETTLE_UNTIL_TICK"] = int(S.get("n", 0)) + 30
 
-    g["_IC_LAST_RESET_PROFILE"] = _profile
-    g["_IC_LAST_RESET_SCENE"] = _scene_record
-    g["_IC_RESET_SCENE_READY"] = True
+    g["_PGFR_LAST_RESET_PROFILE"] = _profile
+    g["_PGFR_LAST_RESET_SCENE"] = _scene_record
+    g["_PGFR_RESET_SCENE_READY"] = True
     if not _bootstrap_request and not _live_reset:
-        g["_IC_FULL_SCENE_READY"] = _full_scene_ready_before_reset
+        g["_PGFR_FULL_SCENE_READY"] = _full_scene_ready_before_reset
     print(
-        "IC_GROOT_RUNTIME_READY executor=home_convergence_v36_direct "
+        "PGFR_GROOT_RUNTIME_READY executor=home_convergence_v36_direct "
         "concurrent=per_arm_seed_v1 route=shared",
         flush=True,
     )
     print(
-        "IC_SCENE_RESET_READY "
+        "PGFR_SCENE_RESET_READY "
         + json.dumps(
             {
                 "profile": _profile,
@@ -1111,12 +1111,12 @@ try:
         flush=True,
     )
     print(
-        "IC_TWO_ARM_RESET_DONE profile=%s totes=table arms=home "
+        "PGFR_TWO_ARM_RESET_DONE profile=%s totes=table arms=home "
         "AMR=parked gexec=%d"
         % (_profile, int(g.get("_GEXEC_OVERRIDE", -1))),
         flush=True,
     )
 except Exception:
-    globals()["_IC_RESET_SCENE_READY"] = False
-    print("IC_DEMO_RESET_ERR:\n" + traceback.format_exc(), flush=True)
+    globals()["_PGFR_RESET_SCENE_READY"] = False
+    print("PGFR_DEMO_RESET_ERR:\n" + traceback.format_exc(), flush=True)
     raise

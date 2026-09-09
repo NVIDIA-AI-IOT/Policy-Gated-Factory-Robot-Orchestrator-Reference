@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-"""GUI --exec entrypoint: load and harden the complete IC scene, then arm cmd.py.
+"""GUI --exec entrypoint: load and harden the complete PGFR scene, then arm cmd.py.
 
 `STARTUP_DONE` is intentionally emitted only after the full scene contract
 passes.  The host GUI launcher waits for that marker, so it can no longer
@@ -72,14 +72,14 @@ def _poll(_event=None):
             _R["auto_attempted"] = True
             try:
                 _exec_file(_BOOTSTRAP_PATH, "auto full-scene bootstrap")
-                if not globals().get("_IC_FULL_SCENE_READY", False):
+                if not globals().get("_PGFR_FULL_SCENE_READY", False):
                     raise RuntimeError(
-                        "full_scene_bootstrap.py returned without _IC_FULL_SCENE_READY"
+                        "full_scene_bootstrap.py returned without _PGFR_FULL_SCENE_READY"
                     )
                 _R["full_scene_ready"] = True
                 print(">>> STARTUP_DONE full_scene+runner", flush=True)
             except Exception:
-                print("IC_FULL_SCENE_BOOT_ERR:\n" + traceback.format_exc(), flush=True)
+                print("PGFR_FULL_SCENE_BOOT_ERR:\n" + traceback.format_exc(), flush=True)
             return
 
         if not _R["full_scene_ready"]:

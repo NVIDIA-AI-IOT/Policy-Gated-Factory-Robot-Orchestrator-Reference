@@ -6,29 +6,33 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MOUNT="${1:-}"
-IMAGE="${IC_ISAAC_IMAGE:-nvcr.io/nvidia/isaac-sim:6.0.0-dev2}"
-IMAGE_DIGEST="${IC_ISAAC_IMAGE_DIGEST:-sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9}"
+IMAGE="${PGFR_ISAAC_IMAGE:-nvcr.io/nvidia/isaac-sim:6.0.0-dev2}"
+IMAGE_DIGEST="${PGFR_ISAAC_IMAGE_DIGEST:-sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9}"
 IMAGE_REF="$IMAGE@$IMAGE_DIGEST"
 DISPLAY_VALUE="${DISPLAY:-:1}"
-CONTAINER_NAME="${IC_ISAAC_CONTAINER:-isaac-sim}"
-GROOT_STATE_ROOT="${IC_GROOT_STATE_ROOT:-$HOME/.local/share/ic-spine/groot}"
-ASSET_ROOT="${IC_ISAAC_ASSET_ROOT:-https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0}"
-FAST_DDS_PROFILE="${IC_FASTDDS_PROFILE:-$REPO/ops/fastdds-multi-host.xml}"
+CONTAINER_NAME="${PGFR_ISAAC_CONTAINER:-isaac-sim}"
+GROOT_STATE_ROOT="${PGFR_GROOT_STATE_ROOT:-$HOME/.local/share/pgfr-spine/groot}"
+ASSET_ROOT="${PGFR_ISAAC_ASSET_ROOT:-https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0}"
+FAST_DDS_PROFILE="${PGFR_FASTDDS_PROFILE:-$REPO/ops/fastdds-multi-host.xml}"
 ROS_DOMAIN_ID_VALUE="${ROS_DOMAIN_ID:-0}"
-READY_TIMEOUT="${IC_GROOT_READY_TIMEOUT:-900}"
+READY_TIMEOUT="${PGFR_GROOT_READY_TIMEOUT:-900}"
 ERROR_MARKER_RE='[A-Z][A-Z0-9_]*_(ERR|ERROR)(:|[[:space:]=]|$)'
 
 fail() { printf 'launch-groot-isaac: ERROR: %s\n' "$*" >&2; exit 2; }
+LEGACY_GUARD="$REPO/ops/pgfr-legacy-guard.sh"
+[ -r "$LEGACY_GUARD" ] || fail "missing migration guard: $LEGACY_GUARD"
+# shellcheck disable=SC1090
+. "$LEGACY_GUARD"
 [ -n "$MOUNT" ] || fail "usage: $0 <isaac-scripts-mount>"
 [[ "$ROS_DOMAIN_ID_VALUE" =~ ^[0-9]+$ ]] \
   && [ "$ROS_DOMAIN_ID_VALUE" -le 232 ] \
   || fail "ROS_DOMAIN_ID must be an integer from 0 through 232"
 [[ "$READY_TIMEOUT" =~ ^[1-9][0-9]*$ ]] \
   && [ "$READY_TIMEOUT" -le 3600 ] \
-  || fail "IC_GROOT_READY_TIMEOUT must be an integer from 1 through 3600"
+  || fail "PGFR_GROOT_READY_TIMEOUT must be an integer from 1 through 3600"
 [ -f "$FAST_DDS_PROFILE" ] && [ ! -L "$FAST_DDS_PROFILE" ] \
   || fail "Fast DDS profile must be a regular non-symlink file: $FAST_DDS_PROFILE"
-case "$FAST_DDS_PROFILE" in /*) ;; *) fail "IC_FASTDDS_PROFILE must be an absolute path" ;; esac
+case "$FAST_DDS_PROFILE" in /*) ;; *) fail "PGFR_FASTDDS_PROFILE must be an absolute path" ;; esac
 [ -f "$MOUNT/startup.py" ] || fail "run ops/install-groot-cell.sh first"
 [ -f "$MOUNT/groot_shared_policy_contract.json" ] || \
   fail "shared GR00T policy contract is missing; run ops/install-groot-cell.sh"
@@ -38,11 +42,13 @@ case "$FAST_DDS_PROFILE" in /*) ;; *) fail "IC_FASTDDS_PROFILE must be an absolu
   fail "left GR00T service state is missing: $GROOT_STATE_ROOT/shared-left.json"
 [ -f "$GROOT_STATE_ROOT/shared-right.json" ] || \
   fail "right GR00T service state is missing: $GROOT_STATE_ROOT/shared-right.json"
-ISAAC_ROOT="${IC_ISAAC_ROOT:-$(cd "$MOUNT/.." && pwd)}"
+ISAAC_ROOT="${PGFR_ISAAC_ROOT:-$(cd "$MOUNT/.." && pwd)}"
+pgfr_refuse_active_legacy_units
+pgfr_refuse_active_legacy_containers
 mkdir -p "$ISAAC_ROOT"/cache/{kit,ov,glcache,computecache,pip} \
   "$ISAAC_ROOT"/{logs,data}
-IC_ISAAC_IMAGE="$IMAGE" \
-  IC_ISAAC_IMAGE_DIGEST="$IMAGE_DIGEST" \
+PGFR_ISAAC_IMAGE="$IMAGE" \
+  PGFR_ISAAC_IMAGE_DIGEST="$IMAGE_DIGEST" \
   DISPLAY="$DISPLAY_VALUE" \
   "$REPO/ops/check-sim-host.sh" --profile x11 \
     --state-root "$ISAAC_ROOT" --mount "$MOUNT"
@@ -79,7 +85,7 @@ wait_for_groot_runtime() {
       docker logs --tail 100 "$CONTAINER_NAME" >&2 || true
       fail "Isaac GR00T runtime reported a startup or physics error; container was left intact"
     fi
-    if grep -Fq 'IC_GROOT_RUNTIME_READY' <<<"$logs" \
+    if grep -Fq 'PGFR_GROOT_RUNTIME_READY' <<<"$logs" \
       && grep -Fq 'STARTUP_DONE full_scene+runner' <<<"$logs"; then
       sleep 5
       logs="$(docker logs "$CONTAINER_NAME" 2>&1 || true)"
@@ -90,7 +96,7 @@ wait_for_groot_runtime() {
       state="$(docker container inspect --format '{{.State.Status}}' "$CONTAINER_NAME" 2>/dev/null || true)"
       [ "$state" = running ] \
         || fail "Isaac GR00T container stopped after readiness (state=${state:-missing}); it was left intact"
-      printf 'IC_GROOT_ISAAC_READY container=%s markers=runtime,full_scene\n' "$CONTAINER_NAME"
+      printf 'PGFR_GROOT_ISAAC_READY container=%s markers=runtime,full_scene\n' "$CONTAINER_NAME"
       return
     fi
     state="$(docker container inspect --format '{{.State.Status}}' "$CONTAINER_NAME" 2>/dev/null || true)"
@@ -115,7 +121,7 @@ all_container_names="$(docker ps -a --format '{{.Names}}')" \
 if grep -qx "$CONTAINER_NAME" <<<"$all_container_names"; then
   fail "$CONTAINER_NAME already exists but is stopped; remove it explicitly before launch"
 fi
-XAUTH_FILE="${XDG_RUNTIME_DIR:-/tmp}/ic-isaac.xauth"
+XAUTH_FILE="${XDG_RUNTIME_DIR:-/tmp}/pgfr-isaac.xauth"
 rm -f "$XAUTH_FILE"
 touch "$XAUTH_FILE"
 if ! XAUTH_ENTRY="$(xauth nlist "$DISPLAY_VALUE" 2>/dev/null | sed -e 's/^..../ffff/')"; then
@@ -136,14 +142,14 @@ CONTAINER_ID="$(
     -e ROS_DOMAIN_ID="$ROS_DOMAIN_ID_VALUE" \
     -e RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
     -e FASTRTPS_DEFAULT_PROFILES_FILE=/etc/policy-gated-factory-robot-orchestrator-reference/fastdds.xml \
-    -e IC_CAMERA_PROFILE=capture \
-    -e IC_SCENE_PROFILE=groot_three_object \
-    -e IC_GROOT_POLICY_ROUTE=shared \
-    -e IC_GROOT_SHARED_POLICY_CONTRACT_PATH=/scripts/groot_shared_policy_contract.json \
-    -e IC_GROOT_READY_ARM="${IC_GROOT_READY_ARM:-both}" \
-    -e IC_GROOT_READY_COLOR="${IC_GROOT_READY_COLOR:-red}" \
-    -e IC_GROOT_READY_LAYOUT="${IC_GROOT_READY_LAYOUT:-3}" \
-    -e IC_GROOT_READY_SEED="${IC_GROOT_READY_SEED:-31302}" \
+    -e PGFR_CAMERA_PROFILE=capture \
+    -e PGFR_SCENE_PROFILE=groot_three_object \
+    -e PGFR_GROOT_POLICY_ROUTE=shared \
+    -e PGFR_GROOT_SHARED_POLICY_CONTRACT_PATH=/scripts/groot_shared_policy_contract.json \
+    -e PGFR_GROOT_READY_ARM="${PGFR_GROOT_READY_ARM:-both}" \
+    -e PGFR_GROOT_READY_COLOR="${PGFR_GROOT_READY_COLOR:-red}" \
+    -e PGFR_GROOT_READY_LAYOUT="${PGFR_GROOT_READY_LAYOUT:-3}" \
+    -e PGFR_GROOT_READY_SEED="${PGFR_GROOT_READY_SEED:-31302}" \
     -e XAUTHORITY="$XAUTH_FILE" \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -v "$XAUTH_FILE:$XAUTH_FILE:ro" \
@@ -163,5 +169,5 @@ CONTAINER_ID="$(
     --exec /scripts/startup.py
 )" || fail "Docker did not start the Isaac GR00T container; any failed container was left intact"
 
-echo "IC_ISAAC_STARTING container=$CONTAINER_NAME id=$CONTAINER_ID"
+echo "PGFR_ISAAC_STARTING container=$CONTAINER_NAME id=$CONTAINER_ID"
 wait_for_groot_runtime

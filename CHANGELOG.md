@@ -17,11 +17,11 @@ than inferring a release from component version strings.
   GR00T policy/relay connections, pinned model and VLM identities and retrieval,
   user-systemd service ownership, conformance checks, and a deterministic
   serial acceptance procedure.
-- IC Console, IC Chat, workflow authoring/execution, OpenClaw gateway support,
+- PGFR Console, PGFR Chat, workflow authoring/execution, OpenClaw gateway support,
   persistent mission evidence, and a documented operator-access boundary.
 - A stopped-service
-  [upgrade guide](docs/FULL-FORM-RENAME-UPGRADE.md) for the breaking full-form
-  rename, including persistent-state migration and clean/upgrade validation.
+  [upgrade guide](docs/FULL-FORM-RENAME-UPGRADE.md) for the breaking product and
+  project-prefix rename, including state migration and clean/upgrade validation.
 
 ### Changed
 
@@ -30,9 +30,19 @@ than inferring a release from component version strings.
   and executable from `industrial_claw` to
   `policy_gated_factory_robot_orchestrator_reference`.
 - Renamed full-form reference, MCP-server, skill, OpenClaw-state, model, and
-  simulation-bridge paths. Existing `IC_*`, `ic-*`, `ic_*`, and `/ic/*`
-  compatibility identifiers remain unchanged.
-- IC Chat accepts explicitly configured OpenAI-compatible NVIDIA public or
+  simulation-bridge paths.
+- Replaced the former project prefix across the public surface: `IC_*` became
+  `PGFR_*`, `ic-*` became `pgfr-*`, `ic_*` became `pgfr_*`, and `/ic/*` became
+  `/pgfr/*`. This includes Python distributions and imports, command-line tools,
+  user services, containers, readiness markers, HTTP headers, OpenClaw IDs,
+  persistent paths, JSON Schema IDs, and ROS 2 topics.
+- Replaced project-owned certification-adjacent terminology with operational
+  assurance and dispatch-policy language. The Console endpoint is now
+  `/api/assurance`, and the UI, implementation names, runtime messages, and
+  documentation use Assurance Claims, Policy Gates, Decision Gates,
+  Prohibited Destinations, and Tracking/State Guards. Explicit statements that
+  this reference is not a certified functional-safety system remain unchanged.
+- PGFR Chat accepts explicitly configured OpenAI-compatible NVIDIA public or
   authorized internal endpoint/model/key tuples without routing by key prefix.
   OpenClaw remains a separately configured provider path.
 - Parallel workflow dispatch now requires both physics verification and
@@ -55,8 +65,9 @@ than inferring a release from component version strings.
 
 ### Compatibility and validation boundary
 
-- The full-form rename is a hard cutover. Existing hosts must stop services,
-  back up and move persistent state/model paths, audit preserved environment
+- The product and project-prefix rename is a hard cutover with no runtime alias.
+  Existing hosts must stop both legacy and PGFR services, back up and move
+  persistent state/model paths, rename project environment keys, audit preserved
   files, recreate path-bound virtual environments, and rerender user units.
 - The published Hugging Face model and dataset IDs retain their legacy
   `industrial-claw` slug because they are external immutable identifiers.
@@ -70,8 +81,9 @@ than inferring a release from component version strings.
   not a canonical or mission-accepted serving topology.
 - A separate 2026-09-08 stable scripted-baseline qualification used isolated
   container `ic-isaac-sim-601-validation` with Isaac Sim `6.0.1`: NVIDIA's
-  checker passed, `IC_CELL_UP` appeared, all `/ic` topics were discovered, a
-  real 1280-pixel rack-camera frame arrived, and reset succeeded. The final
+  checker passed, the legacy `IC_CELL_UP` marker appeared, all legacy `/ic`
+  topics were discovered, a real 1280-pixel rack-camera frame arrived, and
+  reset succeeded. The final
   one-command gate passed as run `953020d69491` on ROS domain 42 with 15 fresh
   streams, exactly three commands, a verified red move at `off=0.017`,
   deterministic final reset, and zero current-run critical log findings.
@@ -83,7 +95,8 @@ than inferring a release from component version strings.
   attested `ACCEPT_EULA=Y`, the NVIDIA telemetry opt-out, and all seven Kit
   privacy, telemetry, and crash-reporting arguments.
   Neither run proves a post-rename clean clone, a Thor/GR00T path, or a
-  connected WebRTC client.
+  connected WebRTC client. Those legacy names are retained here only to
+  identify the historical evidence accurately.
 - OpenClaw `2026.9.2` was reconciled after the historical deployment record.
   The manifest's `validated_on: 2026-08-08` remains unchanged and is not live
   acceptance evidence for that upgraded OpenClaw version.

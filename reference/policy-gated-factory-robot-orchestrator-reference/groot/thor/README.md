@@ -12,7 +12,7 @@ fine-tuning are documented separately.
 | [`install_deps.sh`](install_deps.sh) | Installs the required CUDA libraries, creates the uv environment, installs GR00T editable, and installs or builds torchcodec. | Required for bare-metal and container setup. |
 | [`pyproject.toml`](pyproject.toml) | Declares the Thor-specific Python dependencies and package indexes. | Required. |
 | [`uv.lock`](uv.lock) | Pins the complete dependency resolution consumed by `uv sync`. | Required. |
-| [`Dockerfile`](Dockerfile) | Builds the same environment in the supported CUDA container. | Required only for the container path. |
+| [`Dockerfile`](Dockerfile) | Builds the dependency-qualification environment in the pinned CUDA container. | Optional; not the accepted model-serving path. |
 
 ## Preparation flow
 
@@ -36,7 +36,11 @@ the prepared source tree. The dependency installer consumes this directory's
 `pyproject.toml` and `uv.lock` in place.
 
 For the shared Order744-cont24 training commands and dataset composition, see
-[`../groot_n1_7_ic_pipeline/docs/FINETUNING_RECIPE.md`](../groot_n1_7_ic_pipeline/docs/FINETUNING_RECIPE.md).
-The general Policy-Gated Factory Robot Orchestrator Reference brain-host prerequisite installer is separate: it
-prepares IC Spine and Console dependencies rather than this GR00T Python
-environment.
+[`../groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md`](../groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md).
+The Jetson control-host prerequisite installer is separate. It prepares the
+system packages and application dependencies required by PGFR Spine and PGFR
+Console; it does not replace this GR00T environment.
+
+The accepted reference deployment serves GR00T bare metal from the frozen uv
+environment. The Dockerfile qualifies the dependency set only and is not
+evidence for containerized policy serving or a complete mission.

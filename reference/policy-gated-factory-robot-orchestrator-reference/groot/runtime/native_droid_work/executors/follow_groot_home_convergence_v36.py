@@ -123,13 +123,13 @@ try:
             joint_indices=joint_indices,
         )
 
-    def _ic_apply_rmpflow_gripper(arm, target):
+    def _pgfr_apply_rmpflow_gripper(arm, target):
         """Persist a physical finger target without replacing the arm action."""
         indices = np.asarray(arm.gripper.active_joint_indices, dtype=int)
         values = np.full(indices.shape, float(target), dtype=float)
         arm.apply_action(ArticulationAction(joint_positions=values, joint_indices=indices))
 
-    def _ic_rmpflow_gripper_positions(arm):
+    def _pgfr_rmpflow_gripper_positions(arm):
         try:
             return np.asarray(arm.gripper.get_joint_positions(), dtype=float)
         except Exception:
@@ -403,7 +403,11 @@ try:
                     or not np.isfinite(native_position).all()
                     or np.any(np.abs(native_velocity) > native_velocity_limits)
                 ):
-                    finish(False, False, "unsafe native-DROID joint velocity trajectory")
+                    finish(
+                        False,
+                        False,
+                        "native-DROID joint velocity trajectory is invalid or out of range",
+                    )
                     return
                 native_gripper = np.asarray(trajectory["gripper"][:native_horizon], dtype=float)
                 trajectory["single_arm"] = native_position
@@ -447,7 +451,11 @@ try:
             finish(False, False, "non-finite or malformed GR00T action")
             return
         if not 0.0 <= gripcmd <= 0.05:
-            finish(False, False, "unsafe GR00T gripper target %.6f" % gripcmd)
+            finish(
+                False,
+                False,
+                "GR00T gripper target is outside the permitted range: %.6f" % gripcmd,
+            )
             return
         lower_excess = np.maximum(_FRANKA_JOINT_LOWER - arm7, 0.0)
         upper_excess = np.maximum(arm7 - _FRANKA_JOINT_UPPER, 0.0)
@@ -519,7 +527,7 @@ try:
             finish(
                 False,
                 False,
-                "unsafe raw GR00T joint waypoint outside Franka limits "
+                "raw GR00T joint waypoint outside Franka limits "
                 "query=%d gi=%d excess=%.6f replans=%d/%d"
                 % (
                     int(g.get("_GROOT_QUERY_INDEX", 0)),
@@ -554,9 +562,9 @@ try:
             )
             g["_gdistmin"] = min(g.get("_gdistmin", 999.0), nearest_distance)
 
-        near_limit = float(g.get("_IC_LOCK_R", 0.06))
+        near_limit = float(g.get("_PGFR_LOCK_R", 0.06))
         actual_arm = np.asarray(frL.get_joint_positions()[:7], dtype=float)
-        raw_close_requested = gripcmd < g.get("_IC_GRASP_TH", GRASP_TH)
+        raw_close_requested = gripcmd < g.get("_PGFR_GRASP_TH", GRASP_TH)
         target_close_guard_enabled = bool(
             S["task"].get("target_aware_pregrasp_close_gate", False)
         )
@@ -673,7 +681,7 @@ try:
                     joint_velocities=np.zeros(7, dtype=float),
                 )
             )
-            _ic_apply_rmpflow_gripper(frL, GR_OPEN)
+            _pgfr_apply_rmpflow_gripper(frL, GR_OPEN)
             S["gpregrasp_alignment_ticks"] = (
                 int(S.get("gpregrasp_alignment_ticks", 0)) + 1
             )
@@ -809,14 +817,14 @@ try:
         )
         if tracking_guard_enabled and target_state_error > target_state_limit:
             print(
-                "GROOT_PHYSICAL_SAFETY_ABORT gn=%d target_state_error=%.4f limit=%.4f"
+                "GROOT_TARGET_TRACKING_ABORT gn=%d target_state_error=%.4f limit=%.4f"
                 % (S["gn"], target_state_error, target_state_limit),
                 flush=True,
             )
             finish(
                 False,
                 False,
-                "groot physical-friction unsafe arm target-state error %.4f > %.4f"
+                "arm target-state error exceeded the configured limit: %.4f > %.4f"
                 % (target_state_error, target_state_limit),
             )
             return
@@ -883,7 +891,7 @@ try:
                 if release_zone
                 else 0
             )
-            policy_open_requested = gripcmd > g.get("_IC_REL_TH", REL_TH)
+            policy_open_requested = gripcmd > g.get("_PGFR_REL_TH", REL_TH)
             release_action_key = (
                 int(g.get("_GROOT_QUERY_INDEX", 0)),
                 int(S["gi"]),
@@ -988,12 +996,12 @@ try:
                 S["gphysical_release_candidate_actions"] = 0
                 S["gphysical_release_candidate_key"] = None
 
-        _ic_apply_rmpflow_gripper(frL, applied_gripcmd)
-        measured = _ic_rmpflow_gripper_positions(frL)
+        _pgfr_apply_rmpflow_gripper(frL, applied_gripcmd)
+        measured = _pgfr_rmpflow_gripper_positions(frL)
         g["_grmin"] = min(g.get("_grmin", 1.0), applied_gripcmd)
 
         physically_closed = (
-            applied_gripcmd < g.get("_IC_GRASP_TH", GRASP_TH)
+            applied_gripcmd < g.get("_PGFR_GRASP_TH", GRASP_TH)
             and measured.size > 0
             and float(np.max(measured)) <= GR_SNUG + 0.006
         )
@@ -1166,7 +1174,7 @@ try:
         if (
             S.get("gphysical_grasp_seen")
             and not S.get("greleased")
-            and applied_gripcmd > g.get("_IC_REL_TH", REL_TH)
+            and applied_gripcmd > g.get("_PGFR_REL_TH", REL_TH)
             and measured_open
         ):
             S["greleased"] = True
@@ -1213,7 +1221,7 @@ try:
             # Preserve that minimum cadence, but do not advance farther along
             # an open-loop chunk while the simulated articulation is still
             # catching the current target.  This keeps the unchanged 0.12-rad
-            # safety guard meaningful and prevents tracking lag from
+            # tracking guard meaningful and prevents tracking lag from
             # accumulating across the carry phase.
             tracking_tolerance = float(
                 S["task"].get("tracking_progress_tolerance", 0.03)
@@ -1500,7 +1508,7 @@ try:
                 )
                 _near_miss = (
                     _trigger_requires_close
-                    and gripcmd < g.get("_IC_GRASP_TH", GRASP_TH)
+                    and gripcmd < g.get("_PGFR_GRASP_TH", GRASP_TH)
                     and S["gn"] >= _trigger_min_steps
                     and 0.065 <= _rd <= 0.18
                 )
@@ -1553,9 +1561,9 @@ try:
             elif S["gn"] >= 1200:
                 finish(False, False, "groot recovery_no_state color=%s gn=%d" % (col, S["gn"]))
                 return
-        if not S["glocked"] and gripcmd < g.get("_IC_GRASP_TH", GRASP_TH):
+        if not S["glocked"] and gripcmd < g.get("_PGFR_GRASP_TH", GRASP_TH):
             cs = [(i, float(np.linalg.norm(grasp - np.array(wrp[i].get_world_pose()[0])))) for i in ACTIVE]
-            cs = [(i, d) for i, d in cs if d < g.get("_IC_LOCK_R", 0.06)]
+            cs = [(i, d) for i, d in cs if d < g.get("_PGFR_LOCK_R", 0.06)]
             if cs:
                 ci = min(cs, key=lambda t: t[1])[0]; cp, _ = wrp[ci].get_world_pose()
                 S["gcube"] = wrp[ci]; S["gcube_index"] = ci
@@ -1564,7 +1572,7 @@ try:
                 S["grelease_tick"] = None; S["gsettle"] = 0; S["gsettle_prev"] = None
                 print("GROOT_GRASP cube=%d col=%s gn=%d grip=%.3f" % (ci, POOL_COL[ci], S["gn"], gripcmd), flush=True)
         if S["glocked"]:
-            if gripcmd > g.get("_IC_REL_TH", REL_TH):
+            if gripcmd > g.get("_PGFR_REL_TH", REL_TH):
                 S["greleased"] = True
                 S["greleased_index"] = S.get("gcube_index")
                 S["grelease_tick"] = S["gn"]
@@ -1676,7 +1684,7 @@ try:
                         ),
                         flush=True,
                     )
-                print("IC_START %s"%cmd, flush=True); return
+                print("PGFR_START %s"%cmd, flush=True); return
             col=cmd.get("color"); dest=(cmd.get("destination") or "").replace("tote_","") or col
             ep=cmd.get("endpoint"); bp,_=(frR if ep=="franka_right" else frL).get_world_pose()
             ti=target_cube(col,float(bp[0])); S["cube"]=(wrp[ti] if ti is not None else None)
@@ -1691,7 +1699,7 @@ try:
             S["dock"]=(DOCK_R if S["haul_tote"]=="tote_r" else DOCK).copy()
             S["shelf"]=(SHELF_TOTE_R if S["haul_tote"]=="tote_r" else SHELF_TOTE).copy()
             S["ph"]="reach"; S["yaw"]=YAW_DOCK; S["cbase"]=S["dock"].copy(); S["wp"]=0; S["wpt"]=0; S["toff"]=None; S["boffs"]=None
-        print("IC_START %s"%cmd, flush=True)
+        print("PGFR_START %s"%cmd, flush=True)
 
     def run_move(dt):
         if S["task"].get("backend")=="groot": run_groot(dt); return
@@ -1734,15 +1742,15 @@ try:
         if jp is not None:
             arm.apply_action(act)
             finger_target=GR_GRIP if 3<=phase<7 else GR_OPEN
-            _ic_apply_rmpflow_gripper(arm,finger_target)
-            measured=_ic_rmpflow_gripper_positions(arm)
+            _pgfr_apply_rmpflow_gripper(arm,finger_target)
+            measured=_pgfr_rmpflow_gripper_positions(arm)
             if 3<=phase<7 and measured.size and float(np.max(measured))<=GR_SNUG+0.006:
                 if not S.get("physical_grip_closed"):
-                    print("IC_RMPFLOW_GRIP_CLOSED phase=%d fingers=%s"%(phase,[round(float(x),4) for x in measured]),flush=True)
+                    print("PGFR_RMPFLOW_GRIP_CLOSED phase=%d fingers=%s"%(phase,[round(float(x),4) for x in measured]),flush=True)
                 S["physical_grip_closed"]=True
             if phase>=7 and S.get("physical_grip_closed") and measured.size and float(np.min(measured))>=GR_OPEN-0.005:
                 if not S.get("rel"):
-                    print("IC_RMPFLOW_RELEASE_OPEN phase=%d fingers=%s"%(phase,[round(float(x),4) for x in measured]),flush=True)
+                    print("PGFR_RMPFLOW_RELEASE_OPEN phase=%d fingers=%s"%(phase,[round(float(x),4) for x in measured]),flush=True)
                 S["rel"]=True
         S["t"]+=1
         if c.is_done() or S["t"]>1700:
@@ -1775,7 +1783,7 @@ try:
 except Exception:
     print("GROOT_PATCH_ERR:\n"+traceback.format_exc(), flush=True)
 
-globals()["_IC_GROOT_EXECUTION_REVISION"] = "home_convergence_v36_direct"
+globals()["_PGFR_GROOT_EXECUTION_REVISION"] = "home_convergence_v36_direct"
 print(
     "GROOT_HOME_CONVERGENCE_V36_READY "
     "home_min_ticks=120 home_tolerance_rad=0.030 home_settle_ticks=12 "

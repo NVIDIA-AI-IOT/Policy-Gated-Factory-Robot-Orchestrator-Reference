@@ -13,9 +13,9 @@ IMAGE_REF="$IMAGE@$DIGEST"
 ASSET_ROOT="https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0"
 
 MODE=""
-STATE_ROOT="${IC_ISAAC_ROOT:-$HOME/.local/share/policy-gated-factory-robot-orchestrator-reference/isaac-sim}"
-MOUNT="${IC_ISAAC_MOUNT:-}"
-CONTAINER_NAME="${IC_ISAAC_CONTAINER:-ic-isaac-sim-baseline}"
+STATE_ROOT="${PGFR_ISAAC_ROOT:-$HOME/.local/share/policy-gated-factory-robot-orchestrator-reference/isaac-sim}"
+MOUNT="${PGFR_ISAAC_MOUNT:-}"
+CONTAINER_NAME="${PGFR_ISAAC_CONTAINER:-pgfr-isaac-sim-baseline}"
 PRESENTATION_PROFILE="headless"
 DISPLAY_VALUE="${DISPLAY:-:1}"
 DISPLAY_OPTION_SET=false
@@ -30,6 +30,10 @@ PRIVACY_CONSENT=false
 WAIT_FOR_READY=true
 
 fail() { printf 'isaac-sim-workstation: ERROR: %s\n' "$*" >&2; exit 2; }
+LEGACY_GUARD="$REPO/ops/pgfr-legacy-guard.sh"
+[ -r "$LEGACY_GUARD" ] || fail "missing migration guard: $LEGACY_GUARD"
+# shellcheck disable=SC1090
+. "$LEGACY_GUARD"
 usage() {
   cat <<'EOF'
 usage: ops/isaac-sim-workstation.sh MODE [OPTIONS]
@@ -45,7 +49,7 @@ Options:
   --root PATH            Host state root (default: ~/.local/share/policy-gated-factory-robot-orchestrator-reference/isaac-sim).
   --mount PATH           Directory mounted read-only at /scripts
                          (default: ROOT/scripts).
-  --container NAME       Container name (default: ic-isaac-sim-baseline).
+  --container NAME       Container name (default: pgfr-isaac-sim-baseline).
   --profile PROFILE      Presentation profile: headless (default) or x11.
   --webrtc-host IP       Host interface address advertised by headless WebRTC
                          (default: $ISAACSIM_HOST, otherwise 127.0.0.1).
@@ -57,7 +61,7 @@ Options:
                          (default: $DISPLAY, otherwise :1).
   --ros-domain-id ID     ROS 2 domain, 0..232 (default: $ROS_DOMAIN_ID, otherwise 0).
   --timeout SECONDS      Readiness timeout for --run (default: 900).
-  --no-wait              Return after Docker starts instead of waiting for IC_CELL_UP.
+  --no-wait              Return after Docker starts instead of waiting for PGFR_CELL_UP.
   --accept-eula          Required with --check and --run; passes ACCEPT_EULA=Y
                          only to NVIDIA containers started by those modes.
   --privacy-consent      Optional telemetry opt-in; otherwise Kit telemetry and
@@ -106,8 +110,8 @@ STATE_ROOT="$(realpath -m "$STATE_ROOT")"
 if [ -z "$MOUNT" ]; then MOUNT="$STATE_ROOT/scripts"; fi
 case "$MOUNT" in /*) ;; *) fail "--mount must be an absolute path" ;; esac
 MOUNT="$(realpath -m "$MOUNT")"
-case "$STATE_ROOT" in /|"$HOME"|"$REPO"|"$REPO"/*) fail "unsafe state root: $STATE_ROOT" ;; esac
-case "$MOUNT" in /|"$HOME"|"$REPO"|"$REPO"/*|"$STATE_ROOT") fail "unsafe scripts mount: $MOUNT" ;; esac
+case "$STATE_ROOT" in /|"$HOME"|"$REPO"|"$REPO"/*) fail "prohibited state root: $STATE_ROOT" ;; esac
+case "$MOUNT" in /|"$HOME"|"$REPO"|"$REPO"/*|"$STATE_ROOT") fail "prohibited scripts mount: $MOUNT" ;; esac
 case "$STATE_ROOT$MOUNT" in *$'\n'*|*,*) fail "paths must not contain a newline or comma" ;; esac
 [[ "$CONTAINER_NAME" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] \
   || fail "invalid Docker container name: $CONTAINER_NAME"
@@ -151,16 +155,17 @@ if [ "$MODE" != run ]; then
   $WAIT_FOR_READY || fail "--no-wait is valid only with --run"
 fi
 
-for source in "$SOURCE_ROOT/ic_boot.py" "$SOURCE_ROOT/our_factory.usda"; do
+for source in "$SOURCE_ROOT/pgfr_boot.py" "$SOURCE_ROOT/our_factory.usda"; do
   [ -f "$source" ] || fail "required source is missing: $source"
 done
-[ -d "$SOURCE_ROOT/ic_cell" ] || fail "required source is missing: $SOURCE_ROOT/ic_cell"
+[ -d "$SOURCE_ROOT/pgfr_cell" ] || fail "required source is missing: $SOURCE_ROOT/pgfr_cell"
 [ -x "$CHECKER" ] || fail "simulation-host checker is not executable: $CHECKER"
 
 require_docker() {
   command -v docker >/dev/null 2>&1 || fail "missing command: docker"
   docker info >/dev/null 2>&1 \
     || fail "Docker daemon is unavailable to this user"
+  pgfr_refuse_active_legacy_containers
 }
 
 container_state() {
@@ -190,35 +195,35 @@ assert_mount_idle() {
 
 source_file_list() {
   (
-    cd "$SOURCE_ROOT/ic_cell"
+    cd "$SOURCE_ROOT/pgfr_cell"
     find . -type f ! -path '*/__pycache__/*' ! -name '*.py[co]' -print | LC_ALL=C sort
   )
 }
 
 installed_file_list() {
   (
-    cd "$MOUNT/ic_cell"
+    cd "$MOUNT/pgfr_cell"
     find . -type f -print | LC_ALL=C sort
   )
 }
 
 verify_baseline() {
-  [ -d "$MOUNT/ic_cell" ] || fail "baseline package is missing: $MOUNT/ic_cell"
-  [ -f "$MOUNT/ic_boot.py" ] || fail "baseline entrypoint is missing: $MOUNT/ic_boot.py"
+  [ -d "$MOUNT/pgfr_cell" ] || fail "baseline package is missing: $MOUNT/pgfr_cell"
+  [ -f "$MOUNT/pgfr_boot.py" ] || fail "baseline entrypoint is missing: $MOUNT/pgfr_boot.py"
   [ -f "$MOUNT/our_factory.usda" ] || fail "baseline stage is missing: $MOUNT/our_factory.usda"
-  [ ! -L "$MOUNT/ic_cell" ] && [ ! -L "$MOUNT/ic_boot.py" ] \
+  [ ! -L "$MOUNT/pgfr_cell" ] && [ ! -L "$MOUNT/pgfr_boot.py" ] \
     && [ ! -L "$MOUNT/our_factory.usda" ] \
     || fail "installed baseline entrypoints must not be symbolic links"
-  [ -z "$(find "$MOUNT/ic_cell" -type l -print -quit)" ] \
+  [ -z "$(find "$MOUNT/pgfr_cell" -type l -print -quit)" ] \
     || fail "installed baseline must not contain symbolic links"
   [ "$(source_file_list)" = "$(installed_file_list)" ] \
-    || fail "installed ic_cell file set differs from this checkout; choose a fresh --mount"
+    || fail "installed pgfr_cell file set differs from this checkout; choose a fresh --mount"
   while IFS= read -r relative; do
-    cmp -s "$SOURCE_ROOT/ic_cell/$relative" "$MOUNT/ic_cell/$relative" \
-      || fail "installed baseline differs from this checkout: ic_cell/$relative"
+    cmp -s "$SOURCE_ROOT/pgfr_cell/$relative" "$MOUNT/pgfr_cell/$relative" \
+      || fail "installed baseline differs from this checkout: pgfr_cell/$relative"
   done < <(source_file_list)
-  cmp -s "$SOURCE_ROOT/ic_boot.py" "$MOUNT/ic_boot.py" \
-    || fail "installed ic_boot.py differs from this checkout; choose a fresh --mount"
+  cmp -s "$SOURCE_ROOT/pgfr_boot.py" "$MOUNT/pgfr_boot.py" \
+    || fail "installed pgfr_boot.py differs from this checkout; choose a fresh --mount"
   cmp -s "$SOURCE_ROOT/our_factory.usda" "$MOUNT/our_factory.usda" \
     || fail "installed our_factory.usda differs from this checkout; choose a fresh --mount"
 }
@@ -250,7 +255,7 @@ prepare() {
     [ -d "$MOUNT" ] || fail "scripts mount exists but is not a directory: $MOUNT"
     if [ -n "$(find "$MOUNT" -mindepth 1 -print -quit)" ]; then
       verify_baseline
-      printf 'IC_ISAAC_BASELINE_PREPARED mount=%s state=%s unchanged=true\n' "$MOUNT" "$STATE_ROOT"
+      printf 'PGFR_ISAAC_BASELINE_PREPARED mount=%s state=%s unchanged=true\n' "$MOUNT" "$STATE_ROOT"
       return
     fi
   fi
@@ -263,12 +268,12 @@ prepare() {
   trap 'rm -rf "$stage"' RETURN
   while IFS= read -r relative; do
     install -D -m 0644 \
-      "$SOURCE_ROOT/ic_cell/$relative" "$stage/ic_cell/$relative"
+      "$SOURCE_ROOT/pgfr_cell/$relative" "$stage/pgfr_cell/$relative"
   done < <(source_file_list)
-  install -m 0644 "$SOURCE_ROOT/ic_boot.py" "$stage/ic_boot.py"
+  install -m 0644 "$SOURCE_ROOT/pgfr_boot.py" "$stage/pgfr_boot.py"
   install -m 0644 "$SOURCE_ROOT/our_factory.usda" "$stage/our_factory.usda"
   PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$stage" python3 -c \
-    'from ic_cell.actions import discover_actions; r=discover_actions(); assert r.action_names == ("haul", "inspect", "move", "pick_and_place", "reset", "spawn")'
+    'from pgfr_cell.actions import discover_actions; r=discover_actions(); assert r.action_names == ("haul", "inspect", "move", "pick_and_place", "reset", "spawn")'
   # Validate the complete sibling tree before publishing it. GNU mv -T uses
   # one directory rename here (and can replace only the known-empty target),
   # so readers can observe either no bundle/the old empty directory or the
@@ -277,7 +282,7 @@ prepare() {
   mv -T "$stage" "$MOUNT"
   trap - RETURN
   verify_baseline
-  printf 'IC_ISAAC_BASELINE_PREPARED mount=%s state=%s unchanged=false\n' "$MOUNT" "$STATE_ROOT"
+  printf 'PGFR_ISAAC_BASELINE_PREPARED mount=%s state=%s unchanged=false\n' "$MOUNT" "$STATE_ROOT"
   printf 'No image was pulled and no container was started.\n'
 }
 
@@ -299,13 +304,14 @@ run_nvidia_compatibility_check() {
     *'System checking result: PASSED'*) ;;
     *) fail "NVIDIA compatibility checker did not report PASSED" ;;
   esac
-  printf 'IC_ISAAC_NVIDIA_CHECK_OK image=%s result=PASSED\n' "$IMAGE_REF"
+  printf 'PGFR_ISAAC_NVIDIA_CHECK_OK image=%s result=PASSED\n' "$IMAGE_REF"
 }
 
 check() {
   verify_baseline
   local directory
   local -a checker_args
+  require_docker
   command -v python3 >/dev/null 2>&1 || fail "missing command: python3"
   for directory in \
     cache/main cache/computecache config data logs pkg hub-cache runtime; do
@@ -324,12 +330,12 @@ check() {
       --webrtc-stream-port "$WEBRTC_STREAM_PORT"
     )
   fi
-  IC_ISAAC_IMAGE="$IMAGE" IC_ISAAC_IMAGE_DIGEST="$DIGEST" \
+  PGFR_ISAAC_IMAGE="$IMAGE" PGFR_ISAAC_IMAGE_DIGEST="$DIGEST" \
     DISPLAY="$DISPLAY_VALUE" "$CHECKER" "${checker_args[@]}"
   run_nvidia_compatibility_check
   PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$MOUNT" python3 -c \
-    'from ic_cell.actions import discover_actions; r=discover_actions(); assert r.action_names == ("haul", "inspect", "move", "pick_and_place", "reset", "spawn")'
-  printf 'IC_ISAAC_BASELINE_CHECK_OK mount=%s image=%s profile=%s\n' \
+    'from pgfr_cell.actions import discover_actions; r=discover_actions(); assert r.action_names == ("haul", "inspect", "move", "pick_and_place", "reset", "spawn")'
+  printf 'PGFR_ISAAC_BASELINE_CHECK_OK mount=%s image=%s profile=%s\n' \
     "$MOUNT" "$IMAGE_REF" "$PRESENTATION_PROFILE"
 }
 
@@ -401,11 +407,11 @@ wait_for_cell() {
     # log belongs to this boot. Never truncate the pass/fail scan: noisy Kit
     # startup can push an early physics/bootstrap error beyond a tail window.
     logs="$(docker logs "$CONTAINER_NAME" 2>&1 || true)"
-    if grep -Eq 'IC_CELL_BOOT_ERR|IC_STEP_ERR' <<<"$logs"; then
+    if grep -Eq 'PGFR_CELL_BOOT_ERR|PGFR_STEP_ERR' <<<"$logs"; then
       docker logs --tail 80 "$CONTAINER_NAME" >&2 || true
       fail "Isaac cell reported a physics/bootstrap error; container was left intact"
     fi
-    if grep -Fq 'IC_CELL_UP markers=all' <<<"$logs"; then
+    if grep -Fq 'PGFR_CELL_UP markers=all' <<<"$logs"; then
       cell_ready=true
     fi
     if grep -Fq 'Isaac Sim Full Streaming App is loaded.' <<<"$logs"; then
@@ -416,7 +422,7 @@ wait_for_cell() {
       # failure cannot be hidden behind a success marker in the same launch.
       sleep 5
       logs="$(docker logs "$CONTAINER_NAME" 2>&1 || true)"
-      if grep -Eq 'IC_CELL_BOOT_ERR|IC_STEP_ERR' <<<"$logs"; then
+      if grep -Eq 'PGFR_CELL_BOOT_ERR|PGFR_STEP_ERR' <<<"$logs"; then
         docker logs --tail 80 "$CONTAINER_NAME" >&2 || true
         fail "Isaac cell failed during the post-ready stability window; container was left intact"
       fi
@@ -425,11 +431,11 @@ wait_for_cell() {
         || fail "container stopped during the post-ready stability window (state=${state:-missing}); it was left intact"
       verify_streaming_listener
       if [ "$PRESENTATION_PROFILE" = headless ]; then
-        printf 'IC_ISAAC_BASELINE_READY container=%s profile=headless marker=IC_CELL_UP streaming=true webrtc_host=%s signal_tcp=%s stream_udp=%s\n' \
+        printf 'PGFR_ISAAC_BASELINE_READY container=%s profile=headless marker=PGFR_CELL_UP streaming=true webrtc_host=%s signal_tcp=%s stream_udp=%s\n' \
           "$CONTAINER_NAME" "$WEBRTC_HOST" "$WEBRTC_SIGNAL_PORT" \
           "$WEBRTC_STREAM_PORT"
       else
-        printf 'IC_ISAAC_BASELINE_READY container=%s profile=x11 marker=IC_CELL_UP\n' \
+        printf 'PGFR_ISAAC_BASELINE_READY container=%s profile=x11 marker=PGFR_CELL_UP\n' \
           "$CONTAINER_NAME"
       fi
       return
@@ -469,7 +475,7 @@ run() {
     --user 1234:1234
     --gpus all --network host --ipc=shareable --shm-size 2g
     -e ACCEPT_EULA=Y
-    -e IC_STAGE=/scripts/our_factory.usda
+    -e PGFR_STAGE=/scripts/our_factory.usda
     -e ROS_DOMAIN_ID="$ROS_DOMAIN_ID_VALUE"
     -e ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
     -e RMW_IMPLEMENTATION=rmw_fastrtps_cpp
@@ -493,9 +499,9 @@ run() {
     docker_args+=(
       --entrypoint /isaac-sim/isaac-sim.sh
       -e DISPLAY="$DISPLAY_VALUE"
-      -e XAUTHORITY=/tmp/ic-isaac.xauth
+      -e XAUTHORITY=/tmp/pgfr-isaac.xauth
       --mount "type=bind,source=/tmp/.X11-unix,target=/tmp/.X11-unix,readonly"
-      --mount "type=bind,source=$xauth_file,target=/tmp/ic-isaac.xauth,readonly"
+      --mount "type=bind,source=$xauth_file,target=/tmp/pgfr-isaac.xauth,readonly"
     )
   fi
   if $PRIVACY_CONSENT; then
@@ -524,22 +530,22 @@ run() {
       --/crashreporter/enabled=false
     )
   fi
-  docker_args+=(--exec /scripts/ic_boot.py)
+  docker_args+=(--exec /scripts/pgfr_boot.py)
   container_id="$(docker "${docker_args[@]}")" \
     || fail "Docker did not start the container; any failed container was left intact"
   if [ "$PRESENTATION_PROFILE" = headless ]; then
-    printf 'IC_ISAAC_BASELINE_STARTING container=%s id=%s profile=headless webrtc_host=%s signal_tcp=%s stream_udp=%s\n' \
+    printf 'PGFR_ISAAC_BASELINE_STARTING container=%s id=%s profile=headless webrtc_host=%s signal_tcp=%s stream_udp=%s\n' \
       "$CONTAINER_NAME" "$container_id" "$WEBRTC_HOST" \
       "$WEBRTC_SIGNAL_PORT" "$WEBRTC_STREAM_PORT"
   else
-    printf 'IC_ISAAC_BASELINE_STARTING container=%s id=%s profile=x11 display=%s\n' \
+    printf 'PGFR_ISAAC_BASELINE_STARTING container=%s id=%s profile=x11 display=%s\n' \
       "$CONTAINER_NAME" "$container_id" "$DISPLAY_VALUE"
   fi
   printf 'Logs: docker logs -f %q\n' "$CONTAINER_NAME"
   if $WAIT_FOR_READY; then
     wait_for_cell
   else
-    printf 'Expected marker: IC_CELL_UP markers=all\n'
+    printf 'Expected marker: PGFR_CELL_UP markers=all\n'
     if [ "$PRESENTATION_PROFILE" = headless ]; then
       printf 'Expected marker: Isaac Sim Full Streaming App is loaded.\n'
     fi

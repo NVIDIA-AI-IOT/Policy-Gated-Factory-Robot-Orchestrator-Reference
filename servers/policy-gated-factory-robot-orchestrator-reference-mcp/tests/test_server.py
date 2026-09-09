@@ -10,7 +10,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
 
-from ic_mcp import server
+from pgfr_mcp import server
 
 
 class _FakeSeam(BaseHTTPRequestHandler):
@@ -53,12 +53,12 @@ class _FakeSeam(BaseHTTPRequestHandler):
 def seam(monkeypatch):
     httpd = HTTPServer(("127.0.0.1", 0), _FakeSeam)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    monkeypatch.setenv("IC_FLOOR_SERVICE", f"http://127.0.0.1:{httpd.server_port}")
-    monkeypatch.delenv("IC_MCP_ROLE", raising=False)
-    monkeypatch.delenv("IC_DEFAULT_BACKEND", raising=False)
-    monkeypatch.delenv("IC_CERTIFIED_GROOT_ORDER", raising=False)
-    monkeypatch.delenv("IC_GROOT_PARALLEL_ENABLED", raising=False)
-    monkeypatch.delenv("IC_GROOT_FLEXIBLE_ORDER", raising=False)
+    monkeypatch.setenv("PGFR_FLOOR_SERVICE", f"http://127.0.0.1:{httpd.server_port}")
+    monkeypatch.delenv("PGFR_MCP_ROLE", raising=False)
+    monkeypatch.delenv("PGFR_DEFAULT_BACKEND", raising=False)
+    monkeypatch.delenv("PGFR_CERTIFIED_GROOT_ORDER", raising=False)
+    monkeypatch.delenv("PGFR_GROOT_PARALLEL_ENABLED", raising=False)
+    monkeypatch.delenv("PGFR_GROOT_FLEXIBLE_ORDER", raising=False)
     _FakeSeam.calls.clear()
     _FakeSeam.roles.clear()
     _FakeSeam.floor_state_response = None
@@ -152,7 +152,7 @@ def test_dispatch_haul_payload(seam):
 
 
 def test_certified_groot_sequence_is_green_first_and_interleaved(monkeypatch):
-    monkeypatch.delenv("IC_GROOT_PARALLEL_ENABLED", raising=False)
+    monkeypatch.delenv("PGFR_GROOT_PARALLEL_ENABLED", raising=False)
     plan = json.loads(server.certified_groot_sequence())
     assert plan["execution_mode"] == "serial_fallback"
     assert [
@@ -170,9 +170,9 @@ def test_certified_groot_sequence_is_green_first_and_interleaved(monkeypatch):
 
 
 def test_certified_groot_sequence_uses_atomic_pairs_when_enabled(monkeypatch):
-    monkeypatch.setenv("IC_CERTIFIED_GROOT_ORDER", "1")
-    monkeypatch.setenv("IC_GROOT_PARALLEL_ENABLED", "1")
-    monkeypatch.setenv("IC_GROOT_FLEXIBLE_ORDER", "1")
+    monkeypatch.setenv("PGFR_CERTIFIED_GROOT_ORDER", "1")
+    monkeypatch.setenv("PGFR_GROOT_PARALLEL_ENABLED", "1")
+    monkeypatch.setenv("PGFR_GROOT_FLEXIBLE_ORDER", "1")
     plan = json.loads(server.certified_groot_sequence())
     assert plan["execution_mode"] == "concurrent_mixed_pairs"
     assert plan["active_capabilities"] == {
@@ -202,9 +202,9 @@ def test_certified_groot_sequence_uses_atomic_pairs_when_enabled(monkeypatch):
 def test_parallel_plan_reports_mixed_color_disabled_without_flexible_flag(
     monkeypatch,
 ):
-    monkeypatch.setenv("IC_CERTIFIED_GROOT_ORDER", "1")
-    monkeypatch.setenv("IC_GROOT_PARALLEL_ENABLED", "1")
-    monkeypatch.delenv("IC_GROOT_FLEXIBLE_ORDER", raising=False)
+    monkeypatch.setenv("PGFR_CERTIFIED_GROOT_ORDER", "1")
+    monkeypatch.setenv("PGFR_GROOT_PARALLEL_ENABLED", "1")
+    monkeypatch.delenv("PGFR_GROOT_FLEXIBLE_ORDER", raising=False)
     plan = json.loads(server.certified_groot_sequence())
     assert plan["execution_mode"] == "serial_fallback"
     assert "transactions" not in plan
@@ -218,9 +218,9 @@ def test_parallel_plan_reports_mixed_color_disabled_without_flexible_flag(
 
 
 def test_parallel_schema_rejection_does_not_open_a_proof_gate(seam, monkeypatch):
-    monkeypatch.setenv("IC_CERTIFIED_GROOT_ORDER", "1")
-    monkeypatch.setenv("IC_GROOT_PARALLEL_ENABLED", "1")
-    monkeypatch.setenv("IC_GROOT_FLEXIBLE_ORDER", "1")
+    monkeypatch.setenv("PGFR_CERTIFIED_GROOT_ORDER", "1")
+    monkeypatch.setenv("PGFR_GROOT_PARALLEL_ENABLED", "1")
+    monkeypatch.setenv("PGFR_GROOT_FLEXIBLE_ORDER", "1")
     def fake_post(route, *_args, **_kwargs):
         if route == "/v1/floor-state":
             return json.dumps({"tote": {}, "tote_r": {}})
@@ -259,8 +259,8 @@ def test_verify_route(seam):
 
 
 def _enable_certified(monkeypatch) -> None:
-    monkeypatch.setenv("IC_DEFAULT_BACKEND", "groot")
-    monkeypatch.setenv("IC_CERTIFIED_GROOT_ORDER", "1")
+    monkeypatch.setenv("PGFR_DEFAULT_BACKEND", "groot")
+    monkeypatch.setenv("PGFR_CERTIFIED_GROOT_ORDER", "1")
     _FakeSeam.floor_state_response = {"tote": {}, "tote_r": {}}
 
 
@@ -340,8 +340,8 @@ def test_parallel_dispatch_batches_both_arms_and_requires_two_proofs(
     seam, monkeypatch
 ):
     _enable_certified(monkeypatch)
-    monkeypatch.setenv("IC_GROOT_PARALLEL_ENABLED", "1")
-    monkeypatch.setenv("IC_GROOT_FLEXIBLE_ORDER", "1")
+    monkeypatch.setenv("PGFR_GROOT_PARALLEL_ENABLED", "1")
+    monkeypatch.setenv("PGFR_GROOT_FLEXIBLE_ORDER", "1")
     _FakeSeam.dispatch_response = {
         "dispatched": True,
         "verified": True,
@@ -405,8 +405,8 @@ def test_certified_mixed_order_rejects_wrong_partial_and_serialized_pairs(
     seam, monkeypatch
 ):
     _enable_certified(monkeypatch)
-    monkeypatch.setenv("IC_GROOT_PARALLEL_ENABLED", "1")
-    monkeypatch.setenv("IC_GROOT_FLEXIBLE_ORDER", "1")
+    monkeypatch.setenv("PGFR_GROOT_PARALLEL_ENABLED", "1")
+    monkeypatch.setenv("PGFR_GROOT_FLEXIBLE_ORDER", "1")
 
     wrong = json.loads(server.dispatch_parallel("green", "red"))
     assert wrong["status"] == "refused"
@@ -450,8 +450,8 @@ def test_certified_mixed_order_blocks_haul_until_all_pairs_complete(
     seam, monkeypatch
 ):
     _enable_certified(monkeypatch)
-    monkeypatch.setenv("IC_GROOT_PARALLEL_ENABLED", "1")
-    monkeypatch.setenv("IC_GROOT_FLEXIBLE_ORDER", "1")
+    monkeypatch.setenv("PGFR_GROOT_PARALLEL_ENABLED", "1")
+    monkeypatch.setenv("PGFR_GROOT_FLEXIBLE_ORDER", "1")
 
     outcome = json.loads(server.dispatch_task(
         action="pick_and_place",
@@ -467,14 +467,14 @@ def test_certified_mixed_order_blocks_haul_until_all_pairs_complete(
 def test_parallel_requires_certified_order_even_with_both_capability_flags(
     seam, monkeypatch
 ):
-    monkeypatch.delenv("IC_CERTIFIED_GROOT_ORDER", raising=False)
-    monkeypatch.setenv("IC_GROOT_PARALLEL_ENABLED", "1")
-    monkeypatch.setenv("IC_GROOT_FLEXIBLE_ORDER", "1")
+    monkeypatch.delenv("PGFR_CERTIFIED_GROOT_ORDER", raising=False)
+    monkeypatch.setenv("PGFR_GROOT_PARALLEL_ENABLED", "1")
+    monkeypatch.setenv("PGFR_GROOT_FLEXIBLE_ORDER", "1")
 
     outcome = json.loads(server.dispatch_parallel("blue", "green"))
 
     assert outcome["status"] == "refused"
-    assert "IC_CERTIFIED_GROOT_ORDER=1" in outcome["reason"]
+    assert "PGFR_CERTIFIED_GROOT_ORDER=1" in outcome["reason"]
     assert _FakeSeam.calls == []
 
 
@@ -510,13 +510,13 @@ def test_certified_failed_action_retry_is_bounded(seam, monkeypatch):
 
 
 def test_unreachable_seam_returns_error_json(monkeypatch):
-    monkeypatch.setenv("IC_FLOOR_SERVICE", "http://127.0.0.1:1")
+    monkeypatch.setenv("PGFR_FLOOR_SERVICE", "http://127.0.0.1:1")
     out = json.loads(server.floor_state())
     assert "unreachable" in out["error"]
 
 
 def test_dispatch_forwards_device_specific_args(seam, monkeypatch):
-    monkeypatch.delenv("IC_CERTIFIED_GROOT_ORDER", raising=False)
+    monkeypatch.delenv("PGFR_CERTIFIED_GROOT_ORDER", raising=False)
     _FakeSeam.dispatch_response = {"dispatched": True, "verified": True}
     outcome = json.loads(server.dispatch_task(
         action="weld_seam",

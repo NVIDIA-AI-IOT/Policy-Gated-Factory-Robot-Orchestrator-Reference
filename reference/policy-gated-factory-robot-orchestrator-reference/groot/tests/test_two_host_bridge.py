@@ -24,7 +24,7 @@ UNIT_PATH = (
     / "ops"
     / "systemd"
     / "simulation-host"
-    / "ic-groot-two-host-bridge.service"
+    / "pgfr-groot-two-host-bridge.service"
 )
 
 SPEC = importlib.util.spec_from_file_location("groot_two_host_bridge", BRIDGE_PATH)
@@ -40,19 +40,19 @@ class TwoHostBridgeTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         self.environment = {
-            "IC_GROOT_THOR_SSH": "jetson@thor.example",
-            "IC_GROOT_REMOTE_CHECKPOINT": "/models/order744-cont24",
-            "IC_GROOT_REMOTE_STATE_ROOT": "/home/jetson/.local/share/ic-spine/groot",
-            "IC_GROOT_LOCAL_STATE_ROOT": str(self.root),
-            "IC_GROOT_REMOTE_LEFT_POLICY_PORT": "5592",
-            "IC_GROOT_REMOTE_RIGHT_POLICY_PORT": "5593",
-            "IC_GROOT_REMOTE_LEFT_RELAY_PORT": "5641",
-            "IC_GROOT_REMOTE_RIGHT_RELAY_PORT": "5642",
-            "IC_GROOT_LOCAL_LEFT_POLICY_PORT": "5792",
-            "IC_GROOT_LOCAL_RIGHT_POLICY_PORT": "5793",
-            "IC_GROOT_LOCAL_LEFT_RELAY_PORT": "5741",
-            "IC_GROOT_LOCAL_RIGHT_RELAY_PORT": "5742",
-            "IC_GROOT_BRIDGE_POLL_SECONDS": "5",
+            "PGFR_GROOT_THOR_SSH": "jetson@thor.example",
+            "PGFR_GROOT_REMOTE_CHECKPOINT": "/models/order744-cont24",
+            "PGFR_GROOT_REMOTE_STATE_ROOT": "/home/jetson/.local/share/pgfr-spine/groot",
+            "PGFR_GROOT_LOCAL_STATE_ROOT": str(self.root),
+            "PGFR_GROOT_REMOTE_LEFT_POLICY_PORT": "5592",
+            "PGFR_GROOT_REMOTE_RIGHT_POLICY_PORT": "5593",
+            "PGFR_GROOT_REMOTE_LEFT_RELAY_PORT": "5641",
+            "PGFR_GROOT_REMOTE_RIGHT_RELAY_PORT": "5642",
+            "PGFR_GROOT_LOCAL_LEFT_POLICY_PORT": "5792",
+            "PGFR_GROOT_LOCAL_RIGHT_POLICY_PORT": "5793",
+            "PGFR_GROOT_LOCAL_LEFT_RELAY_PORT": "5741",
+            "PGFR_GROOT_LOCAL_RIGHT_RELAY_PORT": "5742",
+            "PGFR_GROOT_BRIDGE_POLL_SECONDS": "5",
         }
         self.config = bridge.load_config(self.environment)
 
@@ -166,7 +166,7 @@ class TwoHostBridgeTests(unittest.TestCase):
 
     def test_config_rejects_local_port_collision(self) -> None:
         environment = dict(self.environment)
-        environment["IC_GROOT_LOCAL_RIGHT_POLICY_PORT"] = "5792"
+        environment["PGFR_GROOT_LOCAL_RIGHT_POLICY_PORT"] = "5792"
         with self.assertRaisesRegex(bridge.BridgeError, "local.*distinct"):
             bridge.load_config(environment)
 
@@ -195,7 +195,7 @@ class TwoHostBridgeTests(unittest.TestCase):
             "ProtectSystem=strict",
             "ProtectHome=read-only",
             "RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6",
-            "ReadWritePaths=%h/.local/share/ic-spine/groot/remote-thor-v36",
+            "ReadWritePaths=%h/.local/share/pgfr-spine/groot/remote-thor-v36",
         ):
             self.assertIn(contract, unit)
         for unsupported_user_capability_contract in (
@@ -228,9 +228,9 @@ class TwoHostBridgeTests(unittest.TestCase):
         self.assertEqual(installer.count('install_missing "$STAGE/'), 3)
         for required in (
             "verify-groot-models.sh",
-            "ic-groot-policy@.service",
-            "ic-groot-relay@.service",
-            "ic-groot-shared-stack.target",
+            "pgfr-groot-policy@.service",
+            "pgfr-groot-relay@.service",
+            "pgfr-groot-shared-stack.target",
             "shared-left.env",
             "shared-right.env",
             "SHARED_PORTS=(5592 5593 5641 5642)",
@@ -245,12 +245,12 @@ class TwoHostBridgeTests(unittest.TestCase):
         config = home / ".config"
         systemd = config / "systemd" / "user"
         systemd.mkdir(parents=True)
-        policy_unit = systemd / "ic-groot-policy@.service"
-        relay_unit = systemd / "ic-groot-relay@.service"
+        policy_unit = systemd / "pgfr-groot-policy@.service"
+        relay_unit = systemd / "pgfr-groot-relay@.service"
         policy_source = (
             "[Service]\n"
             f"WorkingDirectory={home}/groot_shadow/Isaac-GR00T\n"
-            f"EnvironmentFile={home}/.config/ic-spine/groot/%i.env\n"
+            f"EnvironmentFile={home}/.config/pgfr-spine/groot/%i.env\n"
             f"ExecStart={home}/groot_shadow/Isaac-GR00T/.venv/bin/python "
             "gr00t/eval/run_gr00t_server.py --host 127.0.0.1 "
             "--port ${POLICY_PORT} --model-path ${MODEL_PATH}\n"
@@ -259,9 +259,9 @@ class TwoHostBridgeTests(unittest.TestCase):
         relay_source = (
             "[Service]\n"
             f"WorkingDirectory={home}/groot_shadow/Isaac-GR00T\n"
-            f"EnvironmentFile={home}/.config/ic-spine/groot/%i.env\n"
-            "Environment=IC_RELAY_HOST=127.0.0.1\n"
-            "Environment=IC_POLICY_HOST=127.0.0.1\n"
+            f"EnvironmentFile={home}/.config/pgfr-spine/groot/%i.env\n"
+            "Environment=PGFR_RELAY_HOST=127.0.0.1\n"
+            "Environment=PGFR_POLICY_HOST=127.0.0.1\n"
             f"ExecStart={home}/groot_shadow/Isaac-GR00T/.venv/bin/python "
             "${RELAY_SCRIPT}\n"
             "Restart=on-failure\n"
@@ -300,6 +300,7 @@ class TwoHostBridgeTests(unittest.TestCase):
             "#!/bin/sh\n"
             "printf '%s\\n' \"$*\" >>\"$FAKE_SYSTEMCTL_LOG\"\n"
             "case \"$*\" in\n"
+            "  *list-units*) exit 0 ;;\n"
             "  *is-active*) exit 3 ;;\n"
             "  *daemon-reload*) exit 0 ;;\n"
             "  *) exit 2 ;;\n"
@@ -340,18 +341,18 @@ class TwoHostBridgeTests(unittest.TestCase):
         self.assertEqual(
             sorted(path.name for path in systemd.iterdir()),
             [
-                "ic-groot-policy@.service",
-                "ic-groot-relay@.service",
-                "ic-groot-shared-stack.target",
+                "pgfr-groot-policy@.service",
+                "pgfr-groot-relay@.service",
+                "pgfr-groot-shared-stack.target",
             ],
         )
-        groot_env = config / "ic-spine" / "groot"
+        groot_env = config / "pgfr-spine" / "groot"
         self.assertEqual(
             sorted(path.name for path in groot_env.iterdir()),
             ["shared-left.env", "shared-right.env"],
         )
         self.assertEqual(
-            (systemd / "ic-groot-shared-stack.target").stat().st_mode & 0o777,
+            (systemd / "pgfr-groot-shared-stack.target").stat().st_mode & 0o777,
             0o644,
         )
         for name in ("shared-left.env", "shared-right.env"):
@@ -360,6 +361,7 @@ class TwoHostBridgeTests(unittest.TestCase):
         self.assertTrue(calls)
         self.assertTrue(all(" start " not in f" {call} " for call in calls))
         self.assertTrue(all(" enable " not in f" {call} " for call in calls))
+        self.assertEqual(sum("list-units" in call for call in calls), 2)
         self.assertEqual(calls.count("--user daemon-reload"), 2)
         self.assertEqual(
             port_probe_log.read_text(encoding="utf-8").splitlines(),

@@ -1,12 +1,12 @@
 ---
 name: policy-gated-factory-robot-orchestrator-reference-orchestrator
-description: "Run a verified factory-floor mission from a natural-language goal — IC perceives the floor, dispatches across robots/AGVs/conveyors, verifies every step, retries on failure, and escalates if it can't recover."
+description: "Run a verified factory-floor mission from a natural-language goal — PGFR perceives the floor, dispatches across robots/AGVs/conveyors, verifies every step, retries on failure, and escalates if it can't recover."
 metadata: { "openclaw": { "emoji": "🦾" } }
 ---
 
 # Policy-Gated Factory Robot Orchestrator Reference Orchestrator
 
-This is how I (IC) run a **factory-floor goal** — sort a table, move objects, check a station. I do not
+This is how I (PGFR) run a **factory-floor goal** — sort a table, move objects, check a station. I do not
 just describe a plan; I drive the floor by composing my floor tools and verifying every step.
 
 ## When to use this

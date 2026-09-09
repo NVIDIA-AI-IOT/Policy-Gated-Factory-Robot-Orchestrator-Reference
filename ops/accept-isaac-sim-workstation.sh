@@ -29,7 +29,7 @@ REQUIRED_PRIVACY_ARGUMENTS=(
   --/crashreporter/enabled=false
 )
 
-CONTAINER="${IC_ISAAC_CONTAINER:-ic-isaac-sim-baseline}"
+CONTAINER="${PGFR_ISAAC_CONTAINER:-pgfr-isaac-sim-baseline}"
 ROS_DOMAIN_OVERRIDE=""
 READY_TIMEOUT=900
 DISCOVERY_TIMEOUT=30
@@ -38,7 +38,7 @@ RESULT_TIMEOUT=180
 LOG_TIMEOUT=30
 
 fail() {
-  printf 'IC_ISAAC_WORKSTATION_ACCEPTANCE_FAIL: %s\n' "$*" >&2
+  printf 'PGFR_ISAAC_WORKSTATION_ACCEPTANCE_FAIL: %s\n' "$*" >&2
   exit 2
 }
 
@@ -51,9 +51,9 @@ Isaac Sim baseline. The cycle resets the scene, validates all 15 application
 streams, moves the red cube with franka_left, and performs a final reset.
 
 Options:
-  --container NAME       Target container (default: ic-isaac-sim-baseline).
+  --container NAME       Target container (default: pgfr-isaac-sim-baseline).
   --ros-domain-id ID     Require this value to match the target ROS_DOMAIN_ID.
-  --ready-timeout SEC    Wait for IC_CELL_UP (default: 900).
+  --ready-timeout SEC    Wait for PGFR_CELL_UP (default: 900).
   --discovery-timeout S  Wait for the one command subscriber (default: 30).
   --stream-timeout SEC   Wait for streams and observed state (default: 90).
   --result-timeout SEC   Wait for each unique goal result (default: 180).
@@ -194,22 +194,22 @@ scripts_mount_rw="$(
 [[ "$scripts_mount_source" == /* && -d "$scripts_mount_source" \
   && ! -L "$scripts_mount_source" ]] \
   || fail "$CONTAINER /scripts bind source is not a local regular directory"
-for payload in ic_boot.py our_factory.usda; do
+for payload in pgfr_boot.py our_factory.usda; do
   [[ -f "$SOURCE_ROOT/$payload" && ! -L "$SOURCE_ROOT/$payload" ]] \
-    || fail "checkout payload is missing or unsafe: $SOURCE_ROOT/$payload"
+    || fail "checkout payload is missing or invalid: $SOURCE_ROOT/$payload"
   [[ -f "$scripts_mount_source/$payload" \
     && ! -L "$scripts_mount_source/$payload" ]] \
-    || fail "mounted payload is missing or unsafe: $scripts_mount_source/$payload"
+    || fail "mounted payload is missing or invalid: $scripts_mount_source/$payload"
   cmp -s "$SOURCE_ROOT/$payload" "$scripts_mount_source/$payload" \
     || fail "mounted payload differs from this checkout: $payload"
 done
-[[ -d "$SOURCE_ROOT/ic_cell" && ! -L "$SOURCE_ROOT/ic_cell" \
-  && -d "$scripts_mount_source/ic_cell" \
-  && ! -L "$scripts_mount_source/ic_cell" ]] \
-  || fail "mounted ic_cell tree is missing or unsafe"
+[[ -d "$SOURCE_ROOT/pgfr_cell" && ! -L "$SOURCE_ROOT/pgfr_cell" \
+  && -d "$scripts_mount_source/pgfr_cell" \
+  && ! -L "$scripts_mount_source/pgfr_cell" ]] \
+  || fail "mounted pgfr_cell tree is missing or invalid"
 diff -qr --no-dereference --exclude=__pycache__ --exclude='*.pyc' \
-  "$SOURCE_ROOT/ic_cell" "$scripts_mount_source/ic_cell" \
-  || fail "mounted ic_cell tree differs from this checkout"
+  "$SOURCE_ROOT/pgfr_cell" "$scripts_mount_source/pgfr_cell" \
+  || fail "mounted pgfr_cell tree differs from this checkout"
 
 container_arguments="$(
   docker inspect --format '{{range .Args}}{{println .}}{{end}}' "$CONTAINER"
@@ -219,11 +219,11 @@ exec_flag_count="$(
     <<<"$container_arguments"
 )"
 exec_pair_count="$(
-  awk 'previous == "--exec" && $0 == "/scripts/ic_boot.py" {count++} {previous=$0} END {print count + 0}' \
+  awk 'previous == "--exec" && $0 == "/scripts/pgfr_boot.py" {count++} {previous=$0} END {print count + 0}' \
     <<<"$container_arguments"
 )"
 [[ "$exec_flag_count" == "1" && "$exec_pair_count" == "1" ]] \
-  || fail "$CONTAINER must execute exactly --exec /scripts/ic_boot.py"
+  || fail "$CONTAINER must execute exactly --exec /scripts/pgfr_boot.py"
 for required_argument in "${REQUIRED_PRIVACY_ARGUMENTS[@]}"; do
   argument_key="${required_argument%%=*}"
   argument_key_count="$(
@@ -261,16 +261,16 @@ for required_environment in \
     || fail "$CONTAINER must define exactly $required_environment"
 done
 container_stage="$(
-  awk -F= '$1 == "IC_STAGE" {print substr($0, index($0, "=") + 1); exit}' \
+  awk -F= '$1 == "PGFR_STAGE" {print substr($0, index($0, "=") + 1); exit}' \
     <<<"$container_environment"
 )"
 container_stage_count="$(
-  awk -F= '$1 == "IC_STAGE" {count++} END {print count + 0}' \
+  awk -F= '$1 == "PGFR_STAGE" {count++} END {print count + 0}' \
     <<<"$container_environment"
 )"
 [[ "$container_stage_count" == "1" \
   && "$container_stage" == "/scripts/our_factory.usda" ]] \
-  || fail "$CONTAINER must define exactly IC_STAGE=/scripts/our_factory.usda"
+  || fail "$CONTAINER must define exactly PGFR_STAGE=/scripts/our_factory.usda"
 container_domain="$(
   awk -F= '$1 == "ROS_DOMAIN_ID" {print substr($0, index($0, "=") + 1); exit}' \
     <<<"$container_environment"
@@ -296,7 +296,7 @@ ROS_DOMAIN_ID_VALUE="$container_domain"
 docker image inspect "$ROS_IMAGE" >/dev/null 2>&1 \
   || fail "pinned ROS sidecar is absent; pull exactly: docker pull --platform linux/amd64 $ROS_IMAGE"
 
-critical_pattern='IC_CELL_BOOT_ERR|IC_STEP_ERR|Traceback \(most recent call last\)|CUDA[^[:cntrl:]]*(error|fail)|out of memory|(^|[^[:alnum:]_])OOM([^[:alnum:]_]|$)|segmentation fault|fatal python error'
+critical_pattern='PGFR_CELL_BOOT_ERR|PGFR_STEP_ERR|Traceback \(most recent call last\)|CUDA[^[:cntrl:]]*(error|fail)|out of memory|(^|[^[:alnum:]_])OOM([^[:alnum:]_]|$)|segmentation fault|fatal python error'
 
 wait_for_ready() {
   local deadline logs now
@@ -311,16 +311,16 @@ wait_for_ready() {
     # Avoid an early-exit grep pipeline here. Under pipefail, a large log can
     # make the producer receive SIGPIPE after grep -q finds the marker, turning
     # a successful readiness match into a false negative.
-    if grep -Fq 'IC_CELL_UP markers=all' <<<"$logs"; then
-      printf 'IC_ISAAC_ACCEPTANCE_READY container=%s marker=IC_CELL_UP domain=%s\n' \
+    if grep -Fq 'PGFR_CELL_UP markers=all' <<<"$logs"; then
+      printf 'PGFR_ISAAC_ACCEPTANCE_READY container=%s marker=PGFR_CELL_UP domain=%s\n' \
         "$CONTAINER" "$ROS_DOMAIN_ID_VALUE"
       return
     fi
     running="$(docker inspect --format '{{.State.Running}}' "$CONTAINER" 2>/dev/null)" \
       || fail "container disappeared while waiting: $CONTAINER"
-    [[ "$running" == "true" ]] || fail "container stopped before IC_CELL_UP: $CONTAINER"
+    [[ "$running" == "true" ]] || fail "container stopped before PGFR_CELL_UP: $CONTAINER"
     now=$SECONDS
-    ((now < deadline)) || fail "timed out waiting for IC_CELL_UP from $CONTAINER"
+    ((now < deadline)) || fail "timed out waiting for PGFR_CELL_UP from $CONTAINER"
     sleep 2
   done
 }
@@ -357,13 +357,13 @@ wait_for_unique_command_logs() {
     for goal in "${expected_goals[@]}"; do
       command_count="$(
         awk -v goal="$goal" \
-          'index($0, "IC_CMD ") && index($0, goal) {count++} END {print count + 0}' \
+          'index($0, "PGFR_CMD ") && index($0, goal) {count++} END {print count + 0}' \
           "$current_log"
       )"
       ((command_count <= 1)) \
         || fail "goal $goal was observed $command_count times in current-run logs"
       if awk -v goal="$goal" \
-        'index($0, "IC_DUP ") && index($0, goal) {found=1} END {exit !found}' \
+        'index($0, "PGFR_DUP ") && index($0, goal) {found=1} END {exit !found}' \
         "$current_log"; then
         fail "simulator rejected duplicate goal: $goal"
       fi
@@ -371,7 +371,7 @@ wait_for_unique_command_logs() {
     done
     $all_present && return
     ((SECONDS < deadline)) \
-      || fail "timed out waiting for exactly one IC_CMD record for all three goals in run $run_id"
+      || fail "timed out waiting for exactly one PGFR_CMD record for all three goals in run $run_id"
     sleep 1
   done
 }
@@ -408,6 +408,6 @@ fi
 # from the three already-published unique goals; never republish a command.
 wait_for_unique_command_logs
 
-printf 'IC_ISAAC_ACCEPTANCE_LOGS_OK run_id=%s commands=3 critical=0\n' "$run_id"
-printf 'IC_ISAAC_WORKSTATION_ACCEPTANCE_PASS container=%s domain=%s run_id=%s\n' \
+printf 'PGFR_ISAAC_ACCEPTANCE_LOGS_OK run_id=%s commands=3 critical=0\n' "$run_id"
+printf 'PGFR_ISAAC_WORKSTATION_ACCEPTANCE_PASS container=%s domain=%s run_id=%s\n' \
   "$CONTAINER" "$ROS_DOMAIN_ID_VALUE" "$run_id"

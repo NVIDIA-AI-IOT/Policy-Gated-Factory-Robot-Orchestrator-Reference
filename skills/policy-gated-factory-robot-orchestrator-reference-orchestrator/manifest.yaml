@@ -4,7 +4,7 @@
 name: policy-gated-factory-robot-orchestrator-reference-orchestrator
 version: 1.0.0
 description: >
-  Turn a vague floor goal ("tidy the conveyor, then shelve the tote") into safe,
+  Turn a vague floor goal ("tidy the conveyor, then shelve the tote") into a policy-constrained,
   verified floor procedure: sort cubes to matching tote compartments with the
   closer arm, haul the tote to the rack, verify every step by camera + physics.
 owner: mmallick

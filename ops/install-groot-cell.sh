@@ -20,6 +20,10 @@ LEFT_RELAY_PORT="5641"
 RIGHT_RELAY_PORT="5642"
 
 fail() { printf 'install-groot-cell: ERROR: %s\n' "$*" >&2; exit 2; }
+LEGACY_GUARD="$REPO/ops/pgfr-legacy-guard.sh"
+[ -r "$LEGACY_GUARD" ] || fail "missing migration guard: $LEGACY_GUARD"
+# shellcheck disable=SC1090
+. "$LEGACY_GUARD"
 usage() {
   cat >&2 <<EOF
 usage: $0 --mount PATH --checkpoint-path PATH \\
@@ -75,14 +79,15 @@ done
 [ -n "$LEFT_SERVICE_STATE" ] || usage
 [ -n "$RIGHT_SERVICE_STATE" ] || usage
 [ -d "$MOUNT" ] || fail "Isaac scripts mount does not exist: $MOUNT"
+pgfr_refuse_active_legacy_containers
 assert_mount_idle
 
 for source in \
   "$RUNTIME/cell/reset_two_arm.py" \
   "$RUNTIME/native_droid_work/executors/follow_groot_home_convergence_v36.py" \
   "$RUNTIME/native_droid_work/follow_groot_dual_physical_v36.py" \
-  "$RUNTIME/native_droid_work/ic_groot_certified_deployment_v36.py" \
-  "$RUNTIME/native_droid_work/ic_groot_dual_concurrent_mixed.py" \
+  "$RUNTIME/native_droid_work/pgfr_groot_certified_deployment_v36.py" \
+  "$RUNTIME/native_droid_work/pgfr_groot_dual_concurrent_mixed.py" \
   "$RENDERER" \
   "$BATCH_RELAY"; do
   [ -f "$source" ] || fail "required source is missing: $source"
@@ -102,9 +107,9 @@ python3 "$RENDERER" \
 
 for name in \
   startup.py cmd.py our_factory.usda full_scene_bootstrap.py \
-  setup_right_cell.py ic_node_v2.py ic_cams_rp.py add_tote_colors.py \
-  matte_scene.py fix_amr_haul_joint.py ic_serving_health.py \
-  ic_shape_mode.py production_contract_expected.json; do
+  setup_right_cell.py pgfr_node_v2.py pgfr_cams_rp.py add_tote_colors.py \
+  matte_scene.py fix_amr_haul_joint.py pgfr_serving_health.py \
+  pgfr_shape_mode.py production_contract_expected.json; do
   install -m 0644 "$ISAAC_DEPLOYMENT/$name" "$MOUNT/$name"
 done
 install -m 0644 "$RUNTIME/cell/reset_two_arm.py" "$MOUNT/reset_two_arm.py"
@@ -118,13 +123,13 @@ install -m 0644 \
   "$RUNTIME/native_droid_work/executors/follow_groot_home_convergence_v36.py" \
   "$MOUNT/native_droid_work/executors/follow_groot_home_convergence_v36.py"
 for name in follow_groot_dual_physical_v36.py \
-  ic_groot_certified_deployment_v36.py \
-  ic_groot_dual_concurrent_mixed.py; do
+  pgfr_groot_certified_deployment_v36.py \
+  pgfr_groot_dual_concurrent_mixed.py; do
   install -m 0644 "$RUNTIME/native_droid_work/$name" \
     "$MOUNT/native_droid_work/$name"
 done
-install -m 0644 "$RUNTIME/native_droid_work/ic_sync_capture_cell.py" \
-  "$MOUNT/native_droid_work/ic_sync_capture_cell.py"
+install -m 0644 "$RUNTIME/native_droid_work/pgfr_sync_capture_cell.py" \
+  "$MOUNT/native_droid_work/pgfr_sync_capture_cell.py"
 install -m 0644 "$BATCH_RELAY" \
   "$MOUNT/native_droid_work/native_droid_relay_batch2.py"
 
@@ -144,5 +149,5 @@ while IFS= read -r -d '' source; do
   install -D -m 0644 "$source" "$destination"
 done < <(find "$CAPTURE_CONTEXT" -type f -print0)
 
-echo "IC_GROOT_CELL_INSTALLED mount=$MOUNT runtime=order744-cont24-v36"
+echo "PGFR_GROOT_CELL_INSTALLED mount=$MOUNT runtime=order744-cont24-v36"
 echo "No simulation was started or restarted."

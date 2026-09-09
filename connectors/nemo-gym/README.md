@@ -1,12 +1,16 @@
-# nemo-gym — NeMo Gym integration for IC Spine
+# NVIDIA NeMo Gym integration
 
-Makes the Policy-Gated Factory Robot Orchestrator Reference cell a [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym)
-environment: benchmark any model/agent against the cell with physics-verified
-scoring, and export scored rollouts for RL/SFT training (NeMo RL, VeRL).
+This integration exposes the reference cell as an
+[NVIDIA NeMo Gym](https://github.com/NVIDIA-NeMo/Gym) environment. It supports
+model and agent evaluation against PGFR Spine, physics-verified scoring, and
+rollout collection for downstream training workflows.
 
-- `resources_servers/ic_cell/` — the environment server (tools → seam,
-  reset → operator dispatch, reward → mission-journal ground truth).
-  See its README for the full run recipe.
+| Path | Description |
+|---|---|
+| [`resources_servers/pgfr_cell/`](resources_servers/pgfr_cell/README.md) | NeMo Gym resource server, configuration, tests, and sample rollout data |
 
-Point NeMo Gym at this directory with `--search-dir` (Gym discovers servers by
-the `resources_servers/<name>/configs/<name>.yaml` path convention).
+NeMo Gym discovers the integration through
+`resources_servers/pgfr_cell/configs/pgfr_cell.yaml`. Pass this directory through
+Gym's `--search-dir` option. See the
+[resource-server guide](resources_servers/pgfr_cell/README.md) for the exact run
+commands and scoring boundary.

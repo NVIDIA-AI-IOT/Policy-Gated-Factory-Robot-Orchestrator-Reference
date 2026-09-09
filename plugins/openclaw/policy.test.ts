@@ -19,7 +19,7 @@ describe("evaluateDispatchPolicy", () => {
     target_id: "rack_1",
   };
 
-  it("allows a well-formed move to a safe destination", () => {
+  it("allows a well-formed move to a permitted destination", () => {
     expect(evaluateDispatchPolicy(move)).toEqual({ allow: true });
   });
 
@@ -40,11 +40,11 @@ describe("evaluateDispatchPolicy", () => {
     }
   });
 
-  it("blocks moving an object onto an unsafe destination", () => {
+  it("blocks moving an object onto an unpermitted destination", () => {
     const decision = evaluateDispatchPolicy({ ...move, destination: "human" });
     expect(decision.allow).toBe(false);
     if (!decision.allow) {
-      expect(decision.reason).toMatch(/unsafe/i);
+      expect(decision.reason).toMatch(/prohibited/i);
     }
   });
 
@@ -61,11 +61,11 @@ describe("evaluateDispatchPolicy", () => {
     }
   });
 
-  it("blocks a pick_and_place onto an unsafe target", () => {
+  it("blocks a pick_and_place onto an prohibited target", () => {
     const decision = evaluateDispatchPolicy({ ...haul, target_id: "human" });
     expect(decision.allow).toBe(false);
     if (!decision.allow) {
-      expect(decision.reason).toMatch(/unsafe/i);
+      expect(decision.reason).toMatch(/prohibited/i);
     }
   });
 });

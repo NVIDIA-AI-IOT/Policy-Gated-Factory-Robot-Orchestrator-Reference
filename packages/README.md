@@ -1,11 +1,12 @@
-# Packages
+# Python packages
 
-Policy-Gated Factory Robot Orchestrator Reference ships two reusable Python packages:
+The repository includes two reusable Python packages:
 
-- [`conformance-kit/`](conformance-kit/) checks an IC Spine floor endpoint,
-  MCP server, or skill manifest against the public contracts.
-- [`connector-sdk/`](connector-sdk/) defines the small interface and compliance
-  check used by optional enterprise-system connectors.
+| Package | Python | Purpose |
+|---|---:|---|
+| [`pgfr-conformance`](conformance-kit/README.md) | 3.10+ | Runs black-box checks against a PGFR Spine HTTP endpoint, MCP server, or skill manifest. |
+| [`pgfr-connector-sdk`](connector-sdk/README.md) | 3.10+ | Defines the interface and structural compliance check for external-system connectors. |
 
-The main IC Spine and IC Console applications remain top-level components, not
-packages hidden in this directory.
+PGFR Spine and PGFR Console are applications and remain in their top-level
+directories. Each package is installed independently; this repository does not
+publish a combined Python distribution.

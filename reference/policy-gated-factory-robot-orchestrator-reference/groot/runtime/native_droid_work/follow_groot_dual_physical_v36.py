@@ -15,12 +15,12 @@ _V36_EXECUTOR_PATH = (
     "follow_groot_home_convergence_v36.py"
 )
 _V36_REVISION = "home_convergence_v36_direct"
-_V36_CONTEXTS_KEY = "_IC_DUAL_GROOT_V36H_CONTEXTS"
-_V36_STARTS_KEY = "_IC_DUAL_GROOT_V36H_STARTS"
-_V36_RUNS_KEY = "_IC_DUAL_GROOT_V36H_RUNS"
+_V36_CONTEXTS_KEY = "_PGFR_DUAL_GROOT_V36H_CONTEXTS"
+_V36_STARTS_KEY = "_PGFR_DUAL_GROOT_V36H_STARTS"
+_V36_RUNS_KEY = "_PGFR_DUAL_GROOT_V36H_RUNS"
 
 
-def _ic_groot_install_task_allowed(task):
+def _pgfr_groot_install_task_allowed(task):
     """Allow installation only while idle or inside the owned reset transaction."""
     return task is None or (
         isinstance(task, dict) and task.get("action") == "reset_scene"
@@ -29,7 +29,7 @@ def _ic_groot_install_task_allowed(task):
 
 try:
     _dual_globals = globals()
-    if not _ic_groot_install_task_allowed(S.get("task")):
+    if not _pgfr_groot_install_task_allowed(S.get("task")):
         raise RuntimeError("refusing dual GR00T install during an active task")
 
     if _dual_globals.get(_V36_CONTEXTS_KEY) is None:
@@ -46,7 +46,7 @@ try:
         if (
             not callable(_left_start)
             or not callable(_left_run_move)
-            or _dual_globals.get("_IC_GROOT_EXECUTION_REVISION")
+            or _dual_globals.get("_PGFR_GROOT_EXECUTION_REVISION")
             != _V36_REVISION
         ):
             raise RuntimeError("left V36 executor did not install")
@@ -61,13 +61,13 @@ try:
 
                 return _callback
 
-            _dual_globals["_IC_DUAL_RIGHT_WRIST_SUB"] = node.create_subscription(
+            _dual_globals["_PGFR_DUAL_RIGHT_WRIST_SUB"] = node.create_subscription(
                 Image,
                 "/wrist_right_cam/image_raw",
                 _right_image_callback("wrist"),
                 10,
             )
-            _dual_globals["_IC_DUAL_RIGHT_OUTSIDE_SUB"] = node.create_subscription(
+            _dual_globals["_PGFR_DUAL_RIGHT_OUTSIDE_SUB"] = node.create_subscription(
                 Image,
                 "/outside_right_cam/image_raw",
                 _right_image_callback("outside"),
@@ -77,7 +77,7 @@ try:
         _right_context = dict(_dual_globals)
         _right_context.update(
             {
-                "__name__": "_ic_groot_right_physical_v36",
+                "__name__": "_pgfr_groot_right_physical_v36",
                 "__file__": _V36_EXECUTOR_PATH,
                 "frL": frR,
                 "fhand": fhandR,
@@ -102,7 +102,7 @@ try:
         if (
             not callable(_right_context.get("start"))
             or not callable(_right_context.get("run_move"))
-            or _right_context.get("_IC_GROOT_EXECUTION_REVISION")
+            or _right_context.get("_PGFR_GROOT_EXECUTION_REVISION")
             != _V36_REVISION
         ):
             raise RuntimeError("right V36 executor did not install")
@@ -146,7 +146,7 @@ try:
     else:
         _contexts = _dual_globals[_V36_CONTEXTS_KEY]
         _revisions = {
-            _context.get("_IC_GROOT_EXECUTION_REVISION")
+            _context.get("_PGFR_GROOT_EXECUTION_REVISION")
             for _context in _contexts.values()
         }
         if _revisions != {_V36_REVISION}:

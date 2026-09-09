@@ -16,13 +16,20 @@ Optional port and path flags are documented by --help.
 EOF
 }
 
-IC_REPO=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
-IC_USER_HOME=${HOME:?HOME is required}
-UNIT_NAME=ic-groot-two-host-bridge.service
+PGFR_REPO=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
+PGFR_USER_HOME=${HOME:?HOME is required}
+UNIT_NAME=pgfr-groot-two-host-bridge.service
+LEGACY_GUARD="$PGFR_REPO/ops/pgfr-legacy-guard.sh"
+if [[ ! -r $LEGACY_GUARD ]]; then
+  echo "install-groot-two-host-bridge: ERROR: missing migration guard: $LEGACY_GUARD" >&2
+  exit 2
+fi
+# shellcheck disable=SC1090
+. "$LEGACY_GUARD"
 THOR_SSH=
 REMOTE_CHECKPOINT=
 REMOTE_STATE_ROOT=
-LOCAL_STATE_ROOT="$IC_USER_HOME/.local/share/ic-spine/groot/remote-thor-v36"
+LOCAL_STATE_ROOT="$PGFR_USER_HOME/.local/share/pgfr-spine/groot/remote-thor-v36"
 REMOTE_LEFT_POLICY_PORT=5592
 REMOTE_RIGHT_POLICY_PORT=5593
 REMOTE_LEFT_RELAY_PORT=5641
@@ -90,14 +97,15 @@ if [[ $(printf '%s\n' "${PORT_VALUES[@]:4:4}" | sort -u | wc -l) -ne 4 ]]; then
   exit 2
 fi
 
+pgfr_refuse_active_legacy_units
 if systemctl --user is-active --quiet "$UNIT_NAME"; then
   echo "install-groot-two-host-bridge: ERROR: $UNIT_NAME is active; leave it running or explicitly stop it before installation" >&2
   exit 1
 fi
 
 for required in \
-  "$IC_REPO/ops/groot-two-host-bridge.py" \
-  "$IC_REPO/ops/systemd/simulation-host/$UNIT_NAME"; do
+  "$PGFR_REPO/ops/groot-two-host-bridge.py" \
+  "$PGFR_REPO/ops/systemd/simulation-host/$UNIT_NAME"; do
   if [[ ! -f $required || -L $required ]]; then
     echo "install-groot-two-host-bridge: ERROR: missing regular source file: $required" >&2
     exit 1
@@ -105,9 +113,9 @@ for required in \
 done
 
 install -d -m 0755 \
-  "$IC_USER_HOME/.config/ic-spine" \
-  "$IC_USER_HOME/.config/systemd/user" \
-  "$IC_USER_HOME/.local/lib/policy-gated-factory-robot-orchestrator-reference" \
+  "$PGFR_USER_HOME/.config/pgfr-spine" \
+  "$PGFR_USER_HOME/.config/systemd/user" \
+  "$PGFR_USER_HOME/.local/lib/policy-gated-factory-robot-orchestrator-reference" \
   "$LOCAL_STATE_ROOT"
 if [[ -L $LOCAL_STATE_ROOT || ! -O $LOCAL_STATE_ROOT ]]; then
   echo "install-groot-two-host-bridge: ERROR: local state root must be a user-owned real directory" >&2
@@ -140,33 +148,33 @@ finally:
         listener.close()
 PY
 
-CONFIG_PATH="$IC_USER_HOME/.config/ic-spine/groot-two-host-bridge.env"
+CONFIG_PATH="$PGFR_USER_HOME/.config/pgfr-spine/groot-two-host-bridge.env"
 TEMP_CONFIG=$(mktemp)
 trap 'rm -f -- "$TEMP_CONFIG"' EXIT
 cat >"$TEMP_CONFIG" <<EOF
-IC_GROOT_THOR_SSH=$THOR_SSH
-IC_GROOT_REMOTE_CHECKPOINT=$REMOTE_CHECKPOINT
-IC_GROOT_REMOTE_STATE_ROOT=$REMOTE_STATE_ROOT
-IC_GROOT_LOCAL_STATE_ROOT=$LOCAL_STATE_ROOT
-IC_GROOT_REMOTE_LEFT_POLICY_PORT=$REMOTE_LEFT_POLICY_PORT
-IC_GROOT_REMOTE_RIGHT_POLICY_PORT=$REMOTE_RIGHT_POLICY_PORT
-IC_GROOT_REMOTE_LEFT_RELAY_PORT=$REMOTE_LEFT_RELAY_PORT
-IC_GROOT_REMOTE_RIGHT_RELAY_PORT=$REMOTE_RIGHT_RELAY_PORT
-IC_GROOT_LOCAL_LEFT_POLICY_PORT=$LOCAL_LEFT_POLICY_PORT
-IC_GROOT_LOCAL_RIGHT_POLICY_PORT=$LOCAL_RIGHT_POLICY_PORT
-IC_GROOT_LOCAL_LEFT_RELAY_PORT=$LOCAL_LEFT_RELAY_PORT
-IC_GROOT_LOCAL_RIGHT_RELAY_PORT=$LOCAL_RIGHT_RELAY_PORT
-IC_GROOT_BRIDGE_POLL_SECONDS=$POLL_SECONDS
+PGFR_GROOT_THOR_SSH=$THOR_SSH
+PGFR_GROOT_REMOTE_CHECKPOINT=$REMOTE_CHECKPOINT
+PGFR_GROOT_REMOTE_STATE_ROOT=$REMOTE_STATE_ROOT
+PGFR_GROOT_LOCAL_STATE_ROOT=$LOCAL_STATE_ROOT
+PGFR_GROOT_REMOTE_LEFT_POLICY_PORT=$REMOTE_LEFT_POLICY_PORT
+PGFR_GROOT_REMOTE_RIGHT_POLICY_PORT=$REMOTE_RIGHT_POLICY_PORT
+PGFR_GROOT_REMOTE_LEFT_RELAY_PORT=$REMOTE_LEFT_RELAY_PORT
+PGFR_GROOT_REMOTE_RIGHT_RELAY_PORT=$REMOTE_RIGHT_RELAY_PORT
+PGFR_GROOT_LOCAL_LEFT_POLICY_PORT=$LOCAL_LEFT_POLICY_PORT
+PGFR_GROOT_LOCAL_RIGHT_POLICY_PORT=$LOCAL_RIGHT_POLICY_PORT
+PGFR_GROOT_LOCAL_LEFT_RELAY_PORT=$LOCAL_LEFT_RELAY_PORT
+PGFR_GROOT_LOCAL_RIGHT_RELAY_PORT=$LOCAL_RIGHT_RELAY_PORT
+PGFR_GROOT_BRIDGE_POLL_SECONDS=$POLL_SECONDS
 EOF
 if [[ -e $CONFIG_PATH ]] && ! cmp -s -- "$TEMP_CONFIG" "$CONFIG_PATH"; then
   echo "install-groot-two-host-bridge: ERROR: existing bridge config differs: $CONFIG_PATH" >&2
   exit 1
 fi
 
-install -m 0755 "$IC_REPO/ops/groot-two-host-bridge.py" \
-  "$IC_USER_HOME/.local/lib/policy-gated-factory-robot-orchestrator-reference/groot-two-host-bridge.py"
-install -m 0644 "$IC_REPO/ops/systemd/simulation-host/$UNIT_NAME" \
-  "$IC_USER_HOME/.config/systemd/user/$UNIT_NAME"
+install -m 0755 "$PGFR_REPO/ops/groot-two-host-bridge.py" \
+  "$PGFR_USER_HOME/.local/lib/policy-gated-factory-robot-orchestrator-reference/groot-two-host-bridge.py"
+install -m 0644 "$PGFR_REPO/ops/systemd/simulation-host/$UNIT_NAME" \
+  "$PGFR_USER_HOME/.config/systemd/user/$UNIT_NAME"
 install -m 0600 "$TEMP_CONFIG" "$CONFIG_PATH"
 systemctl --user daemon-reload
 

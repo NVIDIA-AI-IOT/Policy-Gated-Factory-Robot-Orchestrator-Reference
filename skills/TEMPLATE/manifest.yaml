@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Skill manifest — the machine-readable half of a skill (validate with:
-#   ic-conformance skill --manifest manifest.yaml)
+#   pgfr-conformance skill --manifest manifest.yaml)
 name: my-skill                     # RENAME: kebab-case, matches the directory
 version: 0.1.0
 description: >
-  REPLACE ME: one sentence — what class of goal this skill turns into safe,
+  REPLACE ME: one sentence — what class of goal this skill turns into a policy-constrained,
   verified floor procedure.
 owner: REPLACE_ME                  # team or person who maintains this skill
 

@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 # setup_right_cell.py — mirror the left workcell for franka_right (+1.8m x offset).
-# Creates (idempotent, pure USD — run BEFORE ic_node_v2 so it can bind handles):
+# Creates (idempotent, pure USD — run BEFORE pgfr_node_v2 so it can bind handles):
 #   /World/BigTote_R        second tote at the right arm's relative tote position
 #   (colored pads on it, same layout as add_tote_colors)
 #   /Workcell/Franka_Right/panda_hand/WristCam   same baked eye-in-hand matrix as left
@@ -106,7 +106,7 @@ try:
         UsdPhysics.CollisionAPI.Apply(p2)
         UsdGeom.Imageable(p2).MakeInvisible()
 
-    print("IC_RIGHT_CELL_SETUP tote_R@(5.451,-7.701) pads wristR outsideR@(%.2f,%.3f,%.3f)"
+    print("PGFR_RIGHT_CELL_SETUP tote_R@(5.451,-7.701) pads wristR outsideR@(%.2f,%.3f,%.3f)"
           % (pos[0] + 1.8, pos[1], pos[2]), flush=True)
 except Exception:
-    print("IC_RIGHT_CELL_ERR:\n" + traceback.format_exc(), flush=True)
+    print("PGFR_RIGHT_CELL_ERR:\n" + traceback.format_exc(), flush=True)

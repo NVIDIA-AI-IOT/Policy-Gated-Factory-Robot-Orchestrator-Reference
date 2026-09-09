@@ -1,29 +1,54 @@
-# Connector creation workflow
+# Connector template
 
-Wrap an external system (VSS video pipelines, MES/ERP, quality DBs) so the brain
-can reach it — as context and evidence, under the same umbrella as everything else.
-Connectors never dispatch floor actions; that authority stays at the seam.
+This template implements the minimal `pgfr-connector-sdk` interface for an
+external data system. It is intended for read-mostly context and evidence. It
+does not provide a path around PGFR Spine for dispatching robot actions.
 
-## The workflow
+## Requirements
 
-1. **Copy** this directory to `connectors/<your-system>/`; rename `my_connector`
-   (pyproject + `src/` dir).
-2. **Implement** the three methods on `Connector` (`ic-connector-sdk`):
-   - `health()` — honest liveness + data freshness of the wrapped system,
-   - `capabilities()` — each with a description and a JSON-schema params contract,
-   - `call()` — results are evidence: always include `source` + timestamp;
-     raise `KeyError` for unknown capabilities.
-3. **Configure via env** (endpoints, credentials) — never in code, never in git.
-4. **Test**: `pytest` — `assert_connector_compliant(...)` is the certification bar;
-   keep it plus your domain tests.
-5. **Register**: PR adding your connector to the catalog; the backbone re-exposes
-   your capabilities northbound as MCP tools (read-only annotated), journaled like
-   every other operation.
+- Python 3.10 or later
+- The repository checkout, which supplies `pgfr-connector-sdk` through the local
+  package reference in `pyproject.toml`
 
-## Rules of the house
+## Create a connector
 
-- read-mostly: a connector informs decisions; it does not act on the floor
-- no hidden authority: if your system must *cause* something, it goes through
-  the seam's policy gate like everyone else
-- degrade loudly: unreachable system -> `health.ok=false` + errors, never stale
-  answers presented as fresh (the floor learned this the hard way)
+1. Copy this directory to `connectors/<system-name>/`.
+2. Rename the `my-connector` project and `src/my_connector` package in
+   `pyproject.toml`.
+3. Implement the `Connector` methods in `src/my_connector/connector.py`:
+
+   - `health()` returns a mapping with an `ok` Boolean and useful freshness
+     information.
+   - `capabilities()` returns at least one `CapabilitySpec` with an object JSON
+     Schema.
+   - `call()` returns provenance-bearing results and raises `KeyError` for an
+     unknown capability.
+
+4. Read endpoints and credentials from the environment or a deployment secret
+   store. Do not commit credentials.
+5. Add domain-specific tests in addition to the SDK compliance check.
+
+## Install and test
+
+From this directory:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -e ../../packages/connector-sdk
+.venv/bin/python -m pip install -e ".[dev]"
+.venv/bin/python -m pytest
+```
+
+The included test calls `assert_connector_compliant(MyConnector())` and checks
+that a successful result carries `source` and `ts` fields.
+
+## Limitations
+
+`assert_connector_compliant` checks the connector shape, health response,
+capability schemas, and unknown-capability behavior. It does not verify an
+external system, authenticate requests, evaluate data quality, or confirm that
+all successful results contain provenance. Cover those requirements in the
+connector's own integration tests.
+
+The repository does not include a connector registry or hosting process. Add
+the connector explicitly to the service that will expose its capabilities.

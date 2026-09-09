@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=Policy-Gated Factory Robot Orchestrator Reference pinned perception VLM
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=__PGFR_REPO__
+EnvironmentFile=__PGFR_HOME__/.config/pgfr-spine/vlm.env
+ExecStart=__PGFR_REPO__/ops/launch-perception-vlm.sh --run
+ExecStartPost=__PGFR_REPO__/ops/launch-perception-vlm.sh --wait
+ExecStop=/usr/bin/docker stop -t 30 ${PGFR_VLM_CONTAINER}
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=960
+TimeoutStopSec=45
+KillMode=control-group
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=__PGFR_HOME__/.cache/huggingface
+UMask=0077
+
+[Install]
+WantedBy=default.target

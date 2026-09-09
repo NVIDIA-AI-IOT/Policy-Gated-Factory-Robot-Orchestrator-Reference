@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """Validate discoverable Isaac action plugins without starting Isaac Sim."""
 
-from ic_cell.actions import discover_actions
+from pgfr_cell.actions import discover_actions
 
 
 def main() -> int:
     registry = discover_actions()
-    print("IC_ACTIONS_VALID names=%s" % ",".join(registry.action_names))
+    print("PGFR_ACTIONS_VALID names=%s" % ",".join(registry.action_names))
     return 0
 
 

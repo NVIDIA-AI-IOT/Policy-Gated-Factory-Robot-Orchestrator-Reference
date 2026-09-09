@@ -10,17 +10,17 @@
         "skills": [],
         "tools": {
           "allow": [
-            "ic-floor__*"
+            "pgfr-floor__*"
           ]
         }
       },
-      "ic-console": {
+      "pgfr-console": {
         "name": "Policy-Gated Factory Robot Orchestrator Reference Console",
         "contextInjection": "never",
         "skills": [],
         "tools": {
           "allow": [
-            "ic-floor__*"
+            "pgfr-floor__*"
           ],
           "loopDetection": {
             "enabled": true
@@ -31,14 +31,14 @@
   },
   "mcp": {
     "servers": {
-      "ic-floor": {
+      "pgfr-floor": {
         "command": "__MCP_COMMAND__",
         "env": {
-          "IC_FLOOR_SERVICE": "http://127.0.0.1:8766",
-          "IC_MCP_ROLE": "agent",
-          "IC_CERTIFIED_GROOT_ORDER": "1",
-          "IC_GROOT_PARALLEL_ENABLED": "0",
-          "IC_GROOT_FLEXIBLE_ORDER": "0"
+          "PGFR_FLOOR_SERVICE": "http://127.0.0.1:8766",
+          "PGFR_MCP_ROLE": "agent",
+          "PGFR_CERTIFIED_GROOT_ORDER": "1",
+          "PGFR_GROOT_PARALLEL_ENABLED": "0",
+          "PGFR_GROOT_FLEXIBLE_ORDER": "0"
         },
         "requestTimeoutMs": 280000,
         "supportsParallelToolCalls": false,

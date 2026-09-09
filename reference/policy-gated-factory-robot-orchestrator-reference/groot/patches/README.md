@@ -17,7 +17,7 @@ Run the repository preparation script from the repository root:
 
 The script checks the patch SHA-256, clones the exact upstream revision into a
 new destination, verifies that the patch applies cleanly, applies it, and
-checks the resulting source diff. Set `IC_GROOT_SOURCE_ROOT` to select another
+checks the resulting source diff. Set `PGFR_GROOT_SOURCE_ROOT` to select another
 destination. Use `--install` to run the pinned Thor dependency installation
 after source preparation.
 

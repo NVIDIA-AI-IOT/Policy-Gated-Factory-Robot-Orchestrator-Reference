@@ -27,14 +27,14 @@ installed separately by the same installer.
 | `our_factory.usda` | Current two-arm cell scene. |
 | `full_scene_bootstrap.py` | Coordinates the complete scene setup and readiness gates. |
 | `setup_right_cell.py` | Adds and validates the mirrored right Franka workcell. |
-| `ic_node_v2.py` | Provides the ROS command, result, floor-state, and reset bridge. |
-| `ic_cams_rp.py` | Builds camera render products and validates camera publication. |
-| `ic_shape_mode.py` | Defines the red cube, blue cylinder, green brick, and supported layouts. |
+| `pgfr_node_v2.py` | Provides the ROS command, result, floor-state, and reset bridge. |
+| `pgfr_cams_rp.py` | Builds camera render products and validates camera publication. |
+| `pgfr_shape_mode.py` | Defines the red cube, blue cylinder, green brick, and supported layouts. |
 | `production_contract_expected.json` | Records the expected scene and camera calibration contract. |
 | `add_tote_colors.py` | Adds the colored tote compartment pads. |
 | `matte_scene.py` | Applies the matte scene treatment used by perception. |
 | `fix_amr_haul_joint.py` | Implements the AMR tote-haul and recovery behavior. |
-| `ic_serving_health.py` | Publishes runtime health and readiness state. |
+| `pgfr_serving_health.py` | Publishes runtime health and readiness state. |
 
 ## Installation
 

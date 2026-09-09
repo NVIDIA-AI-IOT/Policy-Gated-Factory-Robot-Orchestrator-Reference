@@ -1,62 +1,93 @@
-# Reproduce the Policy-Gated Factory Robot Orchestrator Reference demo
+# Deploy the two-host reference system
 
-This guide installs IC Spine, IC Console, the Isaac Sim reference cell, the
-perception VLM, and the shared-model GR00T action path. It targets the validated
-two-host configuration in [`SUPPORT.md`](SUPPORT.md); it is not a generic GPU
-driver or container-runtime installer.
+This guide installs and starts the learned-motion reference deployment across
+a Jetson control host and an RTX simulation host. It covers PGFR Spine, PGFR
+Console, PGFR Chat/OpenClaw, the perception VLM, two GR00T policy processes, and
+the Isaac Sim reference cell.
 
-The learned-motion path uses one fine-tuned checkpoint loaded by two serving
-processes, one for each Franka arm. Both processes load the same model. The
-shipped profile defaults to six proof-gated serial moves; after baseline
-acceptance, an operator may explicitly enable bounded two-arm pairs and the
-three pair transactions remain sequenced before the AMR hauls the totes.
+The deployment is qualified only for the host configuration in
+[`SUPPORT.md`](SUPPORT.md). Exact model, container, runtime, dataset, and port
+identities are recorded in
+[`../deploy/reproducible-demo.yaml`](../deploy/reproducible-demo.yaml) and the
+[GR00T model manifest](../reference/policy-gated-factory-robot-orchestrator-reference/groot/models/manifest.yaml).
 
-Model, dataset, container, runtime, and port identities are pinned in
-[`../deploy/reproducible-demo.yaml`](../deploy/reproducible-demo.yaml) and
-[`../reference/policy-gated-factory-robot-orchestrator-reference/groot/models/manifest.yaml`](../reference/policy-gated-factory-robot-orchestrator-reference/groot/models/manifest.yaml).
-
-> **Historical acceptance boundary:** the 2026-09-08 acceptance used the base
-> revision plus the then-uncommitted reproducibility fixes. Those fixes were
-> subsequently committed together with the full-form product/package rename,
-> but the post-rename tree has not completed a clean-clone two-host acceptance
-> run. Do not use the historical base revision, date, or deployment-manifest
-> `validated_on` value as a post-rename release claim. Replace this guide's
-> commit placeholder only after the exact published candidate passes again;
-> see [`SUPPORT.md`](SUPPORT.md#measured-acceptance-cohort) and the
+> **Acceptance boundary:** the 2026-09-08 two-host acceptance used the base
+> revision plus the then-uncommitted reproducibility fixes. Those fixes and the
+> full-form rename were later committed, but the renamed tree has not completed
+> a clean-clone two-host acceptance run. Do not present the historical base
+> revision, date, or deployment-manifest `validated_on` value as post-rename
+> release evidence. Replace the commit placeholder below only after the exact
+> published candidate passes. See
+> [`SUPPORT.md`](SUPPORT.md#two-host-mission-evidence) and the
 > [rename upgrade guide](FULL-FORM-RENAME-UPGRADE.md).
+
+## Requirements
+
+| Item | Requirement |
+|---|---|
+| Jetson control host | NVIDIA Jetson AGX Thor; aarch64 Ubuntu 24.04; Python 3.12; CUDA; ROS 2 Jazzy; Docker and NVIDIA Container Runtime; user systemd |
+| RTX simulation host | x86_64 Linux workstation; NVIDIA RTX GPU; Docker and NVIDIA Container Runtime; X11 and `xauth` |
+| Operator access | Local access or SSH to the Jetson control host; local X11 session on the RTX simulation host for the qualified GR00T path |
+| Repository | Contents read access and one published 40-character commit ID |
+| Models | Access to the gated Hugging Face backbone and the pinned GR00T and perception artifacts |
+| Credentials | A key for the selected NVIDIA or OpenAI-compatible Chat endpoint; separate Hugging Face and registry credentials where required |
+| Network | Passwordless SSH from the RTX simulation host to the Jetson control host; peer-scoped Fast DDS UDP traffic |
+| License | Acceptance of the NVIDIA Isaac Sim license before pulling or starting Isaac Sim |
+
+Complete the supported NVIDIA GPU-driver, Docker, and NVIDIA Container Toolkit
+installation on each host before using repository scripts. The repository
+checks those dependencies; it does not replace them.
+
+## Contents
+
+1. [Prepare the Jetson control host](#1-prepare-the-jetson-control-host)
+2. [Fetch control-host artifacts](#2-fetch-control-host-artifacts)
+3. [Prepare the RTX simulation host](#3-prepare-the-rtx-simulation-host)
+4. [Install the bridge and GR00T cell](#4-install-the-bridge-and-gr00t-cell)
+5. [Start the deployment](#5-start-the-deployment)
+6. [Open and validate the system](#6-open-and-validate-the-system)
+
+Related procedures:
+
+- [Model providers and credentials](MODEL-PROVIDERS.md)
+- [Remote operator access](REMOTE-ACCESS.md)
+- [Deployment and mission validation](VALIDATION.md)
+- [Standalone Isaac Sim workstation](../ops/ISAAC-SIM-WORKSTATION.md)
 
 ## Deployment layout
 
 | Host | Components |
 |---|---|
-| Brain host | IC Spine, IC Console, IC Chat/OpenClaw, Nemotron perception VLM, two GR00T policy processes, and two relays |
-| Simulation host | Isaac Sim, ROS 2 cell node, cameras, executors, and the fail-closed two-host GR00T bridge |
-| Operator host | IC Console through loopback/SSH, or read-only direct LAN access when explicitly firewalled; the standalone Isaac path uses NVIDIA's native WebRTC service by default, while the pinned GR00T path requires local X11 or a separately secured desktop mirror |
+| Jetson control host | PGFR Spine, PGFR Console, PGFR Chat/OpenClaw, perception VLM, two GR00T policy processes, and two relays |
+| RTX simulation host | Isaac Sim, ROS 2 cell node, cameras, executors, and the stop-on-uncertainty two-host GR00T bridge |
+| Operator machine | PGFR Console through SSH or a deliberately firewalled LAN profile; optional workstation viewing |
+
+The learned-motion path runs one fine-tuned checkpoint in two serving
+processes, one per Franka arm. Both processes load the same model. The shipped
+profile executes six proof-gated moves in series. Mixed-color pairs are an
+explicit post-baseline capability; the three pairs remain sequenced before the
+AMR hauls the totes.
 
 Each long-running component has one owner. Installation prepares files while
-the corresponding services are idle; it never silently stops or replaces a
+the corresponding services are stopped; it does not silently replace a
 running stack.
 
-Use the repository name as the checkout directory on both machines:
-`~/Policy-Gated-Factory-Robot-Orchestrator-Reference`. Full-form package and
-filesystem names use `policy-gated-factory-robot-orchestrator-reference` (or
-its Python-safe underscore form). Existing abbreviated service names,
-environment variables, ROS topics, and schemas keep their `ic-*`, `IC_*`,
-`/ic/*`, and `ic_*` compatibility identifiers.
+Use `~/Policy-Gated-Factory-Robot-Orchestrator-Reference` as the checkout on
+both hosts. Full-form package and filesystem names use
+`policy-gated-factory-robot-orchestrator-reference`, or its Python-safe
+underscore form. Project-owned abbreviated service names, environment
+variables, ROS topics, and schemas now use `pgfr-*`, `PGFR_*`, `/pgfr/*`, and `pgfr_*`. This is a
+hard cutover; legacy IC identifiers are not installed as aliases.
 
-## 1. Prepare the brain host
+<a id="1-prepare-the-brain-host"></a>
 
-The reference brain host is an aarch64 NVIDIA Jetson AGX Thor running Ubuntu
-24.04 with Python 3.12, user systemd, CUDA, ROS 2 Jazzy, Docker, and NVIDIA
-Container Runtime. Install Docker and the NVIDIA runtime using the supported
-Jetson platform procedure before continuing; the project does not replace GPU
-drivers or the container runtime.
+## 1. Prepare the Jetson control host
 
-For a brand-new device, complete NVIDIA's
+For a new device, complete NVIDIA's
 [Jetson AGX Thor quick start](https://docs.nvidia.com/jetson/agx-thor-devkit/user-guide/latest/quick_start.html),
 [JetPack setup](https://docs.nvidia.com/jetson/agx-thor-devkit/user-guide/latest/setup_jetpack.html),
-and [Docker/NVIDIA Container Toolkit setup](https://docs.nvidia.com/jetson/agx-thor-devkit/user-guide/latest/setup_docker.html)
-first. Confirm the expected platform before running the repository installer:
+and [Docker/NVIDIA Container Toolkit setup](https://docs.nvidia.com/jetson/agx-thor-devkit/user-guide/latest/setup_docker.html).
+Confirm the expected platform:
 
 ```bash
 uname -m                         # aarch64
@@ -68,9 +99,9 @@ python3 --version                # Python 3.12.x
 ```
 
 If Docker installation added the operator to the `docker` group, end the old
-login session and log in again before installing user services. Verify Docker
-access from both the interactive shell and a user-systemd unit; the second
-check catches a user manager that still has the old supplementary groups:
+login session and log in again. Verify Docker from the interactive shell and a
+user-systemd unit; the second check detects a user manager with stale
+supplementary groups:
 
 ```bash
 docker version --format '{{.Server.Version}}'
@@ -81,20 +112,18 @@ docker run --rm --platform linux/arm64 --runtime=nvidia --gpus all \
   nvidia-smi -L
 ```
 
-The final command is the Thor-specific GPU-container smoke test. It must report
-`GPU 0: NVIDIA Thor`; do not reuse the workstation's CUDA 12.8 test image here.
+The final command is specific to Thor and must report `GPU 0: NVIDIA Thor`. Do
+not use the RTX workstation's CUDA 12.8 smoke-test image for this check.
 
-The accepted GR00T policy and relay processes ran **bare metal on Thor** from
-the pinned native uv environment under `~/groot_shadow/Isaac-GR00T/`, owned by
-user systemd. Docker remains part of the host prerequisites because the
-perception VLM uses a pinned container and because the Thor Dockerfile was used
-for dependency qualification. That Dockerfile is not the canonical model-
-serving deployment and its container smoke result is not policy-inference or
-full-mission acceptance. Do not substitute it for the documented bare-metal
-policy services without a separate container-specific acceptance run.
+The qualified GR00T policy and relay processes run bare metal from the pinned
+uv environment under `~/groot_shadow/Isaac-GR00T/`, owned by user systemd.
+Docker is still required for the perception VLM and for dependency
+qualification. The Thor Dockerfile is not the canonical model-serving
+deployment; its container smoke result is not policy-inference or full-mission
+evidence.
 
-Clone the repository, install the measured host prerequisites, prepare the
-pinned GR00T source and environment, and then install the control plane:
+Clone the repository, install host prerequisites, prepare the pinned GR00T
+source and environment, and install the control plane:
 
 ```bash
 (
@@ -120,194 +149,63 @@ ops/bootstrap-brain.sh --install
 )
 ```
 
-Use the raw Git URL shown above, not Markdown link syntax. If `ls-remote` or
-`clone` returns HTTP 403, fix GitHub organization/SSO authorization first.
-Cloning requires repository Contents read access, not write access; use an
-organization-authorized SSH key or a fine-grained/read-only credential that
-complies with the organization's token-lifetime policy. Never place a token in
-the command line or repository URL. Replace `VALIDATED_COMMIT` with the exact
-published 40-character commit ID from the release record; never substitute a
-moving branch name or `HEAD`. The fail-fast block validates the placeholder
-before cloning or mutating the host, so the unpublished release candidate
-cannot be mistaken for a release.
+Use the raw Git URL, not Markdown link syntax. An HTTP 403 from `ls-remote` or
+`clone` indicates a GitHub organization or SSO authorization issue. Cloning
+requires Contents read access, not write access. Use an organization-authorized
+SSH key or a fine-grained read-only credential that meets the organization's
+token policy; never put a token in the command line or repository URL.
+
+Replace `VALIDATED_COMMIT` with the exact published 40-character release
+commit. Do not substitute a moving branch name or `HEAD`. The fail-fast block
+rejects the placeholder before it clones or mutates the host.
 
 The prerequisite installer pins Node and uv and installs the measured ROS and
-CUDA host packages. GR00T runtime preparation checks out the pinned NVIDIA
-Isaac-GR00T revision, applies the versioned Policy-Gated Factory Robot
-Orchestrator Reference patch, and builds its frozen Thor uv environment. The
-exact TorchCodec `0.10.0a0` LFS wheel is then installed after the frozen sync as
-a separately checksum-attested platform overlay; it is not a registry package
-resolved by that uv lock. The bootstrap uses repository lockfiles and refuses
-to replace files beneath active IC services.
+CUDA packages. Runtime preparation checks out the pinned NVIDIA Isaac-GR00T
+revision, applies the versioned project patch, and builds the frozen Thor uv
+environment. The exact TorchCodec `0.10.0a0` LFS wheel is installed after the
+frozen sync as a separately checksum-attested platform overlay; it is not a
+registry package resolved by the uv lock. The bootstrap uses repository
+lockfiles and refuses to replace files beneath active PGFR services.
 
-For an existing installation made before the full-form rename, stop here and
-follow [`FULL-FORM-RENAME-UPGRADE.md`](FULL-FORM-RENAME-UPGRADE.md). The
-bootstrap intentionally preserves operator environment files, so reinstalling
-without migrating their old paths is not an upgrade.
+For an installation made before the full-form rename, stop here and follow
+[`FULL-FORM-RENAME-UPGRADE.md`](FULL-FORM-RENAME-UPGRADE.md). The bootstrap
+preserves operator environment files, so reinstalling without migrating old
+paths is not an upgrade.
 
-Review the generated files under `~/.config/ic-spine/`. The seeded services
-bind to loopback. Keep that default and use an SSH tunnel, or set an exact
-Console origin and nonempty Chat/Workflows tokens before intentionally binding
-write-capable services to another interface.
+Review the generated files under `~/.config/pgfr-spine/`. The default services
+bind to loopback. Keep that default unless the access profile in
+[`REMOTE-ACCESS.md`](REMOTE-ACCESS.md) explicitly calls for another bind
+address.
 
-Before starting IC Chat, replace `replace-with-your-model-id` in
-`~/.config/ic-spine/chat.env` and select one coherent endpoint, credential, and
-model tuple. IC Chat sends `IC_CHAT_API_KEY` unchanged as a Bearer credential;
-it does not infer the endpoint from the key prefix. Set `IC_CHAT_MODEL_URL` to
-the service root without `/v1`, because the adapter appends `/v1/models` and
-`/v1/chat/completions`.
+Configure and test the reasoning endpoint before starting PGFR Chat. Follow
+[`MODEL-PROVIDERS.md`](MODEL-PROVIDERS.md) for the public NVIDIA API Catalog,
+the NVIDIA internal inference endpoint, secret storage, OpenClaw setup, and the
+required completion smoke test.
 
-The public NVIDIA API Catalog profile is:
+<a id="2-authenticate-and-fetch-the-brain-host-artifacts"></a>
 
-```dotenv
-IC_CHAT_BACKEND=openai
-IC_CHAT_MODEL_URL=https://integrate.api.nvidia.com
-IC_CHAT_MODEL=nvidia/nemotron-3-ultra-550b-a55b
-```
-
-NVIDIA-internal users whose account has access to the OpenAI-compatible
-inference service may instead use the internal profile. The following tuple was
-validated during the 2026-09-08 acceptance run:
-
-```dotenv
-IC_CHAT_BACKEND=openai
-IC_CHAT_MODEL_URL=https://inference-api.nvidia.com
-IC_CHAT_MODEL=azure/openai/gpt-5.6-sol
-```
-
-The internal model is an environment choice, not a repository-wide pin. Query
-the authenticated `/v1/models` catalog and validate tool calling before
-selecting a different ID. Keep the public profile as the external default;
-access to the internal endpoint and its `sk-...` credentials is organization
-specific.
-
-Use a model ID available to the deployed NVIDIA account; the example is not a
-promise that every account has access. Obtain a hosted-endpoint key using
-NVIDIA's [API Catalog quickstart](https://docs.api.nvidia.com/nim/re/docs/api-quickstart).
-Keep credentials out of the repository and shell history. The bootstrap creates
-the secrets file and a persistent
-`OPENCLAW_GATEWAY_TOKEN`; edit that same file without removing the generated
-token:
-
-```bash
-install -d -m 0700 "$HOME/.openclaw"
-touch "$HOME/.openclaw/secrets.env"
-chmod 0600 "$HOME/.openclaw/secrets.env"
-${EDITOR:-vi} "$HOME/.openclaw/secrets.env"
-```
-
-For traditional IC Chat, add the credential issued for the selected endpoint:
-
-```dotenv
-IC_CHAT_API_KEY=YOUR_SELECTED_ENDPOINT_KEY
-```
-
-For the public NVIDIA profile, the same `nvapi-...` value may also be stored as
-`NVIDIA_API_KEY` for OpenClaw's built-in NVIDIA provider. An internal
-`sk-...` value belongs only to the internal endpoint and must not be paired
-with `integrate.api.nvidia.com`. The hosted-endpoint credential is distinct
-from the Hugging Face token used for model downloads and from a registry-only
-NGC credential.
-
-Seed the repository's complete OpenClaw configuration once before using its
-configuration CLI. This preserves the MCP server and policy settings from
-`ops/openclaw.template.json`; invoking `openclaw models set` against a missing
-config would create an incomplete replacement. Start only the loopback Gateway,
-verify that its config exists, and stop it again:
-
-```bash
-systemctl --user start ic-openclaw.service
-test -s "$HOME/.policy-gated-factory-robot-orchestrator-reference/openclaw/openclaw.json"
-systemctl --user stop ic-openclaw.service ic-seam.service
-```
-
-When using the public NVIDIA profile, configure OpenClaw's primary model while
-its Gateway is stopped:
-
-```bash
-set -a
-. "$HOME/.config/ic-spine/openclaw.env"
-. "$HOME/.openclaw/secrets.env"
-set +a
-./node_modules/.bin/openclaw models set \
-  nvidia/nemotron-3-ultra-550b-a55b
-unset NVIDIA_API_KEY IC_CHAT_API_KEY OPENCLAW_GATEWAY_TOKEN
-```
-
-This command configures OpenClaw's built-in public NVIDIA provider. Traditional
-IC Chat uses the internal profile independently. Do not assume that changing
-`IC_CHAT_MODEL_URL` also changes OpenClaw; an internal OpenClaw deployment
-requires a separately reviewed custom-provider configuration.
-
-Test one actual completion before starting the stack. A successful
-`/v1/models` response alone does not prove that the API key is authorized:
-
-```bash
-(
-set -euo pipefail
-set -a
-. "$HOME/.config/ic-spine/chat.env"
-set +a
-: "${IC_CHAT_MODEL_URL:?set IC_CHAT_MODEL_URL in ~/.config/ic-spine/chat.env}"
-: "${IC_CHAT_MODEL:?set IC_CHAT_MODEL in ~/.config/ic-spine/chat.env}"
-MODEL_URL="${IC_CHAT_MODEL_URL%/}"
-case "$MODEL_URL" in
-  */v1) echo 'IC_CHAT_MODEL_URL must exclude /v1' >&2; exit 1 ;;
-esac
-REQUEST_BODY="$(python3 -c '
-import json, sys
-print(json.dumps({
-    "model": sys.argv[1],
-    "messages": [{"role": "user", "content": "Reply with READY."}],
-}))
-' "$IC_CHAT_MODEL")"
-AUTH_HEADER="$(mktemp)"
-trap 'rm -f "$AUTH_HEADER"' EXIT
-chmod 0600 "$AUTH_HEADER"
-set -a
-. "$HOME/.openclaw/secrets.env"
-set +a
-: "${IC_CHAT_API_KEY:?set IC_CHAT_API_KEY in ~/.openclaw/secrets.env}"
-printf 'Authorization: Bearer %s\n' "$IC_CHAT_API_KEY" > "$AUTH_HEADER"
-unset NVIDIA_API_KEY IC_CHAT_API_KEY OPENCLAW_GATEWAY_TOKEN
-curl --fail-with-body --silent --show-error \
-  "$MODEL_URL/v1/chat/completions" \
-  -H "@$AUTH_HEADER" \
-  -H 'Content-Type: application/json' \
-  -d "$REQUEST_BODY"
-)
-```
-
-The mode-`0600` temporary header file keeps the key out of `curl`'s process
-arguments. The sourced secrets are removed from its environment before launch,
-and the file is removed when the subshell exits.
-
-The perception VLM on port 8001 remains a separate, pinned service and is not
-an implicit replacement for this reasoning model.
-
-## 2. Authenticate and fetch the brain-host artifacts
+## 2. Fetch control-host artifacts
 
 Accept the terms for the gated runtime backbone
 [`nvidia/Cosmos-Reason2-2B`](https://huggingface.co/nvidia/Cosmos-Reason2-2B)
-on Hugging Face. Use the `hf` CLI supplied by the
-locked GR00T environment rather than installing a second host copy:
+on Hugging Face. Use the `hf` CLI supplied by the locked GR00T environment:
 
 ```bash
-export IC_HF_BIN="$HOME/groot_shadow/Isaac-GR00T/.venv/bin/hf"
+export PGFR_HF_BIN="$HOME/groot_shadow/Isaac-GR00T/.venv/bin/hf"
 export HF_HOME="$HOME/policy-gated-factory-robot-orchestrator-reference-models/hf-home"
 export HF_TOKEN_PATH="$HF_HOME/token"
 mkdir -p "$HF_HOME"
-"$IC_HF_BIN" auth login
-"$IC_HF_BIN" auth whoami
+"$PGFR_HF_BIN" auth login
+"$PGFR_HF_BIN" auth whoami
 
-export IC_GROOT_HF_REPO=mmallick/industrial-claw-groot-order744-cont24
-export IC_GROOT_HF_REVISION=9307ac9cba3a27c9a57ed2d90393ceefb28367e1
+export PGFR_GROOT_HF_REPO=mmallick/industrial-claw-groot-order744-cont24
+export PGFR_GROOT_HF_REVISION=9307ac9cba3a27c9a57ed2d90393ceefb28367e1
 ops/fetch-groot-models.sh
 ops/install-groot-thor-shared-profiles.sh
 ```
 
 Pull the exact perception image recorded in the deployment manifest. The
-systemd service later starts it by digest and refuses a tag-only substitute:
+systemd service starts it by digest and refuses a tag-only substitute:
 
 ```bash
 docker pull vllm/vllm-openai:v0.20.0-ubuntu2404@sha256:aff65d7198dd284c37dd0a18a606544cc5e92bfb0d5eb608b77e8b8f1c6b8b0d
@@ -316,25 +214,22 @@ docker pull vllm/vllm-openai:v0.20.0-ubuntu2404@sha256:aff65d7198dd284c37dd0a18a
 The profile installer creates two GR00T profiles and one shared target. It does
 not start or enable them.
 
-## 3. Prepare the simulation host
+<a id="3-prepare-the-simulation-host"></a>
 
-The measured two-host GR00T path uses an x86_64 Linux workstation with an
-NVIDIA RTX GPU, Docker, NVIDIA Container Runtime, X11, `xauth`, and its pinned
-Isaac Sim 6.0.0-dev2 image. This is intentionally separate from the standalone
-scripted-baseline helper, which defaults to stable Isaac Sim 6.0.1 and
-headless/WebRTC. Clone the same repository commit on this host and accept
-NVIDIA's
+## 3. Prepare the RTX simulation host
+
+The qualified two-host GR00T path uses the pinned Isaac Sim 6.0.0-dev2 image
+with local X11. It is separate from the standalone scripted baseline, which
+defaults to stable Isaac Sim 6.0.1 and headless WebRTC.
+
+Accept the
 [Isaac Sim license](https://docs.isaacsim.omniverse.nvidia.com/6.0.0/common/NVIDIA_Omniverse_License_Agreement.html)
-before pulling the image by digest:
+and complete the fresh-host installation and GPU-container smoke test in the
+[workstation runbook](../ops/ISAAC-SIM-WORKSTATION.md#host-prerequisites).
 
-Complete the fresh-host installation and GPU-container smoke test in the
-[Isaac Sim workstation runbook](../ops/ISAAC-SIM-WORKSTATION.md#host-prerequisites)
-first. The repository checks these dependencies but does not install or replace
-the host's NVIDIA driver, Docker Engine, or NVIDIA Container Toolkit.
-
-Record the brain-host, simulation-host, and operator addresses before opening
-any firewall rule. From the simulation host, establish non-interactive SSH to
-Thor because the GR00T bridge owns persistent loopback forwards:
+Record the Jetson control-host, RTX simulation-host, and operator addresses.
+The bridge owns persistent loopback forwards, so establish non-interactive SSH
+from the RTX host to the Jetson host:
 
 ```bash
 (
@@ -370,79 +265,55 @@ REMOTE_DIRTY="$(ssh "$THOR_SSH" \
 test -z "$REMOTE_DIRTY"
 : "${DISPLAY:?run from the workstation X11 owner session}"
 docker pull nvcr.io/nvidia/isaac-sim:6.0.0-dev2@sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9
-export IC_GROOT_ISAAC_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/policy-gated-factory-robot-orchestrator-reference/isaac-sim-groot"
-export IC_GROOT_ISAAC_MOUNT="$IC_GROOT_ISAAC_ROOT/scripts"
+export PGFR_GROOT_ISAAC_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/policy-gated-factory-robot-orchestrator-reference/isaac-sim-groot"
+export PGFR_GROOT_ISAAC_MOUNT="$PGFR_GROOT_ISAAC_ROOT/scripts"
 ops/isaac-sim-workstation.sh --prepare \
-  --root "$IC_GROOT_ISAAC_ROOT" \
+  --root "$PGFR_GROOT_ISAAC_ROOT" \
   --container isaac-sim
-IC_ISAAC_IMAGE=nvcr.io/nvidia/isaac-sim:6.0.0-dev2 \
-IC_ISAAC_IMAGE_DIGEST=sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9 \
-ops/check-sim-host.sh --profile x11 --mount "$IC_GROOT_ISAAC_MOUNT" \
-  --state-root "$IC_GROOT_ISAAC_ROOT"
+PGFR_ISAAC_IMAGE=nvcr.io/nvidia/isaac-sim:6.0.0-dev2 \
+PGFR_ISAAC_IMAGE_DIGEST=sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9 \
+ops/check-sim-host.sh --profile x11 --mount "$PGFR_GROOT_ISAAC_MOUNT" \
+  --state-root "$PGFR_GROOT_ISAAC_ROOT"
 )
 ```
 
 The bridge always uses SSH `BatchMode=yes`; a password prompt cannot work from
 its user service. The example creates an unencrypted default key only when one
-does not already exist. Protect that key like a service credential, and use a
-site-managed SSH key or agent instead when required by local policy. The
-`systemd-run` check proves the user manager—not only the interactive shell—can
-authenticate. Review the Thor host-key fingerprint through a trusted channel
-before accepting it.
+does not exist. Protect it as a service credential, or use a site-managed SSH
+key or agent. Verify the Jetson host-key fingerprint through a trusted channel.
+The `systemd-run` check proves the user manager can authenticate.
 
-The image is an immutable compatibility pin for the validated cell, not
-NVIDIA's current stable recommendation. Do not silently replace it with a
-floating tag or a newer release; upgrade only after rerunning the cell, ROS,
-camera, GR00T, and rendering acceptance tests.
+The dev2 image is an immutable compatibility pin for the qualified GR00T cell,
+not NVIDIA's current stable recommendation. Upgrade only after rerunning cell,
+ROS, camera, GR00T, and rendering acceptance. The separate
+[standalone helper](../ops/ISAAC-SIM-WORKSTATION.md) prepares stable Isaac Sim
+6.0.1, checks 15 streams and one exactly-once scripted move, and resets the
+scene. That result is not Thor or GR00T evidence.
 
-To reproduce only the packaged scripted baseline on this host without the
-Thor-hosted learned policy or two-host bridge, use the
-[`Isaac Sim workstation helper`](../ops/ISAAC-SIM-WORKSTATION.md). That separate
-path prepares the deterministic default mount, runs the project preflight and
-NVIDIA's bundled compatibility checker, starts stable Isaac Sim 6.0.1 in its
-default headless/WebRTC profile, and waits for both cell and streaming
-readiness. Its scene-destructive acceptance command tests 15 fresh streams,
-one exactly-once scripted move, final reset, and current-run logs; it is not
-GR00T or Thor evidence.
-
-`IC_GROOT_ISAAC_MOUNT` is the host directory mounted at `/scripts` inside the
-Isaac container, not the Isaac Sim installation directory. The host checker is
-read-only: with the explicit GR00T overrides above it validates Linux/x86_64,
+With the GR00T overrides above, the host checker validates Linux/x86_64,
 Docker access, NVIDIA runtime and GPU visibility, X11, the exact dev2 image
-digest, mount existence, and at least 50,000,000,000 bytes of total filesystem
-capacity at the state cache. It reports currently available bytes without
-applying a free-space threshold. The standalone helper additionally runs
-NVIDIA's transient compatibility container under its stable image identity.
+digest, the scripts mount, and at least 50,000,000,000 bytes of total
+filesystem capacity at the state cache. It reports available bytes but does
+not impose a free-space threshold. The standalone helper additionally runs
+NVIDIA's bundled compatibility checker under the stable image identity.
+
+`PGFR_GROOT_ISAAC_MOUNT` is the host directory mounted at `/scripts`, not the
+Isaac Sim installation directory.
 
 Use a separate scripts mount for the GR00T deployment; do not reuse the
-standalone baseline's live mount. The two-host launcher mounts
-[`ops/fastdds-multi-host.xml`](../ops/fastdds-multi-host.xml) read-only and
-sets the same Fast DDS profile, ROS domain, and RMW selected by the brain-host
-Seam environment. This enables NVIDIA's documented UDP transport for ROS 2
-participants on multiple machines or in containers.
+standalone baseline's live mount. Preparation
+builds the packaged cell in a sibling temporary directory and publishes it
+with one same-filesystem `mv -T`. It rejects a divergent target rather than
+merging or overwriting it.
 
-The GR00T launcher requires a real local X11 display. The standalone launcher
-defaults to NVIDIA's headless WebRTC service and retains X11 only behind
-`--profile x11`. The repository has qualified the headless service and its
-signaling listener but has not connected a WebRTC client or deployed NVIDIA's
-separate browser-viewer Compose service. See the
-[workstation runbook](../ops/ISAAC-SIM-WORKSTATION.md#launch-the-supported-headlesswebrtc-profile).
+The launcher mounts
+[`../ops/fastdds-multi-host.xml`](../ops/fastdds-multi-host.xml) read-only and
+uses the same Fast DDS profile, ROS domain, and RMW as the Jetson PGFR Spine
+service.
+If either host has a default-deny firewall, allow peer-scoped UDP traffic. For
+the pinned ROS domain `0`, participant IDs `0` through `99` use `7400:7609`.
 
-The preparation command above creates the external state tree, builds and
-validates the complete packaged cell in a sibling temporary directory, then
-publishes the bundle with one same-filesystem `mv -T` directory rename. A
-consumer cannot observe partially copied entrypoints. A nonempty divergent
-target is rejected rather than merged or overwritten. Do not replace
-preparation with an unchecked recursive copy. Keep Isaac Sim stopped while the
-GR00T bundle is installed below.
-
-Fast DDS traffic is peer-to-peer. If a host has a default-deny inbound
-firewall, it needs a peer-scoped UDP rule; when both hosts filter inbound
-traffic, add the reciprocal rule on both. For this pinned ROS domain `0`, the
-well-known discovery and user-data range for participant IDs `0` through `99`
-is `7400:7609`.
-
-On the simulation host:
+On the RTX simulation host:
 
 ```bash
 SIM_IF=YOUR_SIMULATION_INTERFACE
@@ -452,7 +323,7 @@ sudo ufw allow in on "$SIM_IF" proto udp \
   comment 'ROS 2 Fast DDS from Jetson Thor'
 ```
 
-On Thor, only when its host firewall is active:
+On the Jetson control host, only when its host firewall is active:
 
 ```bash
 THOR_IF=YOUR_THOR_NETWORK_INTERFACE
@@ -462,16 +333,18 @@ sudo ufw allow in on "$THOR_IF" proto udp \
   comment 'ROS 2 Fast DDS from Isaac simulation host'
 ```
 
-Use the actual interfaces and fixed peer addresses. If a host does not use UFW,
-apply the equivalent site firewall rule; do not install or reconfigure a
-firewall blindly on a remotely administered Thor. Do not disable either
-firewall or open this range to arbitrary sources. DDS traffic is not
-authenticated or encrypted by this profile; use a trusted isolated network,
-VPN, or DDS Security for production.
+Use the actual interfaces and fixed peer addresses. If UFW is not the host
+firewall, apply the equivalent site rule; do not install or reconfigure a
+firewall blindly. Do not disable either firewall or open this range to
+arbitrary sources. This Fast DDS profile is not authenticated or encrypted;
+use a trusted isolated network, VPN, or DDS Security in production.
 
-## 4. Install the bridge and GR00T cell while Isaac is idle
+<a id="4-install-the-bridge-and-groot-cell-while-isaac-is-idle"></a>
 
-On the simulation host, install the validated two-host bridge:
+## 4. Install the bridge and GR00T cell
+
+Keep Isaac Sim stopped throughout this section. On the RTX simulation host,
+install the two-host bridge:
 
 ```bash
 cd "$HOME/Policy-Gated-Factory-Robot-Orchestrator-Reference"
@@ -480,25 +353,25 @@ THOR_HOST=YOUR_THOR_IP
 THOR_SSH="$THOR_USER@$THOR_HOST"
 THOR_HOME="/home/$THOR_USER"
 THOR_MODEL_ROOT="$THOR_HOME/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24"
-THOR_STATE_ROOT="$THOR_HOME/.local/share/ic-spine/groot"
+THOR_STATE_ROOT="$THOR_HOME/.local/share/pgfr-spine/groot"
 ops/install-groot-two-host-bridge.sh \
   --thor-ssh "$THOR_SSH" \
   --remote-checkpoint "$THOR_MODEL_ROOT" \
   --remote-state-root "$THOR_STATE_ROOT"
 ```
 
-Then install the GR00T cell bundle using the bridge-owned local ports and
-readiness files:
+Install the GR00T cell bundle using the bridge-owned local ports and readiness
+files:
 
 ```bash
 cd "$HOME/Policy-Gated-Factory-Robot-Orchestrator-Reference"
 THOR_USER=YOUR_THOR_USER
 THOR_MODEL_ROOT="/home/$THOR_USER/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24"
-IC_GROOT_ISAAC_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/policy-gated-factory-robot-orchestrator-reference/isaac-sim-groot"
-IC_GROOT_ISAAC_MOUNT="$IC_GROOT_ISAAC_ROOT/scripts"
-export IC_GROOT_STATE_ROOT="$HOME/.local/share/ic-spine/groot/remote-thor-v36"
+PGFR_GROOT_ISAAC_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/policy-gated-factory-robot-orchestrator-reference/isaac-sim-groot"
+PGFR_GROOT_ISAAC_MOUNT="$PGFR_GROOT_ISAAC_ROOT/scripts"
+export PGFR_GROOT_STATE_ROOT="$HOME/.local/share/pgfr-spine/groot/remote-thor-v36"
 ops/install-groot-cell.sh \
-  --mount "$IC_GROOT_ISAAC_MOUNT" \
+  --mount "$PGFR_GROOT_ISAAC_MOUNT" \
   --checkpoint-path "$THOR_MODEL_ROOT" \
   --left-service-state /groot-state/shared-left.json \
   --right-service-state /groot-state/shared-right.json \
@@ -509,529 +382,131 @@ ops/install-groot-cell.sh \
 ```
 
 The bridge installer refuses to replace an active bridge. The cell installer
-checks every active container and refuses to replace a scripts mount that is
-currently in use. The launcher also refuses to start while any container using
-the pinned Isaac image is active. No stop transition is hidden in this
-sequence: installation is complete before the simulation starts.
+checks every active container and refuses to replace a scripts mount in use.
+The launcher also refuses to start while a container using the pinned Isaac
+image is active. Installation completes before simulation starts; no stop
+transition is hidden in the sequence.
 
-## 5. Start and validate
+<a id="5-start-and-validate"></a>
 
-Start the model owners on the brain host:
+## 5. Start the deployment
+
+On the Jetson control host, start the GR00T and perception model owners:
 
 ```bash
 cd "$HOME/Policy-Gated-Factory-Robot-Orchestrator-Reference"
-systemctl --user start ic-groot-shared-stack.target
-systemctl --user start ic-perception-vlm.service
+systemctl --user start pgfr-groot-shared-stack.target
+systemctl --user start pgfr-perception-vlm.service
 ops/launch-perception-vlm.sh --check
 ```
 
-Start the bridge and pinned Isaac runtime on the simulation host only after the
-standalone baseline has been explicitly stopped:
+On the RTX simulation host, start the bridge and the pinned Isaac runtime only
+after the standalone baseline has been explicitly stopped:
 
 ```bash
 cd "$HOME/Policy-Gated-Factory-Robot-Orchestrator-Reference"
-IC_GROOT_ISAAC_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/policy-gated-factory-robot-orchestrator-reference/isaac-sim-groot"
-IC_GROOT_ISAAC_MOUNT="$IC_GROOT_ISAAC_ROOT/scripts"
-export IC_GROOT_STATE_ROOT="$HOME/.local/share/ic-spine/groot/remote-thor-v36"
+PGFR_GROOT_ISAAC_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/policy-gated-factory-robot-orchestrator-reference/isaac-sim-groot"
+PGFR_GROOT_ISAAC_MOUNT="$PGFR_GROOT_ISAAC_ROOT/scripts"
+export PGFR_GROOT_STATE_ROOT="$HOME/.local/share/pgfr-spine/groot/remote-thor-v36"
 : "${DISPLAY:?run from the workstation X11 owner session}"
 export XAUTHORITY="${XAUTHORITY:-/run/user/$(id -u)/gdm/Xauthority}"
 test -r "$XAUTHORITY"
 xauth -f "$XAUTHORITY" nlist "$DISPLAY" | grep -q .
-systemctl --user start ic-groot-two-host-bridge.service
-ops/launch-groot-isaac.sh "$IC_GROOT_ISAAC_MOUNT"
+systemctl --user start pgfr-groot-two-host-bridge.service
+ops/launch-groot-isaac.sh "$PGFR_GROOT_ISAAC_MOUNT"
 ```
 
-The measured GDM desktop used `DISPLAY=:1`; use the actual display for the
-local session that owns the Isaac window. On a non-GDM desktop, set
-`XAUTHORITY` to its actual readable cookie file. Do not substitute a VNC or
-other virtual display for this validated GUI-container path.
+The measured GDM desktop used `DISPLAY=:1`; use the display owned by the local
+workstation session. On another desktop, set `XAUTHORITY` to its readable
+cookie file. Do not substitute a VNC or virtual display for this qualified GUI
+container path.
 
-The launcher sets `OMNI_TELEMETRY_DISABLE_ANONYMOUS_DATA=1`, preserves a failed
-container for diagnosis, and returns successfully only after both
-`IC_GROOT_RUNTIME_READY` and `STARTUP_DONE full_scene+runner` remain healthy.
-Then start the remaining brain-host services:
+The launcher sets `OMNI_TELEMETRY_DISABLE_ANONYMOUS_DATA=1` and preserves a
+failed container for diagnosis. It returns successfully only after both
+`PGFR_GROOT_RUNTIME_READY` and `STARTUP_DONE full_scene+runner` remain healthy.
+
+Then start the remaining services on the Jetson control host:
 
 ```bash
 ops/thor-deploy.sh --start all
 ops/thor-deploy.sh --check
 ```
 
-`thor-deploy.sh` requires the configured Chat backend to pass `/api/ready`; a
-placeholder model or an endpoint that does not advertise the configured model
-fails readiness. That catalog probe does not authenticate an inference
-request, so the real completion smoke test in step 1 is also mandatory.
+`thor-deploy.sh` requires the configured Chat backend to pass `/api/ready`. A
+placeholder model or endpoint that does not advertise the configured model
+fails readiness. The catalog probe does not authenticate an inference request;
+the completion test in [`MODEL-PROVIDERS.md`](MODEL-PROVIDERS.md#test-a-completion)
+is also required.
 
-Validate the ROS graph and at least one real payload on the brain host. Disable
-the ROS CLI daemon so cached graph names cannot satisfy the check:
+## 6. Open and validate the system
 
-```bash
-source /opt/ros/jazzy/setup.bash
-export ROS_DOMAIN_ID=0
-export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-export FASTRTPS_DEFAULT_PROFILES_FILE="$HOME/Policy-Gated-Factory-Robot-Orchestrator-Reference/ops/fastdds-multi-host.xml"
-export ROS2CLI_NO_DAEMON=1
-ros2 topic info -v /ic/floor_state  # require Publisher count: 1
-ros2 topic info -v /ic/command      # require Subscription count: 1
-timeout 15 ros2 topic echo /ic/floor_state std_msgs/msg/String --once
-ros2 topic list | grep -E '^/ic/(floor_state|result|feedback)$|^/(table_cam|inspect_cam|inspect_vlm_cam|rack_cam|outside_cam|outside_right_cam|wrist_cam|wrist_right_cam)/image_raw$'
-```
+Follow [`REMOTE-ACCESS.md`](REMOTE-ACCESS.md) to open Console and view Isaac
+Sim. The recommended profile tunnels Console, Chat, and Workflows over SSH.
+Direct trusted-LAN Chat makes network reachability equivalent to actuation
+authority and must not be enabled on an untrusted network.
 
-Install the conformance kit in its own environment, then run both the live Seam
-and MCP handshake checks before dispatching a mission. These checks are
-read-only or deliberately policy-refused; they must report `CERTIFIED: 9/9` and
-`CERTIFIED: 11/11` respectively:
+Follow [`VALIDATION.md`](VALIDATION.md) in order. It checks the live ROS graph,
+runs both conformance suites, resets the scene, executes the serial reference
+mission, and verifies the authoritative state, journal, and current Isaac Sim
+log. The serial mission is the first acceptance. Physical workflow dispatches
+are not automatically retried; reconcile an uncertain result before another
+action.
 
-```bash
-cd "$HOME/Policy-Gated-Factory-Robot-Orchestrator-Reference"
-python3.12 -m venv packages/conformance-kit/.venv
-packages/conformance-kit/.venv/bin/pip install -e \
-  'packages/conformance-kit[mcp]'
-packages/conformance-kit/.venv/bin/ic-conformance run \
-  --target http://127.0.0.1:8766
-packages/conformance-kit/.venv/bin/ic-conformance mcp \
-  --command \
-  "$PWD/servers/policy-gated-factory-robot-orchestrator-reference-mcp/.venv/bin/ic-mcp"
-```
+The optional mixed-color mode is enabled only after serial acceptance. Its
+fixed sequence is left blue/right green, left green/right red, then left
+red/right blue, with proof after every pair. Enabling it requires both
+capability flags in PGFR Spine and Workflows and the additional certified-order
+flag in the MCP child.
 
-### Operator access from another machine
+<a id="operator-access-from-another-machine"></a>
+<a id="opt-in-shared-trusted-lan-chat-automatic-access"></a>
 
-IC Console is the operator dashboard on port `8600`. OpenClaw port `18790` is a
-headless Gateway API, not a second dashboard. The default deployment keeps
-Console, Chat, and Workflows on Thor loopback. For the complete UI, forward all
-three browser-facing ports from the operator machine:
+### Remote operator access
 
-```bash
-THOR_SSH=YOUR_THOR_USER@YOUR_THOR_IP
-ssh -N -o ExitOnForwardFailure=yes \
-  -L 127.0.0.1:8600:127.0.0.1:8600 \
-  -L 127.0.0.1:8610:127.0.0.1:8610 \
-  -L 127.0.0.1:8620:127.0.0.1:8620 \
-  "$THOR_SSH"
-```
+The access commands formerly in this section are maintained in
+[`REMOTE-ACCESS.md`](REMOTE-ACCESS.md). This heading is retained for links to
+older versions of the guide.
 
-Then browse to `http://127.0.0.1:8600`. Keep the SSH process open while using
-the UI.
+<a id="6-run-the-physical-acceptance-workflow"></a>
 
-For direct-IP, read-only observability, establish an exact source-address
-firewall rule on Thor or at the network boundary **before** changing Console's
-bind address. For a Thor host that already uses UFW, first confirm that it is
-active, has default-deny inbound policy, and has no broader rule for port 8600;
-then add and review the exact operator rule:
+### Physical acceptance workflow
 
-```bash
-THOR_IF=YOUR_THOR_NETWORK_INTERFACE
-OPERATOR_IP=YOUR_OPERATOR_IP
-sudo ufw status verbose
-sudo ufw status numbered
-sudo ufw allow in on "$THOR_IF" proto tcp \
-  from "$OPERATOR_IP" to any port 8600 \
-  comment 'IC Console from operator'
-sudo ufw status numbered
-```
-
-If UFW is not installed, use the site's equivalent host or upstream firewall;
-do not install or reconfigure a firewall blindly on a remotely administered
-Thor. Confirm that the alternative control is effective before continuing.
-Only then edit `~/.config/ic-spine/console.env` on Thor and change:
-
-```dotenv
-IC_CONSOLE_HOST=0.0.0.0
-```
-
-`0.0.0.0` preserves the repository's loopback readiness probe while accepting
-the firewalled LAN connection. Restart and verify only Console:
-
-```bash
-systemctl --user restart ic-console.service
-systemctl --user is-active ic-console.service
-ss -ltn | grep ':8600 '
-```
-
-From the operator machine, verify and open:
-
-```bash
-THOR_IP=YOUR_THOR_IP
-curl --fail "http://$THOR_IP:8600/api/health"
-# Browser: http://YOUR_THOR_IP:8600
-```
-
-This direct mode exposes only Console's read-only topology, Inspector, Safety,
-GPU, camera-evidence, and mission-history views. Keep `8610`, `8620`, `8766`,
-`18790`, `8001`, GR00T policy/relay ports, and the GPU exporter private. The
-Chat and Workflow write tabs remain on the loopback/SSH path by default.
-
-#### Opt-in shared trusted-LAN Chat (automatic access)
-
-Use this mode only when every principal allowed to reach Console is also
-authorized to command the cell. It deliberately has no login, per-user
-identity, token expiry, or TLS: the static Console sends the public
-`X-IC-Chat: console` CSRF value automatically. Exact-origin CORS prevents a
-drive-by web page from using a browser to submit commands, but `console` is not
-an authentication secret; a non-browser client can call Chat directly and an
-attacker is not required to open the Console UI first. A client that can reach
-the admitted Chat listener can reproduce the request. **Network reachability
-is actuation authority.** Keep
-the default above for an untrusted network or one shared with non-operators; a
-production remote-write deployment needs an authenticated TLS endpoint.
-
-Before changing either bind address, authorize the same isolated trusted-LAN
-CIDR for both Console `8600/tcp` and Chat `8620/tcp`. Do not make Chat broader
-than Console. With an active, default-deny UFW installation:
-
-```bash
-THOR_IF=YOUR_THOR_NETWORK_INTERFACE
-TRUSTED_LAN_CIDR=YOUR_TRUSTED_LAN_CIDR
-sudo ufw status verbose
-sudo ufw status numbered
-sudo ufw allow in on "$THOR_IF" proto tcp \
-  from "$TRUSTED_LAN_CIDR" to any port 8600 \
-  comment 'IC Console from trusted operator LAN'
-sudo ufw allow in on "$THOR_IF" proto tcp \
-  from "$TRUSTED_LAN_CIDR" to any port 8620 \
-  comment 'IC Chat from trusted operator LAN'
-sudo ufw status numbered
-```
-
-Use the site's equivalent boundary when UFW is not already the host firewall.
-Verify the two scopes are identical before continuing. In
-`~/.config/ic-spine/console.env`, retain the internal loopback URL and add the
-browser-visible URL using the literal Thor address:
-
-```dotenv
-IC_CONSOLE_HOST=0.0.0.0
-IC_CHAT_URL=http://127.0.0.1:8620
-IC_CHAT_PUBLIC_URL=http://YOUR_THOR_IP:8620
-```
-
-In `~/.config/ic-spine/chat.env`, bind Chat to the LAN, add the exact direct
-Console origin without a trailing slash, and select the static UI's public CSRF
-value. Preserve the two loopback origins so SSH-forwarded access still works:
-
-```dotenv
-IC_CHAT_HOST=0.0.0.0
-IC_CHAT_CORS=http://127.0.0.1:8600,http://localhost:8600,http://YOUR_THOR_IP:8600
-IC_CHAT_TOKEN=console
-```
-
-Replace every `YOUR_*` placeholder before restarting. Restart only the two
-affected services and verify both listeners and health endpoints:
-
-```bash
-systemctl --user restart ic-chat.service ic-console.service
-systemctl --user is-active ic-chat.service ic-console.service
-ss -ltn | grep -E ':(8600|8620) '
-THOR_IP=YOUR_THOR_IP
-curl --fail "http://$THOR_IP:8600/api/health"
-curl --fail "http://$THOR_IP:8620/api/health"
-# Browser: http://YOUR_THOR_IP:8600, then select Chat.
-```
-
-Chat drives its policy-gated tool loop and the Seam server-side, so direct
-Workflow Builder access is not required. Keep `8610`, `8766`, `18790`, `8001`,
-GR00T policy/relay ports, and the GPU exporter private. Use the SSH-forwarded
-default if Workflow Builder create/edit/run/schedule access is required.
-
-The two-host GR00T launcher renders to the simulation host's real local X11
-desktop. Optional RealVNC access is a direct connection from RealVNC Viewer to
-`<sim-host-ip>:5900`, not a browser URL, and it mirrors the entire workstation.
-It is external to this repository and must be authenticated, encrypted, and
-firewalled to the operator IP. The separate standalone launcher now defaults
-to NVIDIA's native headless WebRTC service on `49100/tcp` and `47998/udp`; it
-does not include the browser-viewer Compose service or port `8210`. No WebRTC
-client session has yet been acceptance-tested. See the
-[workstation WebRTC section](../ops/ISAAC-SIM-WORKSTATION.md#launch-the-supported-headlesswebrtc-profile).
-
-## 6. Run the physical acceptance workflow
-
-The shipped OpenClaw profile is deliberately fail-closed:
-`IC_GROOT_PARALLEL_ENABLED=0` and `IC_GROOT_FLEXIBLE_ORDER=0`. Its default
-certified plan is therefore six serial GR00T moves, each followed by fresh
-visual proof. Do not use a mixed-color concurrent prompt as the first physical
-acceptance.
-
-The deterministic `full-groot-dual-tote` workflow exercises the Seam, both
-GR00T serving paths, the VLM proof gates, both tote hauls, and the journal
-without relying on an agent to invent the action order.
-
-Before every new physical run, open **Chat** in IC Console, start a new
-conversation, and enter **`Reset the scene`**. The explicit request is required
-because scene reset is operator-gated; Chat must wait for the verified result
-before any mission action. A successful reset restores the canonical
-`groot_three_object` starting layout, including both totes on the work tables in
-front of their respective Franka arms. It resets the complete simulated cell,
-not only the camera view or tote transforms.
-
-If Console Chat is unavailable, issue the equivalent explicit operator action
-locally on Thor:
-
-```bash
-curl --fail-with-body --silent --show-error \
-  --output /tmp/ic-reset-response.json \
-  -X POST http://127.0.0.1:8766/v1/dispatch \
-  -H 'Content-Type: application/json' \
-  -H 'x-role: operator' \
-  -d '{"action":"reset_scene","endpoint":"mobilebot","scene_profile":"groot_three_object","arm":"both","color":"red","layout_left":3,"layout_right":3,"seed":31302}'
-python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(json.dumps(d,indent=2)); sys.exit(0 if d.get("verified") is True else 1)' \
-  /tmp/ic-reset-response.json
-```
-
-Then run the shipped workflow through its loopback-only guarded endpoint:
-
-```bash
-(
-set -euo pipefail
-WORKFLOWS_TOKEN="$(sed -n 's/^IC_WORKFLOWS_TOKEN=//p' \
-  "$HOME/.config/ic-spine/workflows.env" | tail -n 1)"
-: "${WORKFLOWS_TOKEN:=console}"
-curl --fail-with-body --silent --show-error \
-  --output /tmp/ic-reference-mission-response.json \
-  -X POST \
-  http://127.0.0.1:8610/api/workflows/full-groot-dual-tote/run \
-  -H 'Origin: http://127.0.0.1:8600' \
-  -H "X-IC-Workflows: $WORKFLOWS_TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"params":{}}'
-MISSION_ID="$(
-  python3 -c '
-import json, re, sys
-data = json.load(open(sys.argv[1], encoding="utf-8"))
-assert data.get("ok") is True and data.get("degraded") is False, data
-assert data.get("workflow") == "full-groot-dual-tote", data
-assert data.get("started_steps") == 20, data
-timeline = data.get("timeline")
-assert isinstance(timeline, list) and len(timeline) == 20, data
-dispatches = [step for step in timeline if step.get("tool") == "dispatch_task"]
-proofs = [step for step in timeline if step.get("tool") == "check_predicate"]
-assert len(dispatches) == 8, dispatches
-assert all(step.get("ok") is True and (step.get("response") or {}).get("verified") is True for step in dispatches), dispatches
-assert len(proofs) == 9, proofs
-assert all(step.get("ok") is True and (step.get("response") or {}).get("answer") == "yes" for step in proofs), proofs
-mission_id = data.get("mission_id")
-if not isinstance(mission_id, str) or not re.fullmatch(r"wf-full-groot-dual-tote-[0-9a-f]{8}", mission_id):
-    raise SystemExit("workflow returned an invalid mission_id")
-print(json.dumps(data, indent=2), file=sys.stderr)
-print(mission_id)
-' /tmp/ic-reference-mission-response.json
-)"
-printf '%s\n' "$MISSION_ID" > /tmp/ic-reference-mission-id
-unset WORKFLOWS_TOKEN
-)
-```
-
-The command persists the validated mission ID outside the checkout. Verify the
-authoritative final state, the journal entries for that exact mission, service
-health, and simulator stability:
-
-```bash
-(
-  set -euo pipefail
-  MISSION_ID="$(cat /tmp/ic-reference-mission-id)"
-  [[ "$MISSION_ID" =~ ^wf-full-groot-dual-tote-[0-9a-f]{8}$ ]] || {
-    echo 'invalid saved mission ID' >&2
-    exit 1
-  }
-curl --fail --silent --show-error \
-  --output /tmp/ic-final-floor-state.json \
-  -X POST http://127.0.0.1:8766/v1/floor-state \
-  -H 'Content-Type: application/json' -d '{}'
-  python3 -c '
-import json, sys
-state = json.load(open(sys.argv[1], encoding="utf-8"))
-colors = ("red", "blue", "green")
-assert state.get("conveyor_1") == [], state
-assert state.get("tote_on_rack") is True, state
-assert state.get("tote_r_on_rack") is True, state
-for tote_name in ("tote", "tote_r"):
-    tote = state.get(tote_name)
-    assert isinstance(tote, dict), state
-    assert all(tote.get(color) == "in" for color in colors), state
-print(json.dumps(state, indent=2))
-' /tmp/ic-final-floor-state.json
-curl --fail --silent --show-error \
-  --output /tmp/ic-reference-mission-detail.json \
-  "http://127.0.0.1:8766/v1/missions/$MISSION_ID?limit=100"
-  python3 -c '
-import json, sys
-detail = json.load(open(sys.argv[1], encoding="utf-8"))
-mission_id = sys.argv[2]
-assert detail.get("mission_id") == mission_id, detail
-operations = detail.get("operations")
-assert isinstance(operations, list) and len(operations) == 20, detail
-assert all(op.get("mission_id") == mission_id for op in operations), detail
-dispatches = [op for op in operations if op.get("op") == "dispatch"]
-proofs = [op for op in operations if op.get("op") == "verify"]
-assert len(dispatches) == 8, dispatches
-assert all(op.get("verified") is True and (op.get("result") or {}).get("verified") is True for op in dispatches), dispatches
-assert len(proofs) == 9, proofs
-assert all((op.get("result") or {}).get("answer") == "yes" for op in proofs), proofs
-assert all(str((op.get("result") or {}).get("evidence") or "").strip() for op in proofs), proofs
-assert all(str((op.get("result") or {}).get("source_used") or "").strip() for op in proofs), proofs
-assert all(str(op.get("request_id") or "").strip() for op in proofs), proofs
-assert all(str(op.get("frame") or "").startswith("frames/") for op in proofs), proofs
-assert len({op.get("request_id") for op in operations}) == 20, operations
-print(json.dumps({"mission_id": mission_id, "operations": len(operations), "verified_dispatches": len(dispatches), "visual_proofs": len(proofs)}, indent=2))
-' /tmp/ic-reference-mission-detail.json "$MISSION_ID"
-test -s "$HOME/ic-journal/journal.jsonl"
-wc -l "$HOME/ic-journal/journal.jsonl"
-cd "$HOME/Policy-Gated-Factory-Robot-Orchestrator-Reference"
-ops/thor-deploy.sh --check
-)
-```
-
-On the simulation host, assert against the complete log for the current
-container. The launcher refuses to reuse an existing `isaac-sim` container, so
-its `StartedAt` timestamp scopes this to the current run:
-
-```bash
-(
-  set -euo pipefail
-  test "$(docker inspect isaac-sim \
-    --format 'status={{.State.Status}} restarts={{.RestartCount}} oom={{.State.OOMKilled}}')" = \
-    'status=running restarts=0 oom=false'
-  ISAAC_STARTED_AT="$(docker inspect isaac-sim --format '{{.State.StartedAt}}')"
-  ISAAC_LOG="$(mktemp)"
-  trap 'rm -f "$ISAAC_LOG"' EXIT
-  docker logs --since "$ISAAC_STARTED_AT" isaac-sim >"$ISAAC_LOG" 2>&1
-  grep -F 'IC_GROOT_RUNTIME_READY' "$ISAAC_LOG"
-  grep -F 'STARTUP_DONE full_scene+runner' "$ISAAC_LOG"
-  if grep -E '[A-Z][A-Z0-9_]*_(ERR|ERROR)(:|[[:space:]=]|$)' \
-    "$ISAAC_LOG"; then
-    echo 'Isaac Sim current run contains a project error marker' >&2
-    exit 1
-  fi
-)
-```
-
-Require both commands to succeed. The final floor state and camera proof must
-show both loaded totes on the rack; model prose alone is not acceptance
-evidence.
+The complete serial workflow and its checks are maintained in
+[`VALIDATION.md`](VALIDATION.md#run-the-serial-reference-mission). This heading
+is retained for links to older versions of the guide.
 
 ### OpenClaw acceptance boundary
 
-The NVIDIA provider completion in step 1 validates hosted-model inference, and
-the conformance commands in step 5 validate the MCP server independently. The
-shipped OpenClaw profile also exposes physical dispatch tools, so prompt wording
-is not an authorization boundary and this guide does not label any OpenClaw chat
-request as a non-actuating smoke test. Exercise an OpenClaw/model combination
-only as a deliberate physical acceptance with an operator watching the cell, or
-after a separately reviewed read-only MCP profile is added. A successful
-deterministic workflow run does not certify OpenClaw.
+See the [OpenClaw acceptance boundary](VALIDATION.md#openclaw-acceptance-boundary).
+A deterministic workflow pass does not certify OpenClaw.
 
 ### Optional mixed-color concurrent revalidation
 
-The demonstrated mixed-color sequence is an explicit capability mode, not the
-shipped default. Attempt it only after the serial physical acceptance above and
-both B=1 GR00T servers have passed readiness. The Seam is the authoritative
-route guard, Workflows has its own pre-dispatch guard, and OpenClaw's MCP child
-enforces the certified sequence and visual-proof state. Seam and Workflows must
-receive both capability flags; the MCP child requires those flags plus
-`IC_CERTIFIED_GROOT_ORDER=1`. Stop them, update only the preserved installed
-environment/config copies, validate the OpenClaw config, and restart them
-together:
-
-```bash
-cd "$HOME/Policy-Gated-Factory-Robot-Orchestrator-Reference"
-systemctl --user stop \
-  ic-openclaw.service ic-workflows.service ic-seam.service
-for ENV_FILE in \
-  "$HOME/.config/ic-spine/seam.env" \
-  "$HOME/.config/ic-spine/workflows.env"; do
-  for FLAG in IC_GROOT_PARALLEL_ENABLED IC_GROOT_FLEXIBLE_ORDER; do
-    if grep -q "^$FLAG=" "$ENV_FILE"; then
-      sed -i "s/^$FLAG=.*/$FLAG=1/" "$ENV_FILE"
-    else
-      printf '%s=1\n' "$FLAG" >>"$ENV_FILE"
-    fi
-  done
-  grep -qx 'IC_GROOT_PARALLEL_ENABLED=1' "$ENV_FILE"
-  grep -qx 'IC_GROOT_FLEXIBLE_ORDER=1' "$ENV_FILE"
-done
-set -a
-. "$HOME/.config/ic-spine/openclaw.env"
-set +a
-./node_modules/.bin/openclaw config set \
-  mcp.servers.ic-floor.env.IC_CERTIFIED_GROOT_ORDER '"1"' --strict-json
-./node_modules/.bin/openclaw config set \
-  mcp.servers.ic-floor.env.IC_GROOT_PARALLEL_ENABLED '"1"' --strict-json
-./node_modules/.bin/openclaw config set \
-  mcp.servers.ic-floor.env.IC_GROOT_FLEXIBLE_ORDER '"1"' --strict-json
-./node_modules/.bin/openclaw config validate
-systemctl --user start \
-  ic-seam.service ic-workflows.service ic-openclaw.service
-systemctl --user is-active \
-  ic-seam.service ic-workflows.service ic-openclaw.service
-for UNIT in ic-seam.service ic-workflows.service; do
-  PID="$(systemctl --user show --property MainPID --value "$UNIT")"
-  test "$PID" -gt 0
-  tr '\0' '\n' <"/proc/$PID/environ" | \
-    grep -Ex 'IC_GROOT_(PARALLEL_ENABLED|FLEXIBLE_ORDER)=1' | \
-    sort -u | grep -c '^' | grep -qx '2'
-done
-curl --fail http://127.0.0.1:8766/v1/health
-curl --fail http://127.0.0.1:8610/api/health
-ops/thor-deploy.sh --check
-```
-
-Do not set only the MCP child flags: the Seam and Workflows will correctly
-refuse the route. Likewise, changing only the service environment does not
-authorize the MCP agent to leave its serial fallback. The bundled
-`full-groot-dual-tote-concurrent` workflow now contains only the exact
-blue/green, green/red, and red/blue sequence; other mixed pair identities are
-rejected at the Seam before ROS contact. Same-color, partial, skipped,
-out-of-order, and repeated pairs are also refused there before motion.
-
-Then submit this goal through IC Chat with the `openclaw` backend:
-
-> Reset and inspect the simulated cell. Pick left blue and right green
-> together, then left green and right red together, then left red and right
-> blue together. Verify both totes after each pair. Finally, haul both totes to
-> the rack and verify completion.
-
-This is a new end-to-end harness acceptance, not a consequence of the serial
-workflow passing. Re-run every authoritative state, journal, and simulator-log
-check above before recording it as successful.
-
-The expected default acceptance flow is:
-
-1. reset and visually inspect both work areas;
-2. execute six certified serial placements, with fresh proof after each;
-3. haul each loaded tote sequentially;
-4. visually verify the rack; and
-5. retain the complete tool, result, telemetry, and camera-evidence journal.
+See the [mixed-color procedure](VALIDATION.md#optional-mixed-color-concurrent-revalidation).
+It is an opt-in revalidation mode, not the default deployment.
 
 ## Validation checklist
 
-- IC Spine health reports a live ROS context and fresh required signals.
-- All required camera topics produce changing frames.
-- The VLM returns structured evidence from a fresh recorded frame.
-- Both GR00T profiles report the same checkpoint identity.
-- Both relays and bridge-derived readiness records are valid.
-- Scene reset restores both three-object work areas and the executor home state.
-- Every physical transaction returns `success:true` and `verified:true` before
-  its required fresh visual proof and the next transaction.
-- Both tote hauls complete without displacing their contents.
-- Final visual verification confirms the loaded totes on the rack.
-- The mission journal contains every action, result, duration, and VLM frame.
+Use the [acceptance checklist](VALIDATION.md#acceptance-checklist). Only
+measured state, journal, camera, and current-run simulator evidence constitutes
+acceptance; model prose does not.
 
 ## Persistence and safeguards
 
-Installation intentionally leaves all services disabled. This avoids enabling
-robot-control software at boot without an operator decision. See
-[`../ops/systemd/README.md`](../ops/systemd/README.md) for explicit manual and
+Installation leaves all services disabled. This prevents robot-control
+software from starting at boot without an operator decision. See
+[`../ops/systemd/README.md`](../ops/systemd/README.md) for manual and
 appliance-mode procedures.
 
-These are user services. Enabling a unit does not by itself guarantee that it
-will run after reboot with no interactive login: the user's systemd manager
-must be started, and it may stop after the final logout. Appliance-style boot
-persistence therefore also requires an administrator-approved
-`loginctl enable-linger <user>` (and site policy may prohibit lingering).
-Without linger, log in before starting the stack and do not describe the unit
-as unattended reboot-persistent. Apply the same decision separately to the
-simulation-host bridge.
+These are user services. Enabling a unit does not guarantee unattended startup:
+the user manager must start and may stop after the final logout. Appliance
+persistence also requires an administrator-approved
+`loginctl enable-linger <user>`, when permitted by site policy. Apply the same
+decision separately to the RTX bridge.
 
 - A configuration change does not authorize replacing an active process.
 - Start, stop, restart, and cancel operations require an explicit target.
-- Do not identify or terminate processes only by their port number.
-- Keep policy and relay listeners loopback-only; use the validated bridge for
+- Do not identify or terminate processes only by port number.
+- Keep policy and relay listeners loopback-only; use the qualified bridge for
   the two-host path.
 - Preserve model, dataset, image, and source revisions when comparing results.

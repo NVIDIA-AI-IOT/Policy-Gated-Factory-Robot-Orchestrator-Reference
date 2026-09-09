@@ -4,8 +4,8 @@
 # Read-only compatibility check for the validated Linux RTX simulation host.
 set -euo pipefail
 
-IMAGE="${IC_ISAAC_IMAGE:-nvcr.io/nvidia/isaac-sim:6.0.1}"
-DIGEST="${IC_ISAAC_IMAGE_DIGEST:-sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb}"
+IMAGE="${PGFR_ISAAC_IMAGE:-nvcr.io/nvidia/isaac-sim:6.0.1}"
+DIGEST="${PGFR_ISAAC_IMAGE_DIGEST:-sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb}"
 IMAGE_REF="$IMAGE@$DIGEST"
 PROFILE=headless
 DISPLAY_VALUE="${DISPLAY:-:1}"
@@ -158,7 +158,7 @@ read -r storage_capacity_bytes storage_available_bytes < <(
   || fail "could not read available bytes on the Isaac state cache filesystem"
 
 if [ "$PROFILE" = headless ]; then
-  echo "IC_SIM_HOST_READY image=$IMAGE_REF profile=headless webrtc_host=$WEBRTC_HOST signal_tcp=$WEBRTC_SIGNAL_PORT stream_udp=$WEBRTC_STREAM_PORT gpu=$qualified_gpu storage_capacity_bytes=$storage_capacity_bytes storage_available_bytes=$storage_available_bytes"
+  echo "PGFR_SIM_HOST_READY image=$IMAGE_REF profile=headless webrtc_host=$WEBRTC_HOST signal_tcp=$WEBRTC_SIGNAL_PORT stream_udp=$WEBRTC_STREAM_PORT gpu=$qualified_gpu storage_capacity_bytes=$storage_capacity_bytes storage_available_bytes=$storage_available_bytes"
 else
-  echo "IC_SIM_HOST_READY image=$IMAGE_REF profile=x11 display=$DISPLAY_VALUE gpu=$qualified_gpu storage_capacity_bytes=$storage_capacity_bytes storage_available_bytes=$storage_available_bytes"
+  echo "PGFR_SIM_HOST_READY image=$IMAGE_REF profile=x11 display=$DISPLAY_VALUE gpu=$qualified_gpu storage_capacity_bytes=$storage_capacity_bytes storage_available_bytes=$storage_available_bytes"
 fi

@@ -3,13 +3,13 @@
 
 """TEMPLATE MCP server — copy this directory, rename `my_mcp`, fill in the tools.
 
-The three non-negotiables (the `ic-conformance mcp` check enforces them):
+The three non-negotiables (the `pgfr-conformance mcp` check enforces them):
 1. `instructions` is non-empty — ship your operating doctrine in the handshake.
 2. Every tool has a docstring (the model reads it) AND ToolAnnotations
    (title + readOnlyHint — clients render and gate on these).
 3. Tools return DATA (JSON strings), not prose — the model does the talking.
 
-Backing your tools with HTTP? Point at a certified seam (`ic-conformance run`)
+Backing your tools with HTTP? Point at a certified seam (`pgfr-conformance run`)
 and pass through its results untouched — never invent success the seam didn't
 report. See servers/policy-gated-factory-robot-orchestrator-reference-mcp for the reference implementation.
 """

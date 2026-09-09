@@ -11,16 +11,24 @@ NODESOURCE_KEY_SHA256="7a96b125f721c99e07d3f45b279adbd6884ec4f3f06750f6b54df40cf
 ROS_KEY_SHA256="4a91c49af0d6f0016108b93698782b596c27ccd836937e18e0e36c3347dc602f"
 UV_VERSION="0.11.32"
 UV_INSTALLER_SHA256="43aff33a967fe40e8c17949d8c85c65bc43f3b5c94742393c957f56ab5ba80f4"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 fail() { printf 'install-brain-host-prereqs: ERROR: %s\n' "$*" >&2; exit 2; }
+
+LEGACY_GUARD="$REPO/ops/pgfr-legacy-guard.sh"
+[ -r "$LEGACY_GUARD" ] || fail "missing migration guard: $LEGACY_GUARD"
+# shellcheck disable=SC1090
+. "$LEGACY_GUARD"
 
 [ "$(uname -m)" = "aarch64" ] || fail "this installer targets the validated aarch64 Thor setup"
 [ "$(. /etc/os-release && printf '%s' "$VERSION_ID")" = "24.04" ] \
   || fail "this installer targets Ubuntu 24.04"
 
-for unit in ic-seam ic-openclaw ic-chat ic-workflows ic-gpu-exporter ic-console; do
+pgfr_refuse_active_legacy_units
+pgfr_refuse_active_legacy_containers
+for unit in pgfr-seam pgfr-openclaw pgfr-chat pgfr-workflows pgfr-gpu-exporter pgfr-console; do
   if systemctl --user --quiet is-active "$unit.service" 2>/dev/null; then
-    fail "$unit.service is active; host packages are never replaced beneath a running IC service"
+    fail "$unit.service is active; host packages are never replaced beneath a running PGFR service"
   fi
 done
 if pgrep -x apt-get >/dev/null || pgrep -x dpkg >/dev/null; then
@@ -37,7 +45,7 @@ $SUDO apt-get update
 $SUDO apt-get install -y --no-remove --no-install-recommends \
   ca-certificates curl git-lfs gnupg
 
-tmp_dir="$(mktemp -d /tmp/ic-host-prereqs.XXXXXX)"
+tmp_dir="$(mktemp -d /tmp/pgfr-host-prereqs.XXXXXX)"
 cleanup() { rm -rf "$tmp_dir"; }
 trap cleanup EXIT
 
@@ -148,4 +156,4 @@ for library in \
     || fail "$library is missing from the packaged service runtime path"
 done
 
-echo "IC_BRAIN_HOST_PREREQS_INSTALLED node=$(node --version) uv=$UV_VERSION ros=jazzy cuda_runtime=13.0"
+echo "PGFR_BRAIN_HOST_PREREQS_INSTALLED node=$(node --version) uv=$UV_VERSION ros=jazzy cuda_runtime=13.0"

@@ -32,6 +32,7 @@ case "$1 $2" in
     fi
     exit 1
     ;;
+  "ps --format") exit 0 ;;
   "ps -q") exit 0 ;;
 esac
 printf 'unexpected fake docker invocation: %s\\n' "$*" >&2
@@ -75,25 +76,25 @@ def test_prepare_stages_exact_baseline_and_is_idempotent(tmp_path: Path) -> None
     assert first.returncode == 0, first.stderr
     assert "unchanged=false" in first.stdout
     mount = state_root / "scripts"
-    assert (mount / "ic_boot.py").read_bytes() == (SOURCE / "ic_boot.py").read_bytes()
+    assert (mount / "pgfr_boot.py").read_bytes() == (SOURCE / "pgfr_boot.py").read_bytes()
     assert (mount / "our_factory.usda").read_bytes() == (
         SOURCE / "our_factory.usda"
     ).read_bytes()
 
     expected_files = sorted(
-        path.relative_to(SOURCE / "ic_cell")
-        for path in (SOURCE / "ic_cell").rglob("*")
+        path.relative_to(SOURCE / "pgfr_cell")
+        for path in (SOURCE / "pgfr_cell").rglob("*")
         if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc"
     )
     installed_files = sorted(
-        path.relative_to(mount / "ic_cell")
-        for path in (mount / "ic_cell").rglob("*")
+        path.relative_to(mount / "pgfr_cell")
+        for path in (mount / "pgfr_cell").rglob("*")
         if path.is_file()
     )
     assert installed_files == expected_files
     for relative in expected_files:
-        assert (mount / "ic_cell" / relative).read_bytes() == (
-            SOURCE / "ic_cell" / relative
+        assert (mount / "pgfr_cell" / relative).read_bytes() == (
+            SOURCE / "pgfr_cell" / relative
         ).read_bytes()
 
     # A hostile remote DISPLAY is irrelevant to non-launching preparation.
@@ -112,12 +113,12 @@ def test_prepare_atomically_replaces_only_an_empty_mount(tmp_path: Path) -> None
     result = invoke(tmp_path, "--prepare", "--root", str(state_root))
 
     assert result.returncode == 0, result.stderr
-    assert (mount / "ic_boot.py").is_file()
+    assert (mount / "pgfr_boot.py").is_file()
     assert stat.S_IMODE(mount.stat().st_mode) == 0o755
     source = SCRIPT.read_text(encoding="utf-8")
     assert 'stage="$(mktemp -d "${MOUNT}.prepare.XXXXXX")"' in source
     assert 'mv -T "$stage" "$MOUNT"' in source
-    assert 'mv "$stage/ic_cell"' not in source
+    assert 'mv "$stage/pgfr_cell"' not in source
 
 
 def test_default_state_root_is_external_to_a_documented_checkout(tmp_path: Path) -> None:
@@ -127,7 +128,7 @@ def test_default_state_root_is_external_to_a_documented_checkout(tmp_path: Path)
         tmp_path / "home" / ".local" / "share" / "policy-gated-factory-robot-orchestrator-reference" / "isaac-sim"
     )
     assert f"state={expected}" in result.stdout
-    assert (expected / "scripts" / "ic_boot.py").is_file()
+    assert (expected / "scripts" / "pgfr_boot.py").is_file()
 
 
 def test_prepare_rejects_generated_state_or_mount_below_checkout(
@@ -140,7 +141,7 @@ def test_prepare_rejects_generated_state_or_mount_below_checkout(
         str(ROOT / ".generated-state-for-test"),
     )
     assert state_result.returncode == 2
-    assert "unsafe state root" in state_result.stderr
+    assert "prohibited state root" in state_result.stderr
 
     mount_invoke = tmp_path / "mount-invoke"
     mount_invoke.mkdir()
@@ -153,14 +154,14 @@ def test_prepare_rejects_generated_state_or_mount_below_checkout(
         str(ROOT / ".generated-mount-for-test"),
     )
     assert mount_result.returncode == 2
-    assert "unsafe scripts mount" in mount_result.stderr
+    assert "prohibited scripts mount" in mount_result.stderr
 
 
 def test_prepare_refuses_tampered_bundle_without_overwrite(tmp_path: Path) -> None:
     state_root = tmp_path / "state"
     first = invoke(tmp_path, "--prepare", "--root", str(state_root))
     assert first.returncode == 0, first.stderr
-    boot = state_root / "scripts" / "ic_boot.py"
+    boot = state_root / "scripts" / "pgfr_boot.py"
     boot.write_text("tampered\\n", encoding="utf-8")
 
     second_tmp = tmp_path / "second-invoke"
@@ -197,7 +198,7 @@ def test_launch_contract_is_stable_headless_rootless_and_non_destructive() -> No
     assert '-e ISAACSIM_SIGNAL_PORT="$WEBRTC_SIGNAL_PORT"' in source
     assert '-e ISAACSIM_STREAM_PORT="$WEBRTC_STREAM_PORT"' in source
     assert "docker_args+=(-v)" in source
-    assert "--exec /scripts/ic_boot.py" in source
+    assert "--exec /scripts/pgfr_boot.py" in source
     assert "source=$MOUNT,target=/scripts,readonly" in source
     assert "--ipc=shareable --shm-size 2g" in source
     assert "--ipc=host" not in source
@@ -221,7 +222,7 @@ def test_check_runs_nvidia_compatibility_checker_at_the_same_digest() -> None:
     assert "/isaac-sim/isaac-sim.compatibility_check.sh" in check_body
     assert "--/app/quitAfter=10 --no-window" in check_body
     assert "System checking result: PASSED" in check_body
-    assert "IC_ISAAC_NVIDIA_CHECK_OK" in check_body
+    assert "PGFR_ISAAC_NVIDIA_CHECK_OK" in check_body
 
 
 def test_x11_is_an_explicit_compatibility_profile() -> None:
@@ -393,7 +394,7 @@ esac
     )
 
     assert result.returncode == 0, result.stderr
-    assert "IC_SIM_HOST_READY" in result.stdout
+    assert "PGFR_SIM_HOST_READY" in result.stdout
     assert "gpu=NVIDIA RTX PRO 6000 Blackwell Workstation Edition" in result.stdout
     assert "head -n 1" not in CHECKER.read_text(encoding="utf-8")
 
@@ -407,8 +408,8 @@ def test_readiness_rejects_errors_before_accepting_ready_marker() -> None:
         )
     ]
     run_body = source[source.index("run() {") :]
-    first_error_check = wait_body.index("IC_CELL_BOOT_ERR|IC_STEP_ERR")
-    ready_check = wait_body.index("IC_CELL_UP markers=all")
+    first_error_check = wait_body.index("PGFR_CELL_BOOT_ERR|PGFR_STEP_ERR")
+    ready_check = wait_body.index("PGFR_CELL_UP markers=all")
     assert first_error_check < ready_check
     assert "Isaac Sim Full Streaming App is loaded." in wait_body
     assert "cell_ready && $stream_ready" in wait_body
@@ -435,7 +436,7 @@ def test_readiness_finds_critical_marker_before_more_than_two_thousand_lines(
         "#!/bin/bash\n"
         "set -euo pipefail\n"
         "PRESENTATION_PROFILE=x11\n"
-        "CONTAINER_NAME=ic-readiness-test\n"
+        "CONTAINER_NAME=pgfr-readiness-test\n"
         "READY_TIMEOUT=5\n"
         "fail() { printf 'FAIL: %s\\n' \"$*\" >&2; exit 2; }\n"
         "verify_streaming_listener() { :; }\n"
@@ -455,13 +456,13 @@ if [ "$1 $2" = "logs --tail" ]; then
   exit 0
 fi
 if [ "$1" = logs ]; then
-  printf 'IC_CELL_BOOT_ERR: early deterministic failure\\n'
+  printf 'PGFR_CELL_BOOT_ERR: early deterministic failure\\n'
   line=0
   while [ "$line" -lt 2100 ]; do
     printf 'benign noisy Kit startup line %s\\n' "$line"
     line=$((line + 1))
   done
-  printf 'IC_CELL_UP markers=all\\n'
+  printf 'PGFR_CELL_UP markers=all\\n'
   printf 'Isaac Sim Full Streaming App is loaded.\\n'
   exit 0
 fi
@@ -489,14 +490,14 @@ exit 90
 
     assert result.returncode == 2
     assert "physics/bootstrap error" in result.stderr
-    assert "IC_ISAAC_BASELINE_READY" not in result.stdout
+    assert "PGFR_ISAAC_BASELINE_READY" not in result.stdout
 
 
 def test_runbook_joins_bounded_ipc_with_matching_fastdds_owner() -> None:
     runbook = (ROOT / "ops" / "ISAAC-SIM-WORKSTATION.md").read_text(
         encoding="utf-8"
     )
-    assert "--ipc=container:ic-isaac-sim-baseline" in runbook
+    assert "--ipc=container:pgfr-isaac-sim-baseline" in runbook
     assert "--user 1234:1234" in runbook
     assert "-e HOME=/tmp" in runbook
     assert "--ipc=host" not in runbook

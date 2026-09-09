@@ -20,7 +20,7 @@ entries preserve the additional supported layout alignments.
 
 [`ops/install-groot-cell.sh`](../../../../ops/install-groot-cell.sh) installs
 these files under `/scripts/groot_capture_context`. The direct deployment in
-[`../runtime/native_droid_work/ic_groot_certified_deployment_v36.py`](../runtime/native_droid_work/ic_groot_certified_deployment_v36.py)
+[`../runtime/native_droid_work/pgfr_groot_certified_deployment_v36.py`](../runtime/native_droid_work/pgfr_groot_certified_deployment_v36.py)
 loads the selected file and fails closed if it is missing or malformed.
 
 These files are deployment alignment inputs, not a training dataset. Images,

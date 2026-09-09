@@ -4,7 +4,7 @@ This directory contains the compact training utility for a single-color
 red, blue, or green specialist. It is retained for specialist experiments and
 rollback models; the shared three-object, two-arm demo follows the Order744-
 cont24 recipe in
-[`../groot_n1_7_ic_pipeline/docs/FINETUNING_RECIPE.md`](../groot_n1_7_ic_pipeline/docs/FINETUNING_RECIPE.md).
+[`../groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md`](../groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md).
 
 ## Files
 
@@ -16,12 +16,12 @@ cont24 recipe in
 ## Run a specialist experiment
 
 Run from the prepared Isaac-GR00T source root. Point
-`IC_GROOT_BASE_MODEL_PATH` to the local pinned DROID base and optionally set
-`IC_GROOT_PYTHON` to the prepared environment's Python executable:
+`PGFR_GROOT_BASE_MODEL_PATH` to the local pinned DROID base and optionally set
+`PGFR_GROOT_PYTHON` to the prepared environment's Python executable:
 
 ```bash
-export IC_GROOT_BASE_MODEL_PATH=/path/to/GR00T-N1.7-DROID
-export IC_GROOT_PYTHON=/path/to/Isaac-GR00T/.venv/bin/python
+export PGFR_GROOT_BASE_MODEL_PATH=/path/to/GR00T-N1.7-DROID
+export PGFR_GROOT_PYTHON=/path/to/Isaac-GR00T/.venv/bin/python
 
 /path/to/Policy-Gated-Factory-Robot-Orchestrator-Reference/reference/policy-gated-factory-robot-orchestrator-reference/groot/training/finetune-specialist.sh \
   red \

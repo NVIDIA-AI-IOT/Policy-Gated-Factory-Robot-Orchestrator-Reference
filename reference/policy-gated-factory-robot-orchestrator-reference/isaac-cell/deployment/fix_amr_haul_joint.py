@@ -120,17 +120,17 @@ def _cargo_is_inside(tote_position, tote_orientation, cargo_position):
 # fingers ~5 cm outside the wall - at release they are entirely outside the
 # tote footprint and the escape has nothing to catch. Originals stashed for
 # the revert script.
-if "_IC_DOCK_ORIG" not in _g:
-    _g["_IC_DOCK_ORIG"] = (DOCK.copy(), DOCK_R.copy())
+if "_PGFR_DOCK_ORIG" not in _g:
+    _g["_PGFR_DOCK_ORIG"] = (DOCK.copy(), DOCK_R.copy())
 # -0.05 y shift centers the fingers on the tote's GrabPin handle (5 cm
 # outside the long south wall) - fingers close on the pin, joint locks
-_g["DOCK"] = _g["_IC_DOCK_ORIG"][0] + np.array([0.0, -0.05])
-_g["DOCK_R"] = _g["_IC_DOCK_ORIG"][1] + np.array([0.0, -0.05])
+_g["DOCK"] = _g["_PGFR_DOCK_ORIG"][0] + np.array([0.0, -0.05])
+_g["DOCK_R"] = _g["_PGFR_DOCK_ORIG"][1] + np.array([0.0, -0.05])
 
 # side-by-side Shelf_1 seats (overrides the stacked teleport-era targets;
 # originals stashed for the revert script)
-if "_IC_SHELF_ORIG" not in _g:
-    _g["_IC_SHELF_ORIG"] = (SHELF_TOTE.copy(), SHELF_TOTE_R.copy())
+if "_PGFR_SHELF_ORIG" not in _g:
+    _g["_PGFR_SHELF_ORIG"] = (SHELF_TOTE.copy(), SHELF_TOTE_R.copy())
 _g["SHELF_TOTE"] = np.array([-0.26, -7.80, 0.52])
 _g["SHELF_TOTE_R"] = np.array([-0.26, -7.00, 0.52])
 
@@ -156,15 +156,15 @@ for _tp_path in ("/World/BigTote", "/World/BigTote_R"):
         )
         UsdGeom.XformCommonAPI(_stem.GetPrim()).SetScale(Gf.Vec3f(0.008, 0.028, 0.008))
         _stem.CreateDisplayColorAttr().Set([Gf.Vec3f(0.15, 0.15, 0.15)])
-        print("IC_JHAUL_PIN ensured on %s" % _tp_path, flush=True)
+        print("PGFR_JHAUL_PIN ensured on %s" % _tp_path, flush=True)
 
 
 def _joint_op_tick(_ev):
     """Deferred joint ops - runs on the app update loop (INC-1-safe context)."""
-    req = _g.get("_IC_JOINT_REQ")
+    req = _g.get("_PGFR_JOINT_REQ")
     if not req:
         return
-    _g["_IC_JOINT_REQ"] = None
+    _g["_PGFR_JOINT_REQ"] = None
     try:
         if req["op"] == "attach":
             xc = UsdGeom.XformCache(Usd.TimeCode.Default())
@@ -176,7 +176,7 @@ def _joint_op_tick(_ev):
                 (Mt.ExtractTranslation() - Mh.ExtractTranslation()).GetLength()
             )
             if dist > 0.6:
-                _g["_IC_JOINT_ACK"] = {
+                _g["_PGFR_JOINT_ACK"] = {
                     "ok": False,
                     "dist": dist,
                     "err": "hand-tote %.2fm - reach failed" % dist,
@@ -193,26 +193,26 @@ def _joint_op_tick(_ev):
             j.CreateLocalRot0Attr().Set(Gf.Quatf(rel.ExtractRotationQuat()))
             j.CreateLocalPos1Attr().Set(Gf.Vec3f(0, 0, 0))
             j.CreateLocalRot1Attr().Set(Gf.Quatf(1, 0, 0, 0))
-            _g["_IC_JOINT_ACK"] = {"ok": True, "dist": dist, "err": ""}
-            print("IC_JHAUL_ATTACH dist=%.3f tote=%s" % (dist, req["tote"]), flush=True)
+            _g["_PGFR_JOINT_ACK"] = {"ok": True, "dist": dist, "err": ""}
+            print("PGFR_JHAUL_ATTACH dist=%.3f tote=%s" % (dist, req["tote"]), flush=True)
         elif req["op"] == "detach":
             if stage.GetPrimAtPath(_JPATH).IsValid():
                 stage.RemovePrim(_JPATH)
-            _g["_IC_JOINT_ACK"] = {"ok": True, "dist": 0.0, "err": ""}
-            print("IC_JHAUL_DETACH", flush=True)
+            _g["_PGFR_JOINT_ACK"] = {"ok": True, "dist": 0.0, "err": ""}
+            print("PGFR_JHAUL_DETACH", flush=True)
     except Exception as e:
-        _g["_IC_JOINT_ACK"] = {"ok": False, "dist": -1.0, "err": repr(e)}
-        print("IC_JHAUL_OP_ERR %r" % e, flush=True)
+        _g["_PGFR_JOINT_ACK"] = {"ok": False, "dist": -1.0, "err": repr(e)}
+        print("PGFR_JHAUL_OP_ERR %r" % e, flush=True)
 
 
-if _g.get("_IC_JOINTOP_SUB") is not None:
-    _g["_IC_JOINTOP_SUB"] = None
+if _g.get("_PGFR_JOINTOP_SUB") is not None:
+    _g["_PGFR_JOINTOP_SUB"] = None
 import omni.kit.app
 
-_g["_IC_JOINTOP_SUB"] = (
+_g["_PGFR_JOINTOP_SUB"] = (
     omni.kit.app.get_app()
     .get_update_event_stream()
-    .create_subscription_to_pop(_joint_op_tick, name="ic_joint_op")
+    .create_subscription_to_pop(_joint_op_tick, name="pgfr_joint_op")
 )
 
 
@@ -247,7 +247,7 @@ def run_haul(dt):
             )
         ]
         S["cargo_manifest_phase"] = "pre_reach"
-        print("IC_HAUL_MANIFEST %s phase=pre_reach" % S["cargo_manifest"], flush=True)
+        print("PGFR_HAUL_MANIFEST %s phase=pre_reach" % S["cargo_manifest"], flush=True)
 
     def setp(n):
         S["ph"] = n
@@ -263,7 +263,7 @@ def run_haul(dt):
         al = _smoothstep5(t / float(_REACH_TICKS))
         arm = (1 - al) * HOME + al * GRAB
         if t >= _REACH_TICKS + _REACH_SETTLE_TICKS:
-            _g["_IC_JOINT_ACK"] = None
+            _g["_PGFR_JOINT_ACK"] = None
             setp("grabwait")
     elif st == "grabwait":
         arm = GRAB
@@ -289,8 +289,8 @@ def run_haul(dt):
                     % _missing_before_attach,
                 )
                 return
-            _g["_IC_JOINT_REQ"] = {"op": "attach", "tote": _tote.prim_path}
-        ack = _g.get("_IC_JOINT_ACK")
+            _g["_PGFR_JOINT_REQ"] = {"op": "attach", "tote": _tote.prim_path}
+        ack = _g.get("_PGFR_JOINT_ACK")
         if ack is not None:
             if ack["ok"]:
                 S["joint_on"] = True
@@ -361,22 +361,22 @@ def run_haul(dt):
             abs(float(tpz[0]) - _shelf[0]) < 0.06
             and abs(float(tpz[1]) - _shelf[1]) < 0.10
         ):
-            _g["_IC_JOINT_ACK"] = None
-            _g["_IC_JOINT_REQ"] = {"op": "detach"}
+            _g["_PGFR_JOINT_ACK"] = None
+            _g["_PGFR_JOINT_REQ"] = {"op": "detach"}
             setp("release")
         elif t > 900:
             print(
-                "IC_JHAUL_CREEP_TIMEOUT tote=(%.2f,%.2f) seat=(%.2f,%.2f)"
+                "PGFR_JHAUL_CREEP_TIMEOUT tote=(%.2f,%.2f) seat=(%.2f,%.2f)"
                 % (tpz[0], tpz[1], _shelf[0], _shelf[1]),
                 flush=True,
             )
-            _g["_IC_JOINT_ACK"] = None
-            _g["_IC_JOINT_REQ"] = {"op": "detach"}
+            _g["_PGFR_JOINT_ACK"] = None
+            _g["_PGFR_JOINT_REQ"] = {"op": "detach"}
             setp("release")  # depart gate will report honestly
     elif st == "release":
         base = _pbase
         arm = PLACE_LOW
-        ack = _g.get("_IC_JOINT_ACK")
+        ack = _g.get("_PGFR_JOINT_ACK")
         if ack is not None and t >= 60:
             S["joint_on"] = False
             setp("unhook")
@@ -496,7 +496,7 @@ def run_haul(dt):
 
 _g["run_haul"] = run_haul
 print(
-    "IC_JHAUL_PATCHED joint-carry v4: pre-contact manifest + impulse-safe grab",
+    "PGFR_JHAUL_PATCHED joint-carry v4: pre-contact manifest + impulse-safe grab",
     flush=True,
 )
 
@@ -512,4 +512,4 @@ if int(_g.get("_GR_RELAY_PORT_R", 5601)) != 5601:
             pass
     _g["_GRSOCK_R"] = None
     _g["_GR_RELAY_PORT_R"] = 5601
-    print("IC_JHAUL_PORT_HEALED 5601", flush=True)
+    print("PGFR_JHAUL_PORT_HEALED 5601", flush=True)

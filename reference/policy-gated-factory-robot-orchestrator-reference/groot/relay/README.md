@@ -7,7 +7,7 @@ uses one policy process and one
 arm.
 
 The batch-two relay provides the native-DROID single-frame observation and
-action contract used by the integrated runtime. When `IC_SERVICE_STATE_PATH`
+action contract used by the integrated runtime. When `PGFR_SERVICE_STATE_PATH`
 is configured, it atomically publishes the active model, checkpoint,
 fingerprint, policy endpoint, relay endpoint, and protocol identity. The Isaac
 executor validates that service-state record before dispatching actions.

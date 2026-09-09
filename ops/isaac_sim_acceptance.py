@@ -40,7 +40,7 @@ CAMERA_INFO_TOPICS = (
     "/table_cam/camera_info",
     "/wrist_cam/camera_info",
 )
-STRING_TOPICS = ("/ic/floor_state", "/ic/joints")
+STRING_TOPICS = ("/pgfr/floor_state", "/pgfr/joints")
 REQUIRED_TOPICS = STRING_TOPICS + IMAGE_TOPICS + CAMERA_INFO_TOPICS
 
 
@@ -59,18 +59,18 @@ def parse_json_object(value: str, topic: str) -> dict[str, Any]:
 
 
 def validate_floor_state(value: str) -> dict[str, Any]:
-    state = parse_json_object(value, "/ic/floor_state")
+    state = parse_json_object(value, "/pgfr/floor_state")
     endpoints = state.get("endpoints")
     if not isinstance(endpoints, list) or not set(ENDPOINTS).issubset(endpoints):
-        raise AcceptanceError("/ic/floor_state is missing required endpoints")
+        raise AcceptanceError("/pgfr/floor_state is missing required endpoints")
     if not isinstance(state.get("conveyor_1"), list):
-        raise AcceptanceError("/ic/floor_state conveyor_1 must be a list")
+        raise AcceptanceError("/pgfr/floor_state conveyor_1 must be a list")
     if not isinstance(state.get("tote"), dict):
-        raise AcceptanceError("/ic/floor_state tote must be an object")
+        raise AcceptanceError("/pgfr/floor_state tote must be an object")
     if not isinstance(state.get("tote_on_rack"), bool):
-        raise AcceptanceError("/ic/floor_state tote_on_rack must be boolean")
+        raise AcceptanceError("/pgfr/floor_state tote_on_rack must be boolean")
     if not isinstance(state.get("cubes"), list):
-        raise AcceptanceError("/ic/floor_state cubes must be a list")
+        raise AcceptanceError("/pgfr/floor_state cubes must be a list")
     return state
 
 
@@ -121,18 +121,18 @@ def is_red_move_state(state: dict[str, Any]) -> bool:
 
 
 def validate_joints(value: str) -> dict[str, Any]:
-    joints = parse_json_object(value, "/ic/joints")
+    joints = parse_json_object(value, "/pgfr/joints")
     for arm in ("franka_left", "franka_right"):
         values = joints.get(arm)
         if not isinstance(values, list) or len(values) < 9:
-            raise AcceptanceError(f"/ic/joints {arm} must contain at least 9 values")
+            raise AcceptanceError(f"/pgfr/joints {arm} must contain at least 9 values")
         if any(
             isinstance(item, bool)
             or not isinstance(item, (int, float))
             or not math.isfinite(float(item))
             for item in values
         ):
-            raise AcceptanceError(f"/ic/joints {arm} contains a non-finite value")
+            raise AcceptanceError(f"/pgfr/joints {arm} contains a non-finite value")
     return joints
 
 
@@ -190,7 +190,7 @@ def validate_camera_info(message: Any, topic: str) -> dict[str, Any]:
 
 
 def validate_result(value: str, command: dict[str, Any]) -> dict[str, Any]:
-    result = parse_json_object(value, "/ic/result")
+    result = parse_json_object(value, "/pgfr/result")
     goal_id = command["goal_id"]
     if result.get("goal_id") != goal_id:
         raise AcceptanceError(
@@ -254,19 +254,19 @@ def main(argv: list[str] | None = None) -> int:
 
     class AcceptanceNode(Node):
         def __init__(self) -> None:
-            super().__init__("ic_isaac_acceptance")
+            super().__init__("pgfr_isaac_acceptance")
             self.samples: dict[str, dict[str, Any]] = {}
             self.floor_state: dict[str, Any] | None = None
             self.results: dict[str, dict[str, Any]] = {}
             self.errors: dict[str, str] = {}
             self.control_graph_attested = False
-            self.command = self.create_publisher(String, "/ic/command", 10)
+            self.command = self.create_publisher(String, "/pgfr/command", 10)
             self._application_subscriptions: list[Any] = [
                 self.create_subscription(
-                    String, "/ic/floor_state", self._on_floor_state, 10
+                    String, "/pgfr/floor_state", self._on_floor_state, 10
                 ),
-                self.create_subscription(String, "/ic/joints", self._on_joints, 10),
-                self.create_subscription(String, "/ic/result", self._on_result, 10),
+                self.create_subscription(String, "/pgfr/joints", self._on_joints, 10),
+                self.create_subscription(String, "/pgfr/result", self._on_result, 10),
             ]
             for topic in IMAGE_TOPICS:
                 self._application_subscriptions.append(
@@ -301,10 +301,10 @@ def main(argv: list[str] | None = None) -> int:
                 self.floor_state = state
                 return state
 
-            self._record("/ic/floor_state", validate)
+            self._record("/pgfr/floor_state", validate)
 
         def _on_joints(self, message: Any) -> None:
-            self._record("/ic/joints", lambda: validate_joints(message.data))
+            self._record("/pgfr/joints", lambda: validate_joints(message.data))
 
         def _on_image(self, topic: str, message: Any) -> None:
             self._record(topic, lambda: validate_image(message, topic))
@@ -314,12 +314,12 @@ def main(argv: list[str] | None = None) -> int:
 
         def _on_result(self, message: Any) -> None:
             try:
-                result = parse_json_object(message.data, "/ic/result")
+                result = parse_json_object(message.data, "/pgfr/result")
                 goal_id = result.get("goal_id")
                 if isinstance(goal_id, str) and goal_id:
                     self.results[goal_id] = result
             except AcceptanceError as exc:
-                self.errors["/ic/result"] = str(exc)
+                self.errors["/pgfr/result"] = str(exc)
 
         def spin_until(
             self, predicate: Callable[[], bool], timeout: float, description: str
@@ -338,9 +338,9 @@ def main(argv: list[str] | None = None) -> int:
 
         def wait_for_control_graph(self) -> None:
             self.spin_until(
-                lambda: self.count_subscribers("/ic/command") == 1
-                and self.count_publishers("/ic/result") == 1
-                and self.count_publishers("/ic/command") == 1,
+                lambda: self.count_subscribers("/pgfr/command") == 1
+                and self.count_publishers("/pgfr/result") == 1
+                and self.count_publishers("/pgfr/command") == 1,
                 args.discovery_timeout,
                 "one command subscriber, one result publisher, and no competing command publisher",
             )
@@ -348,9 +348,9 @@ def main(argv: list[str] | None = None) -> int:
             self.assert_exclusive_control_graph()
 
         def assert_exclusive_control_graph(self) -> None:
-            command_subscribers = self.count_subscribers("/ic/command")
-            result_publishers = self.count_publishers("/ic/result")
-            command_publishers = self.count_publishers("/ic/command")
+            command_subscribers = self.count_subscribers("/pgfr/command")
+            result_publishers = self.count_publishers("/pgfr/result")
+            command_publishers = self.count_publishers("/pgfr/command")
             if (command_subscribers, result_publishers, command_publishers) != (
                 1,
                 1,
@@ -380,7 +380,7 @@ def main(argv: list[str] | None = None) -> int:
             self.assert_exclusive_control_graph()
             self.command.publish(String(data=json.dumps(command, separators=(",", ":"))))
             print(
-                f"IC_ACCEPT_COMMAND_PUBLISHED action={command['action']} "
+                f"PGFR_ACCEPT_COMMAND_PUBLISHED action={command['action']} "
                 f"goal_id={goal_id}",
                 flush=True,
             )
@@ -427,7 +427,7 @@ def main(argv: list[str] | None = None) -> int:
         node.wait_for_reset_state()
         node.wait_for_fresh_streams()
         print(
-            f"IC_ACCEPT_STREAMS_OK count={len(node.samples)} run_id={run_id}",
+            f"PGFR_ACCEPT_STREAMS_OK count={len(node.samples)} run_id={run_id}",
             flush=True,
         )
 
@@ -462,7 +462,7 @@ def main(argv: list[str] | None = None) -> int:
             "final_conveyor": final_state["conveyor_1"],
         }
         print(
-            "IC_ISAAC_ROS_ACCEPTANCE_PASS "
+            "PGFR_ISAAC_ROS_ACCEPTANCE_PASS "
             + json.dumps(summary, sort_keys=True, separators=(",", ":")),
             flush=True,
         )
@@ -477,5 +477,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except AcceptanceError as exc:
-        print(f"IC_ISAAC_ROS_ACCEPTANCE_FAIL: {exc}", file=sys.stderr, flush=True)
+        print(f"PGFR_ISAAC_ROS_ACCEPTANCE_FAIL: {exc}", file=sys.stderr, flush=True)
         raise SystemExit(2)

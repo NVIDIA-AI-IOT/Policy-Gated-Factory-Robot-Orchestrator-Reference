@@ -4,7 +4,7 @@ import omni, traceback
 from pxr import UsdGeom, Usd, Gf
 stage = omni.usd.get_context().get_stage()
 TOTE = "/World/BigTote"
-COMP_LOCAL = {"red": -0.1975, "blue": 0.0, "green": 0.1975}   # matches ic_node_v2
+COMP_LOCAL = {"red": -0.1975, "blue": 0.0, "green": 0.1975}   # matches pgfr_node_v2
 RGB = {"red": (0.9, 0.08, 0.08), "blue": (0.1, 0.2, 0.9), "green": (0.1, 0.75, 0.18)}
 Z_PAD = 0.008        # just above the tote's inner floor (cube target sits at local z~0.04)
 try:

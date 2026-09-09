@@ -88,19 +88,19 @@ groot_serving:
   thor_shared_profiles:
     installer: ops/install-groot-thor-shared-profiles.sh
     model_root: ~/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24
-    authoritative_state_root: ~/.local/share/ic-spine/groot
-    target: ic-groot-shared-stack.target
+    authoritative_state_root: ~/.local/share/pgfr-spine/groot
+    target: pgfr-groot-shared-stack.target
     installed_files:
       - shared-left.env
       - shared-right.env
-      - ic-groot-shared-stack.target
+      - pgfr-groot-shared-stack.target
     starts_services: false
   simulation_host_bridge:
     transport: ssh_loopback_forwards
     helper: ops/groot-two-host-bridge.py
     installer: ops/install-groot-two-host-bridge.sh
-    unit: ops/systemd/simulation-host/ic-groot-two-host-bridge.service
-    derived_state_root: ~/.local/share/ic-spine/groot/remote-thor-v36
+    unit: ops/systemd/simulation-host/pgfr-groot-two-host-bridge.service
+    derived_state_root: ~/.local/share/pgfr-spine/groot/remote-thor-v36
     local_forward_ports:
       franka_left:
         policy_port: 5792
@@ -109,7 +109,7 @@ groot_serving:
         policy_port: 5793
         relay_port: 5742
   relay: reference/policy-gated-factory-robot-orchestrator-reference/groot/relay/native_droid_relay_batch2.py
-  executor: reference/policy-gated-factory-robot-orchestrator-reference/groot/runtime/native_droid_work/ic_groot_certified_deployment_v36.py
+  executor: reference/policy-gated-factory-robot-orchestrator-reference/groot/runtime/native_droid_work/pgfr_groot_certified_deployment_v36.py
 
 ports:
   seam: 8766
@@ -122,9 +122,9 @@ ports:
 
 dependency_locks:
   node: package-lock.json
-  floor: ic-spine/uv.lock
+  floor: pgfr-spine/uv.lock
   mcp: servers/policy-gated-factory-robot-orchestrator-reference-mcp/uv.lock
-  console: ic-console/uv.lock
-  chat: servers/ic-chat/uv.lock
-  workflows: servers/ic-workflows/uv.lock
+  console: pgfr-console/uv.lock
+  chat: servers/pgfr-chat/uv.lock
+  workflows: servers/pgfr-workflows/uv.lock
   thor: reference/policy-gated-factory-robot-orchestrator-reference/groot/thor/uv.lock

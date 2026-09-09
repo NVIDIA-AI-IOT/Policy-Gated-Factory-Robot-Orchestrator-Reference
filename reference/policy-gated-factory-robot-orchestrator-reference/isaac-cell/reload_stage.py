@@ -4,7 +4,7 @@
 # erroring step callback, then reopen the saved cell scene fresh.
 import omni.usd
 
-for _k in ("_IC_SUB", "_DEMO_SUB"):
+for _k in ("_PGFR_SUB", "_DEMO_SUB"):
     _sub = globals().get(_k)
     if _sub is not None:
         try:

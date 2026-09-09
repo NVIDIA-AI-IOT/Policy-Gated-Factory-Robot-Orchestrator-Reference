@@ -34,10 +34,10 @@ CHECKPOINT_FINGERPRINT = (
 )
 RELAY_CONTRACT = "explicit_pair_v1_single_frame_[0]"
 REMOTE_UNITS = (
-    "ic-groot-policy@shared-left.service",
-    "ic-groot-policy@shared-right.service",
-    "ic-groot-relay@shared-left.service",
-    "ic-groot-relay@shared-right.service",
+    "pgfr-groot-policy@shared-left.service",
+    "pgfr-groot-policy@shared-right.service",
+    "pgfr-groot-relay@shared-left.service",
+    "pgfr-groot-relay@shared-right.service",
 )
 STATE_NAMES = ("shared-left.json", "shared-right.json")
 TARGET_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_.-]*@[A-Za-z0-9_.:-]+")
@@ -84,7 +84,7 @@ print(json.dumps({"active": active, "listeners": listeners, "states": states}))
 
 
 class BridgeError(RuntimeError):
-    """Fail-closed bridge configuration or runtime error."""
+    """Bridge configuration or runtime error; callers stop on uncertainty."""
 
 
 @dataclass(frozen=True)
@@ -144,45 +144,45 @@ def _require_loopback(host: str, name: str) -> None:
 
 def load_config(environment: Mapping[str, str] | None = None) -> Config:
     env = os.environ if environment is None else environment
-    target = _required(env, "IC_GROOT_THOR_SSH")
+    target = _required(env, "PGFR_GROOT_THOR_SSH")
     if not TARGET_PATTERN.fullmatch(target):
-        raise BridgeError("IC_GROOT_THOR_SSH must have the form user@host")
+        raise BridgeError("PGFR_GROOT_THOR_SSH must have the form user@host")
     checkpoint = str(
         _absolute_path(
-            _required(env, "IC_GROOT_REMOTE_CHECKPOINT"),
-            "IC_GROOT_REMOTE_CHECKPOINT",
+            _required(env, "PGFR_GROOT_REMOTE_CHECKPOINT"),
+            "PGFR_GROOT_REMOTE_CHECKPOINT",
         )
     )
     remote_root = _absolute_path(
-        _required(env, "IC_GROOT_REMOTE_STATE_ROOT"),
-        "IC_GROOT_REMOTE_STATE_ROOT",
+        _required(env, "PGFR_GROOT_REMOTE_STATE_ROOT"),
+        "PGFR_GROOT_REMOTE_STATE_ROOT",
     )
     local_root = _absolute_path(
-        _required(env, "IC_GROOT_LOCAL_STATE_ROOT"),
-        "IC_GROOT_LOCAL_STATE_ROOT",
+        _required(env, "PGFR_GROOT_LOCAL_STATE_ROOT"),
+        "PGFR_GROOT_LOCAL_STATE_ROOT",
     )
     try:
-        poll_seconds = float(env.get("IC_GROOT_BRIDGE_POLL_SECONDS", "5"))
+        poll_seconds = float(env.get("PGFR_GROOT_BRIDGE_POLL_SECONDS", "5"))
     except ValueError as exc:
-        raise BridgeError("IC_GROOT_BRIDGE_POLL_SECONDS must be numeric") from exc
+        raise BridgeError("PGFR_GROOT_BRIDGE_POLL_SECONDS must be numeric") from exc
     if not 1 <= poll_seconds <= 300:
-        raise BridgeError("IC_GROOT_BRIDGE_POLL_SECONDS must be between 1 and 300")
+        raise BridgeError("PGFR_GROOT_BRIDGE_POLL_SECONDS must be between 1 and 300")
 
     left = Arm(
         "franka_left",
         STATE_NAMES[0],
-        _port(env, "IC_GROOT_REMOTE_LEFT_POLICY_PORT"),
-        _port(env, "IC_GROOT_REMOTE_LEFT_RELAY_PORT"),
-        _port(env, "IC_GROOT_LOCAL_LEFT_POLICY_PORT"),
-        _port(env, "IC_GROOT_LOCAL_LEFT_RELAY_PORT"),
+        _port(env, "PGFR_GROOT_REMOTE_LEFT_POLICY_PORT"),
+        _port(env, "PGFR_GROOT_REMOTE_LEFT_RELAY_PORT"),
+        _port(env, "PGFR_GROOT_LOCAL_LEFT_POLICY_PORT"),
+        _port(env, "PGFR_GROOT_LOCAL_LEFT_RELAY_PORT"),
     )
     right = Arm(
         "franka_right",
         STATE_NAMES[1],
-        _port(env, "IC_GROOT_REMOTE_RIGHT_POLICY_PORT"),
-        _port(env, "IC_GROOT_REMOTE_RIGHT_RELAY_PORT"),
-        _port(env, "IC_GROOT_LOCAL_RIGHT_POLICY_PORT"),
-        _port(env, "IC_GROOT_LOCAL_RIGHT_RELAY_PORT"),
+        _port(env, "PGFR_GROOT_REMOTE_RIGHT_POLICY_PORT"),
+        _port(env, "PGFR_GROOT_REMOTE_RIGHT_RELAY_PORT"),
+        _port(env, "PGFR_GROOT_LOCAL_RIGHT_POLICY_PORT"),
+        _port(env, "PGFR_GROOT_LOCAL_RIGHT_RELAY_PORT"),
     )
     all_ports = (
         left.remote_policy_port,
@@ -200,12 +200,12 @@ def load_config(environment: Mapping[str, str] | None = None) -> Config:
         raise BridgeError("local policy and relay ports must be distinct")
 
     if not local_root.is_dir() or local_root.is_symlink():
-        raise BridgeError("IC_GROOT_LOCAL_STATE_ROOT must be an existing real directory")
+        raise BridgeError("PGFR_GROOT_LOCAL_STATE_ROOT must be an existing real directory")
     if local_root.stat().st_uid != os.getuid():
-        raise BridgeError("IC_GROOT_LOCAL_STATE_ROOT must be owned by the bridge user")
-    ssh_bin = env.get("IC_GROOT_SSH_BIN", "/usr/bin/ssh").strip()
+        raise BridgeError("PGFR_GROOT_LOCAL_STATE_ROOT must be owned by the bridge user")
+    ssh_bin = env.get("PGFR_GROOT_SSH_BIN", "/usr/bin/ssh").strip()
     if not Path(ssh_bin).is_absolute():
-        raise BridgeError("IC_GROOT_SSH_BIN must be an absolute path")
+        raise BridgeError("PGFR_GROOT_SSH_BIN must be an absolute path")
     return Config(
         thor_ssh=target,
         remote_checkpoint=checkpoint,

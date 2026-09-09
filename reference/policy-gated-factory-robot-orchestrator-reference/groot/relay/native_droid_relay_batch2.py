@@ -62,26 +62,26 @@ def _write_service_state(
 ) -> Path | None:
     """Atomically publish the exact live identity consumed by Isaac.
 
-    Unit tests and ad-hoc development runs may omit IC_SERVICE_STATE_PATH.  A
+    Unit tests and ad-hoc development runs may omit PGFR_SERVICE_STATE_PATH.  A
     production run that provides it must also provide a complete, validated
     model identity; a partial or stale readiness record is never emitted.
     """
 
-    raw_path = os.environ.get("IC_SERVICE_STATE_PATH", "").strip()
+    raw_path = os.environ.get("PGFR_SERVICE_STATE_PATH", "").strip()
     if not raw_path:
         return None
     state_path = Path(raw_path)
-    model_label = os.environ.get("IC_MODEL_LABEL", "").strip()
-    checkpoint = Path(os.environ.get("IC_MODEL_PATH", "").strip())
-    fingerprint = os.environ.get("IC_CHECKPOINT_FINGERPRINT", "").strip()
+    model_label = os.environ.get("PGFR_MODEL_LABEL", "").strip()
+    checkpoint = Path(os.environ.get("PGFR_MODEL_PATH", "").strip())
+    fingerprint = os.environ.get("PGFR_CHECKPOINT_FINGERPRINT", "").strip()
     if not state_path.is_absolute() or not state_path.parent.is_dir():
-        raise ValueError("IC_SERVICE_STATE_PATH must have an existing absolute parent")
+        raise ValueError("PGFR_SERVICE_STATE_PATH must have an existing absolute parent")
     if not re.fullmatch(r"[A-Za-z0-9_.-]{1,160}", model_label):
-        raise ValueError("IC_MODEL_LABEL is invalid")
+        raise ValueError("PGFR_MODEL_LABEL is invalid")
     if not checkpoint.is_absolute() or not checkpoint.is_dir():
-        raise ValueError("IC_MODEL_PATH must identify an existing checkpoint directory")
+        raise ValueError("PGFR_MODEL_PATH must identify an existing checkpoint directory")
     if not re.fullmatch(r"[0-9a-f]{64}", fingerprint):
-        raise ValueError("IC_CHECKPOINT_FINGERPRINT must be 64 lowercase hex characters")
+        raise ValueError("PGFR_CHECKPOINT_FINGERPRINT must be 64 lowercase hex characters")
     state = {
         "schema_version": 1,
         "status": "ready",
@@ -197,7 +197,7 @@ class NativeDroidBatcher:
         self._closed = False
         self._batch_index = 0
         self._worker = threading.Thread(
-            target=self._run, name="ic-groot-batch2", daemon=True
+            target=self._run, name="pgfr-groot-batch2", daemon=True
         )
         self._worker.start()
 
@@ -286,7 +286,7 @@ class NativeDroidBatcher:
         """Run one explicit left/right request as exactly one B=2 inference."""
 
         expected_keys = {
-            "_ic_relay_request",
+            "_pgfr_relay_request",
             "schema_version",
             "pair_id",
             "observations",
@@ -297,7 +297,7 @@ class NativeDroidBatcher:
                 f"{sorted(set(envelope) ^ expected_keys)}"
             )
         if (
-            envelope["_ic_relay_request"] != EXPLICIT_PAIR_REQUEST
+            envelope["_pgfr_relay_request"] != EXPLICIT_PAIR_REQUEST
             or envelope["schema_version"] != 1
         ):
             raise ValueError("unsupported explicit pair protocol")
@@ -348,7 +348,7 @@ class NativeDroidBatcher:
         if len(batch_indices) != 1:
             raise RuntimeError("explicit pair results have mismatched batch identity")
         return {
-            "_ic_relay_response": EXPLICIT_PAIR_RESPONSE,
+            "_pgfr_relay_response": EXPLICIT_PAIR_RESPONSE,
             "schema_version": 1,
             "pair_id": pair_id,
             "inference_seed": next(iter(seeds)),
@@ -552,7 +552,7 @@ class _RelayHandler(socketserver.BaseRequestHandler):
             observation = pickle.loads(message)
             if not isinstance(observation, dict):
                 raise ValueError("relay request must be a dictionary")
-            if observation.get("_ic_relay_request") == EXPLICIT_PAIR_REQUEST:
+            if observation.get("_pgfr_relay_request") == EXPLICIT_PAIR_REQUEST:
                 result = batcher.infer_pair(observation)
             else:
                 result = batcher.infer(observation)
@@ -562,11 +562,11 @@ class _RelayHandler(socketserver.BaseRequestHandler):
 def main() -> None:
     from gr00t.policy.server_client import PolicyClient
 
-    host = os.environ.get("IC_RELAY_HOST", "127.0.0.1")
-    port = int(os.environ.get("IC_RELAY_PORT", "5611"))
-    policy_host = os.environ.get("IC_POLICY_HOST", "127.0.0.1")
-    policy_port = int(os.environ.get("IC_POLICY_PORT", "5571"))
-    batch_window_s = float(os.environ.get("IC_BATCH_WINDOW_MS", "25")) / 1000.0
+    host = os.environ.get("PGFR_RELAY_HOST", "127.0.0.1")
+    port = int(os.environ.get("PGFR_RELAY_PORT", "5611"))
+    policy_host = os.environ.get("PGFR_POLICY_HOST", "127.0.0.1")
+    policy_port = int(os.environ.get("PGFR_POLICY_PORT", "5571"))
+    batch_window_s = float(os.environ.get("PGFR_BATCH_WINDOW_MS", "25")) / 1000.0
     _require_loopback(host, "relay")
     _require_loopback(policy_host, "policy")
 

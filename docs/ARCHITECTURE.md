@@ -1,15 +1,15 @@
 # Policy-Gated Factory Robot Orchestrator Reference architecture
 
 This repository implements governed, closed-loop orchestration of a factory cell.
-IC Spine separates agent reasoning
+PGFR Spine separates agent reasoning
 from floor execution so the agent harness, perception model, and robot action
 backend can be changed without bypassing policy, verification, or audit.
 
 ## Primary components
 
-### IC Spine
+### PGFR Spine
 
-IC Spine is the control and assurance service. It owns:
+PGFR Spine is the control and assurance service. It owns:
 
 - floor topology and endpoint discovery;
 - action-policy validation;
@@ -19,20 +19,20 @@ IC Spine is the control and assurance service. It owns:
 - mission journals and evidence frames; and
 - health and signal-freshness reporting.
 
-IC Spine can use a hardware-free mock backend or the ROS 2 backend used by the
+PGFR Spine can use a hardware-free mock backend or the ROS 2 backend used by the
 Isaac Sim reference cell.
 
-### IC Console
+### PGFR Console
 
-IC Console is the operator interface. Its panes expose topology, chat,
+PGFR Console is the operator interface. Its panes expose topology, chat,
 inspection, mission history, and host telemetry. It observes the same session
-and journal identities used by IC Spine; it is not a second control plane.
+and journal identities used by PGFR Spine; it is not a second control plane.
 
-### Agent harnesses and IC Chat
+### Agent interfaces
 
-OpenClaw, Codex, Claude Code, Hermes, IC Chat, and other compatible harnesses
-connect through the same MCP server. The MCP handshake distributes the
-Policy-Gated Factory Robot Orchestrator Reference operating playbook and exposes nine governed tools:
+MCP-capable clients such as OpenClaw, Codex, Claude Code, and Hermes connect
+through the MCP server. Its handshake distributes the operating playbook and
+exposes nine governed tools:
 
 1. `floor_state`
 2. `perceive`
@@ -44,8 +44,10 @@ Policy-Gated Factory Robot Orchestrator Reference operating playbook and exposes
 8. `mission_history`
 9. `mission_detail`
 
-Harnesses propose and sequence work. IC Spine remains responsible for whether
-an action is allowed, dispatched, verified, and journaled.
+Traditional PGFR Chat uses the PGFR Spine HTTP API directly. When OpenClaw is
+selected in PGFR Chat, OpenClaw owns the MCP tool loop and reaches PGFR Spine
+through the MCP server. Both routes converge at the same policy, dispatch,
+verification, and journal boundary.
 
 ### Isaac Sim reference cell
 
@@ -69,36 +71,37 @@ the next observation.
 
 Camera frames are published by the cell and selected by logical region. The
 reference deployment serves NVIDIA Nemotron Nano 12B VL through an
-OpenAI-compatible endpoint. IC Spine requests a fresh frame, applies the
+OpenAI-compatible endpoint. PGFR Spine requests a fresh frame, applies the
 configured region crop, records the exact VLM input, and returns structured
 `yes`, `no`, or `unknown` evidence.
 
-The agent reasons from camera perception in `vision_only` mode. Action success
-is independently checked by the executor and resulting floor state, so a model
-response or normal command return is not by itself proof that an object moved.
+In `vision_only` mode, camera observations provide the model's perception
+input. The executor and resulting floor state independently determine action
+success; a model response or successful HTTP request does not prove that an
+object moved.
 
 ## Reference deployment
 
 ```text
 Operator browser
-      |
-      v
-IC Console and selected agent harness
-      |
-      | MCP tools and playbook
-      v
-IC Spine -----> perception VLM
-      |
-      | ROS 2 command/result/state/camera contract
-      v
-Isaac Sim cell -----> GR00T policy/relay pair per arm
+  |-- PGFR Console (read aggregation)
+  |-- PGFR Chat -----------------------------+
+  +-- PGFR Workflows ------------------------+---- HTTP ----+
+                                                           |
+MCP client or OpenClaw ---> MCP server --------------------+---> PGFR Spine
+                                                                  |   |
+                                                    perception VLM   ROS 2
+                                                                      |
+                                                               Isaac Sim cell
+                                                                      |
+                                                        GR00T policy/relay pair
 ```
 
-The reference two-host arrangement places IC Spine, IC Console, the harness,
-the VLM, and both GR00T serving processes on the brain host. Isaac Sim and the
-robot executor run on the simulation host. The GR00T bridge exposes validated
-loopback forwards and derived readiness state to the simulation host; it does
-not make policy servers network-facing.
+The reference two-host arrangement places PGFR Spine, PGFR Console, the agent
+services, the VLM, and both GR00T serving processes on the Jetson control host.
+Isaac Sim and the robot executor run on the RTX simulation host. The GR00T
+bridge exposes validated loopback forwards and derived readiness state to the
+simulation host; policy servers remain bound to loopback.
 
 Exact versions, ports, artifact identities, and service ownership are defined
 in [`../deploy/reproducible-demo.yaml`](../deploy/reproducible-demo.yaml).
@@ -108,17 +111,18 @@ in [`../deploy/reproducible-demo.yaml`](../deploy/reproducible-demo.yaml).
 Given a goal such as “inspect the conveyor, sort the objects into the totes,
 then shelve both totes,” the system follows this loop:
 
-1. The harness receives the goal and the MCP operating playbook.
+1. An agent interface receives the goal and its operating instructions.
 2. `perceive` obtains fresh camera evidence for the relevant region.
 3. The harness selects an endpoint and action.
-4. IC Spine validates the request against the scene capabilities and policy.
-5. The ROS backend publishes one goal-correlated command on `/ic/command`.
+4. PGFR Spine validates the request against the scene capabilities and policy.
+5. The ROS backend publishes one goal-correlated command on `/pgfr/command`.
 6. The cell executes the scripted or GR00T action and publishes progress.
-7. The cell publishes the matching result on `/ic/result`; IC Spine rejects a
+7. The cell publishes the matching result on `/pgfr/result`; PGFR Spine rejects a
    timeout, mismatched goal, or unverified physical effect.
 8. `verify` checks the resulting scene using a fresh camera frame and VLM.
-9. The harness continues, retries within its bounded playbook, or reports the
-   unresolved condition.
+9. Read-only perception or proof may be retried within its configured bound.
+   A physical dispatch is not repeated automatically; an unresolved outcome is
+   reconciled from authoritative state and reported to the operator.
 10. Every operation, result, duration, mission identity, and VLM evidence frame
     is retained in the mission journal.
 
@@ -126,10 +130,10 @@ then shelve both totes,” the system follows this loop:
 
 The reference cell uses a small generic protocol:
 
-- `/ic/command` — JSON command envelope;
-- `/ic/result` — goal-correlated JSON outcome;
-- `/ic/feedback` — progress for long-running actions;
-- `/ic/floor_state` — current floor-state JSON; and
+- `/pgfr/command` — JSON command envelope;
+- `/pgfr/result` — goal-correlated JSON outcome;
+- `/pgfr/feedback` — progress for long-running actions;
+- `/pgfr/floor_state` — current floor-state JSON; and
 - `/<camera>/image_raw` — ROS image streams.
 
 See [`floor-ros2-contract.md`](floor-ros2-contract.md) for the message contract.
@@ -138,10 +142,10 @@ See [`floor-ros2-contract.md`](floor-ros2-contract.md) for the message contract.
 
 | Concern | Location |
 |---|---|
-| IC Spine service and floor backends | [`../ic-spine/`](../ic-spine/) |
+| PGFR Spine service and floor backends | [`../pgfr-spine/`](../pgfr-spine/) |
 | MCP tool surface | [`../servers/policy-gated-factory-robot-orchestrator-reference-mcp/`](../servers/policy-gated-factory-robot-orchestrator-reference-mcp/) |
-| IC Chat | [`../servers/ic-chat/`](../servers/ic-chat/) |
-| IC Console | [`../ic-console/`](../ic-console/) |
+| PGFR Chat | [`../servers/pgfr-chat/`](../servers/pgfr-chat/) |
+| PGFR Console | [`../pgfr-console/`](../pgfr-console/) |
 | OpenClaw integration | [`../plugins/openclaw/`](../plugins/openclaw/) |
 | Isaac Sim reference cell | [`../reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/`](../reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/) |
 | GR00T action execution | [`../reference/policy-gated-factory-robot-orchestrator-reference/groot/`](../reference/policy-gated-factory-robot-orchestrator-reference/groot/) |
@@ -155,6 +159,8 @@ See [`floor-ros2-contract.md`](floor-ros2-contract.md) for the message contract.
   closed.
 - A robot result with `verified:false` is not reported as success.
 - VLM `no` or `unknown` is not treated as visual confirmation.
-- Retries are bounded by the operating playbook; unresolved work is surfaced to
-  the operator.
-- Cancellation is an explicit action and is not inferred from a new request.
+- Read-only perception and proof retries are bounded. Physical dispatch is
+  never retried automatically.
+- The protocol defines a cancellation action, but the current ROS cell refuses
+  mid-flight cancellation because it cannot safely preempt the active command.
+  Sites must use their governed abort or emergency-stop mechanism.

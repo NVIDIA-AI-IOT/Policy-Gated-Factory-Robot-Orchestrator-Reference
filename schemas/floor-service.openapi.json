@@ -141,7 +141,7 @@
             "anyOf": [
               {
                 "enum": [
-                  "ic_two_arm",
+                  "pgfr_two_arm",
                   "groot_three_object"
                 ],
                 "type": "string"

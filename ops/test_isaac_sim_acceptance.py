@@ -53,7 +53,7 @@ def test_stream_contract_has_fifteen_distinct_application_payloads() -> None:
     assert len(set(acceptance.REQUIRED_TOPICS)) == 15
     assert len(acceptance.IMAGE_TOPICS) == 8
     assert len(acceptance.CAMERA_INFO_TOPICS) == 5
-    assert set(acceptance.STRING_TOPICS) == {"/ic/floor_state", "/ic/joints"}
+    assert set(acceptance.STRING_TOPICS) == {"/pgfr/floor_state", "/pgfr/joints"}
 
 
 def test_reset_and_red_move_require_observed_world_state() -> None:
@@ -238,20 +238,20 @@ def test_wrapper_pins_and_bounds_the_ros_sidecar_contract() -> None:
         "ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST",
         "--read-only",
         "--cap-drop ALL",
-        "IC_CELL_UP markers=all",
+        "PGFR_CELL_UP markers=all",
         "ISAAC_IMAGE_REF",
         "'{{.Image}}'",
         "'{{.Config.User}}'",
         "'{{.Path}}'",
         "exactly one /scripts mount",
-        "mounted ic_cell tree differs",
-        "--exec /scripts/ic_boot.py",
-        "IC_STAGE=/scripts/our_factory.usda",
+        "mounted pgfr_cell tree differs",
+        "--exec /scripts/pgfr_boot.py",
+        "PGFR_STAGE=/scripts/our_factory.usda",
         "must define exactly one ROS_DOMAIN_ID",
         "does not match",
         'docker logs --since "$log_since"',
         "wait_for_unique_command_logs",
-        "IC_CELL_BOOT_ERR|IC_STEP_ERR",
+        "PGFR_CELL_BOOT_ERR|PGFR_STEP_ERR",
         "commands=3 critical=0",
     ):
         assert contract in wrapper
@@ -260,9 +260,9 @@ def test_wrapper_pins_and_bounds_the_ros_sidecar_contract() -> None:
     assert "ROS_LOCALHOST_ONLY" not in wrapper
     assert "\nsleep 1\n" not in wrapper
     assert client.count("self.command.publish(") == 1
-    assert 'self.count_subscribers("/ic/command") == 1' in client
-    assert 'self.count_publishers("/ic/result") == 1' in client
-    assert 'self.count_publishers("/ic/command") == 1' in client
+    assert 'self.count_subscribers("/pgfr/command") == 1' in client
+    assert 'self.count_publishers("/pgfr/result") == 1' in client
+    assert 'self.count_publishers("/pgfr/command") == 1' in client
     spin_body = client[
         client.index("def spin_until(") : client.index("def wait_for_control_graph(")
     ]
@@ -330,7 +330,7 @@ case "$1" in
           conflicting) printf '%s\n' --/telemetry/enableAnonymousAppName=true ;;
         esac
         if [ "${FAKE_CONTAINER_ARGS_VALID:-1}" = 1 ]; then
-          printf '%s\\n' -v --exec /scripts/ic_boot.py
+          printf '%s\\n' -v --exec /scripts/pgfr_boot.py
         else
           printf '%s\\n' -v --exec /scripts/wrong.py
         fi
@@ -355,7 +355,7 @@ case "$1" in
         if [ "${FAKE_ROS_DOMAIN_PRESENT:-1}" = 1 ]; then
           printf 'ROS_DOMAIN_ID=%s\\n' "${FAKE_ROS_DOMAIN_ID:-42}"
         fi
-        printf 'IC_STAGE=%s\\n' "${FAKE_IC_STAGE:-/scripts/our_factory.usda}"
+        printf 'PGFR_STAGE=%s\\n' "${FAKE_PGFR_STAGE:-/scripts/our_factory.usda}"
         ;;
       *) exit 90 ;;
     esac
@@ -378,7 +378,7 @@ case "$1" in
     done
     [ -n "$run_id" ] || exit 91
     printf '%s\\n' "$run_id" > "$FAKE_RUN_ID"
-    printf 'IC_ISAAC_ROS_ACCEPTANCE_PASS {"run_id":"%s"}\\n' "$run_id"
+    printf 'PGFR_ISAAC_ROS_ACCEPTANCE_PASS {"run_id":"%s"}\\n' "$run_id"
     [ "${FAKE_SIDECAR_FAIL:-0}" != 1 ] || exit 7
     ;;
   logs)
@@ -393,14 +393,14 @@ case "$1" in
         exit 0
       fi
       run_id="$(sed -n '1p' "$FAKE_RUN_ID")"
-      printf "IC_CMD {'action': 'reset', 'goal_id': 'accept-%s-reset-before'}\\n" "$run_id"
-      printf "IC_CMD {'action': 'move', 'goal_id': 'accept-%s-move-red'}\\n" "$run_id"
-      printf "IC_CMD {'action': 'reset', 'goal_id': 'accept-%s-reset-after'}\\n" "$run_id"
+      printf "PGFR_CMD {'action': 'reset', 'goal_id': 'accept-%s-reset-before'}\\n" "$run_id"
+      printf "PGFR_CMD {'action': 'move', 'goal_id': 'accept-%s-move-red'}\\n" "$run_id"
+      printf "PGFR_CMD {'action': 'reset', 'goal_id': 'accept-%s-reset-after'}\\n" "$run_id"
       if [ "${FAKE_CRITICAL:-0}" = 1 ]; then
-        printf 'IC_STEP_ERR: simulated current-run failure\\n'
+        printf 'PGFR_STEP_ERR: simulated current-run failure\\n'
       fi
     else
-      printf 'IC_CELL_UP markers=all\\n'
+      printf 'PGFR_CELL_UP markers=all\\n'
       ready_lines="${FAKE_READY_LOG_LINES:-0}"
       while [ "$ready_lines" -gt 0 ]; do
         printf '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\\n'
@@ -439,7 +439,7 @@ def invoke_wrapper(
     scripts_rw: str = "false",
     scripts_count: int = 1,
     container_args_valid: bool = True,
-    ic_stage: str = "/scripts/our_factory.usda",
+    pgfr_stage: str = "/scripts/our_factory.usda",
     ros_domain: str | None = "42",
     ros_domain_override: str | None = None,
     log_delay_polls: int = 0,
@@ -470,7 +470,7 @@ def invoke_wrapper(
             "FAKE_SCRIPTS_COUNT": str(scripts_count),
             "FAKE_CONTAINER_ARGS_VALID": "1" if container_args_valid else "0",
             "FAKE_PRIVACY_ARGS_MODE": privacy_args_mode,
-            "FAKE_IC_STAGE": ic_stage,
+            "FAKE_PGFR_STAGE": pgfr_stage,
             "FAKE_ACCEPT_EULA": accept_eula,
             "FAKE_ACCEPT_EULA_COUNT": str(accept_eula_count),
             "FAKE_TELEMETRY": telemetry_opt_out,
@@ -510,9 +510,9 @@ def test_wrapper_accepts_one_sidecar_run_and_infers_target_domain(
 ) -> None:
     result = invoke_wrapper(tmp_path)
     assert result.returncode == 0, result.stderr
-    assert "IC_ISAAC_ACCEPTANCE_READY container=accept-test" in result.stdout
-    assert "IC_ISAAC_ACCEPTANCE_LOGS_OK" in result.stdout
-    assert "IC_ISAAC_WORKSTATION_ACCEPTANCE_PASS" in result.stdout
+    assert "PGFR_ISAAC_ACCEPTANCE_READY container=accept-test" in result.stdout
+    assert "PGFR_ISAAC_ACCEPTANCE_LOGS_OK" in result.stdout
+    assert "PGFR_ISAAC_WORKSTATION_ACCEPTANCE_PASS" in result.stdout
     assert "domain=42" in result.stdout
 
     calls = (tmp_path / "docker.calls").read_text(encoding="utf-8")
@@ -570,8 +570,8 @@ def test_wrapper_rejects_wrong_target_identity_before_sidecar(
         ("scripts_type", "volume", "read-only bind mount"),
         ("scripts_rw", "true", "read-only bind mount"),
         ("scripts_count", 2, "exactly one /scripts mount"),
-        ("container_args_valid", False, "--exec /scripts/ic_boot.py"),
-        ("ic_stage", "/scripts/wrong.usda", "IC_STAGE=/scripts/our_factory.usda"),
+        ("container_args_valid", False, "--exec /scripts/pgfr_boot.py"),
+        ("pgfr_stage", "/scripts/wrong.usda", "PGFR_STAGE=/scripts/our_factory.usda"),
     ),
 )
 def test_wrapper_rejects_wrong_payload_contract_before_sidecar(
@@ -631,7 +631,7 @@ def test_wrapper_rejects_tampered_project_payload_before_sidecar(
 ) -> None:
     payload = tmp_path / "payload"
     shutil.copytree(SOURCE, payload)
-    (payload / "ic_cell" / "__init__.py").write_text(
+    (payload / "pgfr_cell" / "__init__.py").write_text(
         "# acceptance tamper\n",
         encoding="utf-8",
     )
@@ -639,7 +639,7 @@ def test_wrapper_rejects_tampered_project_payload_before_sidecar(
     result = invoke_wrapper(tmp_path, scripts_source=payload)
 
     assert result.returncode == 2
-    assert "mounted ic_cell tree differs" in result.stderr
+    assert "mounted pgfr_cell tree differs" in result.stderr
     calls = (tmp_path / "docker.calls").read_text(encoding="utf-8")
     assert "\nrun " not in f"\n{calls}"
 
@@ -677,8 +677,8 @@ def test_wrapper_detects_ready_marker_before_large_log_tail_under_pipefail(
 ) -> None:
     result = invoke_wrapper(tmp_path, ready_log_lines=4096)
     assert result.returncode == 0, result.stderr
-    assert "IC_ISAAC_ACCEPTANCE_READY container=accept-test" in result.stdout
-    assert "IC_ISAAC_WORKSTATION_ACCEPTANCE_PASS" in result.stdout
+    assert "PGFR_ISAAC_ACCEPTANCE_READY container=accept-test" in result.stdout
+    assert "PGFR_ISAAC_WORKSTATION_ACCEPTANCE_PASS" in result.stdout
 
 
 def test_wrapper_fails_on_current_run_critical_log_marker(tmp_path: Path) -> None:

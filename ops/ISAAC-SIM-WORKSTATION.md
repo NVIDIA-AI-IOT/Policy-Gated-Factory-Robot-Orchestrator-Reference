@@ -6,8 +6,8 @@ The supported default is NVIDIA Isaac Sim 6.0.1 in NVIDIA's official NGC
 container, running headless with the native WebRTC streaming service. The
 repository does not build a custom Isaac Sim image.
 
-This path loads `ic_cell`, `ic_boot.py`, and `our_factory.usda` through a
-read-only mount. It does not install or start GR00T, a Thor bridge, IC Spine, or
+This path loads `pgfr_cell`, `pgfr_boot.py`, and `our_factory.usda` through a
+read-only mount. It does not install or start GR00T, a Thor bridge, PGFR Spine, or
 an agent. The GR00T launcher remains a separate, explicitly pinned
 6.0.0-dev2/X11 compatibility path.
 
@@ -88,8 +88,8 @@ transient `--rm` container at the same image digest to run NVIDIA's bundled
 `isaac-sim.compatibility_check.sh`. It requires the official result and emits:
 
     System checking result: PASSED
-    IC_ISAAC_NVIDIA_CHECK_OK image=... result=PASSED
-    IC_ISAAC_BASELINE_CHECK_OK mount=... image=... profile=headless
+    PGFR_ISAAC_NVIDIA_CHECK_OK image=... result=PASSED
+    PGFR_ISAAC_BASELINE_CHECK_OK mount=... image=... profile=headless
 
 The check container runs as `1234:1234`, uses host networking, never pulls an
 image, and has anonymous telemetry disabled. It leaves no named container.
@@ -132,14 +132,14 @@ streaming-app marker, a running container after the stability window, and an
 actual listening signaling TCP socket. It emits the advertised address and
 ports:
 
-    IC_ISAAC_BASELINE_STARTING container=ic-isaac-sim-baseline ... profile=headless webrtc_host=... signal_tcp=49100 stream_udp=47998
-    IC_ISAAC_BASELINE_READY container=ic-isaac-sim-baseline profile=headless marker=IC_CELL_UP streaming=true webrtc_host=... signal_tcp=49100 stream_udp=47998
+    PGFR_ISAAC_BASELINE_STARTING container=pgfr-isaac-sim-baseline ... profile=headless webrtc_host=... signal_tcp=49100 stream_udp=47998
+    PGFR_ISAAC_BASELINE_READY container=pgfr-isaac-sim-baseline profile=headless marker=PGFR_CELL_UP streaming=true webrtc_host=... signal_tcp=49100 stream_udp=47998
 
 The launcher checks `49100/tcp` after readiness. It deliberately does not
 require a pre-client `47998/udp` socket because media binding can occur during
 client negotiation. Follow startup with:
 
-    docker logs -f ic-isaac-sim-baseline
+    docker logs -f pgfr-isaac-sim-baseline
 
 Use NVIDIA's
 [Isaac Sim WebRTC Streaming Client](https://docs.isaacsim.omniverse.nvidia.com/6.0.1/installation/manual_livestream_clients.html)
@@ -184,7 +184,7 @@ For the default launcher container:
 docker pull --platform linux/amd64 \
   docker.io/library/ros:jazzy-ros-base-noble@sha256:2589a8fba5257307857890173c069852c2abf913a0be7970f172478baecb09e4
 ops/accept-isaac-sim-workstation.sh \
-  --container ic-isaac-sim-baseline
+  --container pgfr-isaac-sim-baseline
 ```
 
 The harness requires the exact pinned image, launcher user/entrypoint/arguments,
@@ -194,7 +194,7 @@ publishes. It infers `ROS_DOMAIN_ID` from the target container; use
 rejected rather than overridden. It never stops or removes the target. Success
 ends with:
 
-    IC_ISAAC_WORKSTATION_ACCEPTANCE_PASS container=ic-isaac-sim-baseline domain=<id> run_id=<id>
+    PGFR_ISAAC_WORKSTATION_ACCEPTANCE_PASS container=pgfr-isaac-sim-baseline domain=<id> run_id=<id>
 
 This gate intentionally changes simulated state twice. Do not run it while
 another user or workflow controls the same scene.
@@ -253,7 +253,7 @@ A ROS 2 Jazzy sidecar must join the Isaac container's IPC namespace, select the
 same RMW, and use the matching `1234:1234` identity. For example:
 
     docker run --rm --network host \
-      --ipc=container:ic-isaac-sim-baseline \
+      --ipc=container:pgfr-isaac-sim-baseline \
       --user 1234:1234 \
       -e HOME=/tmp \
       -e ROS_DOMAIN_ID=0 \
@@ -290,10 +290,10 @@ A failure leaves the named application container intact. Inspect it before a
 deliberate retry:
 
 ```bash
-docker inspect ic-isaac-sim-baseline
-docker logs ic-isaac-sim-baseline
-docker stop ic-isaac-sim-baseline
-docker rm ic-isaac-sim-baseline
+docker inspect pgfr-isaac-sim-baseline
+docker logs pgfr-isaac-sim-baseline
+docker stop pgfr-isaac-sim-baseline
+docker rm pgfr-isaac-sim-baseline
 ```
 
 The launcher itself never stops, removes, or replaces an application container.

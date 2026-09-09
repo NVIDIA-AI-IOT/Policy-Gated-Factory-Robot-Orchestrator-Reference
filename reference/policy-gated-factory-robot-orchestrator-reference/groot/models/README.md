@@ -70,4 +70,4 @@ Policy-Gated Factory Robot Orchestrator Reference measured-home, physical-fricti
 
 This checkpoint is a simulation research/demo artifact. It is not a
 functional-safety component and must not directly control physical equipment
-without independent, use-case-specific validation and safety controls.
+without independent, use-case-specific machinery-safety controls.

@@ -28,10 +28,10 @@ SPEC.loader.exec_module(relay)
 TRANSPORT_PATH = (
     Path(__file__).parent
     / "fixtures"
-    / "ic_groot_pair_transport.py"
+    / "pgfr_groot_pair_transport.py"
 )
 TRANSPORT_SPEC = importlib.util.spec_from_file_location(
-    "ic_groot_pair_transport", TRANSPORT_PATH
+    "pgfr_groot_pair_transport", TRANSPORT_PATH
 )
 assert TRANSPORT_SPEC is not None and TRANSPORT_SPEC.loader is not None
 transport = importlib.util.module_from_spec(TRANSPORT_SPEC)
@@ -100,7 +100,7 @@ def run_pair(batcher, left_seed=7, right_seed=7):
 
 def explicit_pair_envelope(left_seed=7, right_seed=7):
     return {
-        "_ic_relay_request": relay.EXPLICIT_PAIR_REQUEST,
+        "_pgfr_relay_request": relay.EXPLICIT_PAIR_REQUEST,
         "schema_version": 1,
         "pair_id": 4,
         "observations": {
@@ -186,7 +186,7 @@ class TestNativeDroidBatcher(unittest.TestCase):
         self.assertEqual(request["state"]["joint_position"][0, 0, 0], 1.0)
         self.assertEqual(request["state"]["joint_position"][1, 0, 0], 2.0)
         self.assertEqual(options, {"inference_seed": 7})
-        self.assertEqual(response["_ic_relay_response"], relay.EXPLICIT_PAIR_RESPONSE)
+        self.assertEqual(response["_pgfr_relay_response"], relay.EXPLICIT_PAIR_RESPONSE)
         self.assertEqual(response["pair_id"], 4)
         self.assertEqual(response["batch_size"], 2)
         self.assertEqual(set(response["results"]), relay.ALLOWED_CLIENTS)
@@ -357,10 +357,10 @@ class TestNativeDroidBatcher(unittest.TestCase):
             checkpoint.mkdir()
             state_path = root / "service_state.json"
             environment = {
-                "IC_SERVICE_STATE_PATH": str(state_path),
-                "IC_MODEL_LABEL": "shared-layout3",
-                "IC_MODEL_PATH": str(checkpoint),
-                "IC_CHECKPOINT_FINGERPRINT": "a" * 64,
+                "PGFR_SERVICE_STATE_PATH": str(state_path),
+                "PGFR_MODEL_LABEL": "shared-layout3",
+                "PGFR_MODEL_PATH": str(checkpoint),
+                "PGFR_CHECKPOINT_FINGERPRINT": "a" * 64,
             }
             with mock.patch.dict(os.environ, environment, clear=False):
                 result = relay._write_service_state(

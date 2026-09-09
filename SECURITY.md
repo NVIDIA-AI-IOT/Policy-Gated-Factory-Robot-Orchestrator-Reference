@@ -1,64 +1,75 @@
-# Security Policy
+# Security
 
-Report potential security vulnerabilities through the
-[NVIDIA Product Security vulnerability reporting process](https://www.nvidia.com/en-us/product-security/report-vulnerability/).
-Do not open a public issue or pull request that discloses an unpatched
-vulnerability, exploit path, credential, or security-sensitive proof of concept.
+## Report a vulnerability
 
-## Trust model (current state)
+Report potential vulnerabilities through the
+[NVIDIA Product Security reporting process](https://www.nvidia.com/en-us/product-security/report-vulnerability/).
+Do not open a public issue or pull request that contains an unpatched
+vulnerability, exploit path, credential, or security-sensitive proof of
+concept.
 
-Policy-Gated Factory Robot Orchestrator Reference is **local-first agent infrastructure for trusted factory operators**. It is not
-designed today as a shared multi-tenant boundary between adversarial users on
-one gateway. Production hardening—such as sandbox and policy enforcement,
-NIM-routed inference, tamper-resistant audit records, and operator RBAC—requires
-a separate design, threat review, and acceptance record. It is not implemented
-or promised by the current reference deployment.
+## Deployment trust model
 
-Loopback services plus SSH forwarding are the default remote-access boundary.
-The reproduction guide also documents an explicit lab-only shared trusted-LAN
-Chat mode. That exception is not authentication or production hardening: every
-client with network reach to its Chat listener can reproduce the public CSRF
-header and obtain actuation authority, even without opening IC Console. Do not
-enable it on an untrusted or mixed-user network.
+Policy-Gated Factory Robot Orchestrator Reference is a single-operator
+reference deployment for a trusted factory or lab network. It is not a
+multi-tenant security boundary or a certified functional-safety system.
 
-## Known boundaries (documented, deferred by design)
+The default configuration keeps PGFR Spine, PGFR Chat, Workflows, OpenClaw, and
+the model services on loopback. Remote operators connect through SSH
+forwarding. The optional trusted-LAN profile exposes Console and Chat without
+application authentication or TLS; every client that can reach Chat has
+actuation authority. Do not use that profile on an untrusted or mixed-user
+network.
 
-These are accepted for the current local-first, single-operator posture. They
-are hardening requirements before production remote write access; the
-documented trusted-LAN lab exception does not satisfy them:
+## Known limitations
 
-- **Floor seam has no authentication.** `POST /v1/dispatch` (which actuates the
-  arm) is gated only by the policy (`x-role: operator` for operator actions) and
-  a journaled, unauthenticated `x-mission-id` header. Any process with network
-  reach to the seam can command the cell. The console/workflows/chat CSRF guards
-  protect the *browser → gateway* hop, but the *gateway → seam* hop — the one
-  that moves the arm — is unauthenticated. **Planned fix:** a shared bearer token
-  (env `IC_FLOOR_TOKEN`) required by the seam and presented by every client
-  (MCP server, ic-workflows runner, ic-chat tool loop, conformance kit), plus
-  mutual-auth once remote access lands. Until then: keep the seam bound to
-  `127.0.0.1`.
-- **Write-path services (ic-workflows, ic-chat) require a header, not a secret,
-  by default.** The `X-IC-Workflows` / `X-IC-Chat` guard defeats browser CSRF
-  (forces a preflight the origin allowlist blocks), but with `IC_WORKFLOWS_TOKEN`
-  / `IC_CHAT_TOKEN` unset any local process can call them. Set those tokens (and
-  the future seam authentication) together when a reviewed authenticated
-  deployment supports secure credential delivery. The trusted-LAN profile's
-  literal `console` value is intentionally browser-visible and is not such a
-  secret. A nonempty header alone does not compensate for the unauthenticated
-  floor seam or absent TLS/per-user identity.
-- **No per-session isolation / RBAC.** Mission journals, workflow specs, and chat
-  sessions are readable by id with no ownership model — consistent with the
-  single-trusted-operator assumption above.
+- **PGFR Spine has no client authentication.** The `x-role` and `x-mission-id`
+  headers carry policy and journal context; they are not credentials. Any
+  process that can reach PGFR Spine can submit floor requests.
+- **The default Chat and Workflows headers provide CSRF protection, not user
+  authentication.** The trusted-LAN `console` value is visible to the browser
+  and can be reproduced by any network client.
+- **Sessions and journals have no per-user authorization model.** A trusted
+  local client can read another session or mission when it knows the
+  identifier.
+- **MCP and OpenClaw include effectful tools.** Access to the MCP standard
+  input/output channel or OpenClaw configuration can include physical dispatch
+  and operator scene reset.
+- **The reference Fast DDS profile is not authenticated or encrypted.** Use it
+  only on an isolated network, VPN, or a deployment with DDS Security.
+- **Mission evidence is not tamper-resistant.** Protect the host, journal, and
+  evidence directories according to the site's audit requirements.
 
-## Scope of useful reports today
+Before production remote-write use, add an authenticated TLS ingress,
+service-to-service authentication, per-user authorization, rate limits,
+credential rotation, a deployment-specific threat review, and a
+deployment-specific machinery-safety assessment.
 
-The most useful reports show a **current, reproducible boundary bypass with demonstrated impact**
-against the Python orchestration engine (`ic-spine/`) or the gateway runtime that runs Policy-Gated Factory Robot Orchestrator Reference
-agents. Scanner output, prompt-injection-only chains against the LLM, or reports that rely on hostile
-users sharing one trusted gateway are usually not security vulnerabilities under this model.
+## Recommended deployment controls
+
+- Keep PGFR Spine, OpenClaw, model, GR00T policy, and relay listeners on
+  loopback.
+- Prefer the documented SSH-tunnel profile for Console, Chat, and Workflows.
+- Restrict Isaac Sim streaming, VNC, SSH, and ROS 2 traffic to the required
+  operator or peer addresses.
+- Store API keys and access tokens only in the documented mode-`0600` secret
+  files or an approved secret manager.
+- Do not expose ports `8001`, `8600`–`8620`, `8766`, `18790`, or GR00T
+  serving ports to the public Internet.
+
+See [Remote access](docs/REMOTE-ACCESS.md) for the supported network profiles
+and [Validation](docs/VALIDATION.md) for the action and evidence boundary.
+
+## Scope of useful reports
+
+Reports are most useful when they demonstrate a reproducible boundary bypass
+with impact against PGFR Spine or the deployed agent and gateway path. Scanner
+output without demonstrated impact, prompt-injection-only behavior, or attacks
+that require an already trusted user to share the same local gateway may fall
+outside this reference deployment's current threat model.
 
 ## Third-party software
 
-Third-party components retain their own licenses and security processes. See
-[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) for bundled or adapted code
-and the package-manager lockfiles for resolved runtime dependencies.
+Third-party components retain their own security and disclosure processes. See
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) and the package-manager
+lockfiles for the exact runtime dependencies.

@@ -1,0 +1,31 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=Policy-Gated Factory Robot Orchestrator Reference live operator console
+Wants=network-online.target pgfr-seam.service pgfr-chat.service pgfr-workflows.service pgfr-gpu-exporter.service
+After=network-online.target pgfr-seam.service pgfr-chat.service pgfr-workflows.service pgfr-gpu-exporter.service
+
+[Service]
+Type=simple
+WorkingDirectory=__PGFR_REPO__/pgfr-console
+EnvironmentFile=__PGFR_HOME__/.config/pgfr-spine/console.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=__PGFR_REPO__/pgfr-console/.venv/bin/pgfr-console
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+KillSignal=SIGTERM
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+UMask=0077
+
+[Install]
+WantedBy=default.target

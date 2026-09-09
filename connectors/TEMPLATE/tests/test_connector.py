@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Template tests — the SDK compliance bar plus your domain specifics."""
-from ic_connector_sdk import assert_connector_compliant
+from pgfr_connector_sdk import assert_connector_compliant
 
 from my_connector.connector import MyConnector
 

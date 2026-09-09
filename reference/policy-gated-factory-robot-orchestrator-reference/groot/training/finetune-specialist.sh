@@ -12,8 +12,8 @@ fi
 COLOR="$1"
 DATASET_PATH="$2"
 OUTPUT_DIR="$3"
-BASE_MODEL_PATH="${IC_GROOT_BASE_MODEL_PATH:-}"
-PYTHON="${IC_GROOT_PYTHON:-python}"
+BASE_MODEL_PATH="${PGFR_GROOT_BASE_MODEL_PATH:-}"
+PYTHON="${PGFR_GROOT_PYTHON:-python}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 case "$COLOR" in
@@ -21,7 +21,7 @@ case "$COLOR" in
   *) echo "unknown specialist color: $COLOR" >&2; exit 2 ;;
 esac
 [ -n "$BASE_MODEL_PATH" ] || {
-  echo "set IC_GROOT_BASE_MODEL_PATH to a local copy of the pinned DROID base" >&2
+  echo "set PGFR_GROOT_BASE_MODEL_PATH to a local copy of the pinned DROID base" >&2
   exit 2
 }
 [ -e gr00t/experiment/launch_finetune.py ] || {

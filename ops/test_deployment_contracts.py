@@ -25,8 +25,8 @@ def test_openclaw_template_and_ci_match_the_pinned_runtime_schema() -> None:
     template = json.loads(text("ops/openclaw.template.json"))
     assert template["agents"]["ownership"] == "explicit"
     assert "list" not in template["agents"]
-    assert set(template["agents"]["entries"]) == {"main", "ic-console"}
-    console_tools = template["agents"]["entries"]["ic-console"]["tools"]
+    assert set(template["agents"]["entries"]) == {"main", "pgfr-console"}
+    console_tools = template["agents"]["entries"]["pgfr-console"]["tools"]
     assert console_tools["loopDetection"] == {"enabled": True}
 
     workflow = text(".github/workflows/ci.yml")
@@ -101,7 +101,7 @@ def test_canonical_guide_installs_before_starting() -> None:
     fetch = guide.index("ops/fetch-groot-models.sh")
     prepare_sim = guide.index("ops/isaac-sim-workstation.sh --prepare")
     check_sim = guide.index(
-        'ops/check-sim-host.sh --profile x11 --mount "$IC_GROOT_ISAAC_MOUNT"'
+        'ops/check-sim-host.sh --profile x11 --mount "$PGFR_GROOT_ISAAC_MOUNT"'
     )
     install_cell = guide.index("ops/install-groot-cell.sh")
     launch = guide.index("ops/launch-groot-isaac.sh")
@@ -117,13 +117,13 @@ def test_clone_paths_use_the_github_repository_name() -> None:
 
     checkout_examples = (
         text("reference/policy-gated-factory-robot-orchestrator-reference/groot/training/README.md"),
-        text("connectors/nemo-gym/resources_servers/ic_cell/README.md"),
+        text("connectors/nemo-gym/resources_servers/pgfr_cell/README.md"),
     )
     expected_example = "/path/to/Policy-Gated-Factory-Robot-Orchestrator-Reference"
     assert all(expected_example in item for item in checkout_examples)
 
     mcp_guide = text("servers/policy-gated-factory-robot-orchestrator-reference-mcp/README.md")
-    assert f"{checkout}/servers/policy-gated-factory-robot-orchestrator-reference-mcp/.venv/bin/ic-mcp" in mcp_guide
+    assert f"{checkout}/servers/policy-gated-factory-robot-orchestrator-reference-mcp/.venv/bin/pgfr-mcp" in mcp_guide
 
 
 def test_container_pins_match_manifest_and_launchers() -> None:
@@ -337,17 +337,24 @@ printf '51ca0f19912b264a1e5091e94e45ea8bb0d719a0fefacb9fb1e7b44bef1e98f5  -\\n'
         encoding="utf-8",
     )
     fake_sha.chmod(0o755)
-    for name, status in (("python3", 0), ("systemctl", 1)):
-        command = fake_bin / name
-        command.write_text(f"#!/bin/sh\nexit {status}\n", encoding="utf-8")
-        command.chmod(0o755)
+    fake_python = fake_bin / "python3"
+    fake_python.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    fake_python.chmod(0o755)
+    fake_systemctl = fake_bin / "systemctl"
+    fake_systemctl.write_text(
+        "#!/bin/sh\n"
+        'if [ "$2" = list-units ]; then exit 0; fi\n'
+        "exit 1\n",
+        encoding="utf-8",
+    )
+    fake_systemctl.chmod(0o755)
 
     destination = tmp_path / "published" / "Isaac-GR00T"
     environment = {
         **os.environ,
         "PATH": f"{fake_bin}:{os.environ['PATH']}",
         "HOME": str(tmp_path / "home"),
-        "IC_GROOT_SOURCE_ROOT": str(destination),
+        "PGFR_GROOT_SOURCE_ROOT": str(destination),
         "FAKE_CLONE_CALLS": str(tmp_path / "clone.calls"),
         "FAKE_CLONE_STARTED": str(tmp_path / "clone.started"),
     }
@@ -377,7 +384,7 @@ printf '51ca0f19912b264a1e5091e94e45ea8bb0d719a0fefacb9fb1e7b44bef1e98f5  -\\n'
     first_stdout, first_stderr = first.communicate(timeout=10)
 
     assert first.returncode == 0, first_stderr
-    assert "IC_GROOT_RUNTIME_PREPARED" in first_stdout
+    assert "PGFR_GROOT_RUNTIME_PREPARED" in first_stdout
     assert second.returncode == 2
     assert "another preparation owns the destination lock" in second.stderr
     assert (tmp_path / "clone.calls").read_text(encoding="utf-8").splitlines() == [
@@ -390,10 +397,10 @@ printf '51ca0f19912b264a1e5091e94e45ea8bb0d719a0fefacb9fb1e7b44bef1e98f5  -\\n'
 def test_doctors_and_units_use_immutable_or_user_owned_contracts() -> None:
     sim_doctor = text("ops/check-sim-host.sh")
     vlm_launcher = text("ops/launch-perception-vlm.sh")
-    vlm_unit = text("ops/systemd/ic-perception-vlm.service")
+    vlm_unit = text("ops/systemd/pgfr-perception-vlm.service")
     assert 'docker image inspect "$IMAGE_REF"' in sim_doctor
     assert 'docker image inspect "$IMAGE"' not in sim_doctor
-    assert "IC_VLM_READY_TIMEOUT_S must be an integer" in vlm_launcher
+    assert "PGFR_VLM_READY_TIMEOUT_S must be an integer" in vlm_launcher
     assert "--runtime=nvidia --gpus all" in vlm_launcher
     assert "VLM container exited before readiness" in vlm_launcher
     assert "docker.service" not in vlm_unit
@@ -403,21 +410,119 @@ def test_write_capable_templates_are_loopback_first() -> None:
     chat = text("ops/systemd/chat.env")
     workflows = text("ops/systemd/workflows.env")
     console = text("ops/systemd/console.env")
-    assert "IC_CHAT_HOST=127.0.0.1" in chat
-    assert "IC_WORKFLOWS_HOST=127.0.0.1" in workflows
-    assert "IC_CONSOLE_HOST=127.0.0.1" in console
-    assert "IC_CHAT_TOKEN=" in chat
-    assert "IC_WORKFLOWS_TOKEN=" in workflows
-    assert "IC_CHAT_URL=http://127.0.0.1:8620" in console
-    assert "\nIC_CHAT_PUBLIC_URL=\n" in console
+    assert "PGFR_CHAT_HOST=127.0.0.1" in chat
+    assert "PGFR_WORKFLOWS_HOST=127.0.0.1" in workflows
+    assert "PGFR_CONSOLE_HOST=127.0.0.1" in console
+    assert "PGFR_CHAT_TOKEN=" in chat
+    assert "PGFR_WORKFLOWS_TOKEN=" in workflows
+    assert "PGFR_CHAT_URL=http://127.0.0.1:8620" in console
+    assert "\nPGFR_CHAT_PUBLIC_URL=\n" in console
+
+
+def test_legacy_runtime_guard_is_centralized_and_fail_closed(tmp_path: Path) -> None:
+    guard_path = ROOT / "ops" / "pgfr-legacy-guard.sh"
+    guard = guard_path.read_text(encoding="utf-8")
+    unit_match = re.search(
+        r"PGFR_LEGACY_UNIT_PATTERNS=\(\n\s+'([^']+)'", guard
+    )
+    container_match = re.search(
+        r"PGFR_LEGACY_CONTAINER_PATTERNS=\(\n\s+'([^']+)'", guard
+    )
+    assert unit_match is not None
+    assert container_match is not None
+    legacy_unit = unit_match.group(1).replace("*", "seam")
+    legacy_container = container_match.group(1).replace("*", "simulator")
+
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_systemctl = fake_bin / "systemctl"
+    fake_systemctl.write_text(
+        "#!/bin/sh\n"
+        'printf "%s loaded active running migration-test\\n" "$FAKE_ACTIVE_UNIT"\n',
+        encoding="utf-8",
+    )
+    fake_systemctl.chmod(0o755)
+    fake_docker = fake_bin / "docker"
+    fake_docker.write_text(
+        "#!/bin/sh\n"
+        'printf "%s\\n" "$FAKE_ACTIVE_CONTAINER"\n',
+        encoding="utf-8",
+    )
+    fake_docker.chmod(0o755)
+    environment = {
+        **os.environ,
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+        "FAKE_ACTIVE_UNIT": legacy_unit,
+        "FAKE_ACTIVE_CONTAINER": legacy_container,
+    }
+
+    for function, expected in (
+        ("pgfr_refuse_active_legacy_units", legacy_unit),
+        ("pgfr_refuse_active_legacy_containers", legacy_container),
+    ):
+        result = subprocess.run(
+            ["/bin/bash", "-c", f'. "$1"; {function}', "guard-test", str(guard_path)],
+            cwd=ROOT,
+            env=environment,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        assert result.returncode == 2
+        assert expected in result.stderr
+
+    prefix_lower = "".join(("i", "c"))
+    prefix_upper = prefix_lower.upper()
+    legacy_pattern = re.compile(
+        rf"(?<![A-Za-z0-9_])(?:{prefix_upper}_|{prefix_lower}_|"
+        rf"{prefix_upper}-|{prefix_lower}-|/{prefix_lower}(?:/|\b)|"
+        rf"{prefix_upper}\b|{prefix_lower}\b|X-{prefix_upper})"
+    )
+    for root_name in (".github", "ops", "deploy"):
+        for candidate in (ROOT / root_name).rglob("*"):
+            if not candidate.is_file() or candidate == guard_path:
+                continue
+            try:
+                candidate_text = candidate.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            assert legacy_pattern.search(candidate_text) is None, candidate
+
+
+def test_mutating_deployment_tools_call_the_legacy_guard() -> None:
+    unit_guarded = (
+        "ops/bootstrap-brain.sh",
+        "ops/install-brain-host-prereqs.sh",
+        "ops/prepare-groot-runtime.sh",
+        "ops/fetch-groot-models.sh",
+        "ops/install-groot-thor-shared-profiles.sh",
+        "ops/install-groot-two-host-bridge.sh",
+        "ops/launch-groot-isaac.sh",
+        "ops/thor-deploy.sh",
+        "ops/gw.sh",
+    )
+    container_guarded = (
+        "ops/bootstrap-brain.sh",
+        "ops/install-brain-host-prereqs.sh",
+        "ops/install-groot-cell.sh",
+        "ops/isaac-sim-workstation.sh",
+        "ops/launch-groot-isaac.sh",
+        "ops/launch-perception-vlm.sh",
+    )
+    for relative in set(unit_guarded + container_guarded):
+        assert "pgfr-legacy-guard.sh" in text(relative)
+    for relative in unit_guarded:
+        assert "pgfr_refuse_active_legacy_units" in text(relative)
+    for relative in container_guarded:
+        assert "pgfr_refuse_active_legacy_containers" in text(relative)
 
 
 def test_brain_bootstrap_seeds_one_shared_openclaw_gateway_token() -> None:
     bootstrap = text("ops/bootstrap-brain.sh")
-    chat_backend = text("servers/ic-chat/src/ic_chat/backends.py")
-    gateway_unit = text("ops/systemd/ic-openclaw.service")
-    chat_unit = text("ops/systemd/ic-chat.service")
-    secrets_file = "EnvironmentFile=-__IC_HOME__/.openclaw/secrets.env"
+    chat_backend = text("servers/pgfr-chat/src/pgfr_chat/backends.py")
+    gateway_unit = text("ops/systemd/pgfr-openclaw.service")
+    chat_unit = text("ops/systemd/pgfr-chat.service")
+    secrets_file = "EnvironmentFile=-__PGFR_HOME__/.openclaw/secrets.env"
     assert "OPENCLAW_GATEWAY_TOKEN" in bootstrap
     assert "secrets.token_hex(32)" in bootstrap
     assert 'chmod 0600 "$secrets_file"' in bootstrap
@@ -427,18 +532,18 @@ def test_brain_bootstrap_seeds_one_shared_openclaw_gateway_token() -> None:
 
 
 def test_vlm_has_one_supported_service_owner() -> None:
-    unit = text("ops/systemd/ic-perception-vlm.service")
+    unit = text("ops/systemd/pgfr-perception-vlm.service")
     bootstrap = text("ops/bootstrap-brain.sh")
     deploy = text("ops/thor-deploy.sh")
     assert "ops/launch-perception-vlm.sh --run" in unit
     assert '"$REPO"/ops/systemd/*.service' in bootstrap
-    assert "ic-perception-vlm.service" in deploy
+    assert "pgfr-perception-vlm.service" in deploy
     assert "/api/ready" in deploy
 
 
 def test_machine_specific_workflow_units_are_removed() -> None:
-    assert not (ROOT / "servers/ic-workflows/ic-workflows.env").exists()
-    assert not (ROOT / "servers/ic-workflows/ic-workflows.service").exists()
+    assert not (ROOT / "servers/pgfr-workflows/pgfr-workflows.env").exists()
+    assert not (ROOT / "servers/pgfr-workflows/pgfr-workflows.service").exists()
 
 
 def test_new_operational_scripts_are_executable() -> None:
@@ -450,11 +555,11 @@ def test_new_operational_scripts_are_executable() -> None:
 def test_playbook_sync_replaces_a_marker_from_a_previous_source_path(tmp_path: Path) -> None:
     target = tmp_path / "AGENTS.md"
     previous_begin = (
-        "<!-- IC-PLAYBOOK-BEGIN (synced from skills/previous-orchestrator/PLAYBOOK.md) -->"
+        "<!-- PGFR-PLAYBOOK-BEGIN (synced from skills/previous-orchestrator/PLAYBOOK.md) -->"
     )
     target.write_text(
         "# Agent profile\n\n"
-        f"{previous_begin}\n\nprevious playbook\n\n<!-- IC-PLAYBOOK-END -->\n\n"
+        f"{previous_begin}\n\nprevious playbook\n\n<!-- PGFR-PLAYBOOK-END -->\n\n"
         "## Local notes\n\nKeep this section.\n",
         encoding="utf-8",
     )
@@ -470,7 +575,41 @@ def test_playbook_sync_replaces_a_marker_from_a_previous_source_path(tmp_path: P
 
     updated = target.read_text(encoding="utf-8")
     assert previous_begin not in updated
-    assert updated.count("<!-- IC-PLAYBOOK-BEGIN") == 1
-    assert updated.count("<!-- IC-PLAYBOOK-END -->") == 1
+    assert updated.count("<!-- PGFR-PLAYBOOK-BEGIN") == 1
+    assert updated.count("<!-- PGFR-PLAYBOOK-END -->") == 1
     assert "## Floor operating rule (Policy-Gated Factory Robot Orchestrator Reference)" in updated
+    assert "## Local notes\n\nKeep this section." in updated
+
+
+def test_playbook_sync_replaces_the_centralized_legacy_marker(tmp_path: Path) -> None:
+    guard = text("ops/pgfr-legacy-guard.sh")
+    marker_match = re.search(
+        r"PGFR_LEGACY_PLAYBOOK_MARKER='([^']+)'", guard
+    )
+    assert marker_match is not None
+    legacy_marker = marker_match.group(1)
+    target = tmp_path / "AGENTS.md"
+    target.write_text(
+        "# Agent profile\n\n"
+        f"<!-- {legacy_marker}-BEGIN (synced from an earlier checkout) -->\n\n"
+        "previous playbook\n\n"
+        f"<!-- {legacy_marker}-END -->\n\n"
+        "## Local notes\n\nKeep this section.\n",
+        encoding="utf-8",
+    )
+
+    subprocess.run(
+        [str(ROOT / "ops/sync-playbook.sh"), str(target)],
+        check=True,
+        cwd=ROOT,
+        env={**os.environ, "HOME": str(tmp_path)},
+        capture_output=True,
+        text=True,
+    )
+
+    updated = target.read_text(encoding="utf-8")
+    assert legacy_marker not in updated
+    assert updated.count("<!-- PGFR-PLAYBOOK-BEGIN") == 1
+    assert updated.count("<!-- PGFR-PLAYBOOK-END -->") == 1
+    assert "previous playbook" not in updated
     assert "## Local notes\n\nKeep this section." in updated

@@ -1,30 +1,79 @@
-# MCP server creation workflow
+# MCP server template
 
-Expose your system (video analytics, QC, fleet data, …) as tools any brain in the
-ecosystem can use — one handshake, doctrine included. Reference implementation:
-[`../policy-gated-factory-robot-orchestrator-reference-mcp`](../policy-gated-factory-robot-orchestrator-reference-mcp/).
+This directory is a minimal Python MCP server for exposing a system as typed
+tools. It uses standard input/output transport and includes examples of a
+read-only tool and an effectful tool.
 
-## The workflow
+See the [PGFR floor MCP
+server](../policy-gated-factory-robot-orchestrator-reference-mcp/README.md) for
+the repository's reference implementation.
 
-1. **Copy** this directory to `servers/<your-name>-mcp/`; rename `my_mcp` (3 spots
-   in `pyproject.toml`, the `src/` dir).
-2. **Write `src/<pkg>/INSTRUCTIONS.md`** — the operating doctrine for your domain:
-   what the tools are for, in what order, what not to do. This ships in the MCP
-   handshake; a server without doctrine is a foot-gun with a schema.
-3. **Implement tools.** Rules of the house:
-   - docstring on every tool (the model reads it) + `ToolAnnotations`
-     (title, `readOnlyHint`; `destructiveHint` honestly set),
-   - return JSON data, not prose,
-   - effectful tools return a `verified` field — never claim unverified success,
-   - proxy a certified seam where possible; add no authority of your own.
-4. **Test**: `python3 -m venv .venv && .venv/bin/pip install -e ".[dev]" && .venv/bin/pytest`
-   (the three template tests are the minimum bar — keep them).
-5. **Certify**: `ic-conformance mcp --command .venv/bin/<your-cli>` — connects over
-   stdio and verifies instructions + annotations + tool hygiene.
-6. **Register**: PR adding your server to the catalog table in `servers/README.md`.
+## Requirements
 
-## Conventions
+- Python 3.10 or later
+- The `pgfr-conformance` package for the optional MCP contract check
 
-- stdio transport by default; config via env vars (document them in your README)
-- one mission-id per session if you talk to the floor seam (`x-mission-id` header)
-- role header `x-role` only if your users are operators — default to agent
+## Create a server
+
+1. Copy this directory to `servers/<name>-mcp/`.
+2. Rename the project, command, and source package entries in `pyproject.toml`.
+3. Add `src/<package>/INSTRUCTIONS.md`. This content is sent to each MCP client
+   in the server handshake.
+4. Replace the example tools in `src/<package>/server.py`.
+5. Add tests for transport errors, authorization boundaries, and the system
+   behind each tool.
+6. Add the completed server to [`servers/README.md`](../README.md).
+
+Every tool should have a concise docstring and accurate `ToolAnnotations`.
+Return structured JSON data. An effectful tool should report whether its result
+was verified and must not infer success from request acceptance alone.
+
+## Install and test
+
+From this directory:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -e ".[dev]"
+```
+
+The template intentionally omits `INSTRUCTIONS.md`. Add that file and replace
+all placeholders before running the tests:
+
+```bash
+.venv/bin/python -m pytest
+```
+
+## Run the server
+
+```bash
+.venv/bin/my-mcp
+```
+
+The process communicates over standard input/output. Configure endpoints and
+credentials through environment variables or a secret store, and document
+every required variable in the completed server README.
+
+## Run the MCP conformance check
+
+Install the [conformance
+kit](../../packages/conformance-kit/README.md), then run from this directory:
+
+```bash
+../../packages/conformance-kit/.venv/bin/pgfr-conformance mcp \
+  --command "$PWD/.venv/bin/my-mcp"
+```
+
+The check covers handshake instructions, tool availability, descriptions, and
+annotations. It does not validate authorization, the backing system, or the
+semantic correctness of tool results.
+
+## Floor-service integration
+
+When a tool proxies PGFR Spine:
+
+- preserve one mission ID for the lifetime of the MCP process;
+- use the `agent` role unless the user explicitly invokes an operator control;
+- return PGFR Spine results without converting an unverified result into success;
+  and
+- leave motion policy and physical verification at PGFR Spine.

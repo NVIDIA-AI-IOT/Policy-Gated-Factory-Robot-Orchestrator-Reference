@@ -1,305 +1,216 @@
 # Policy-Gated Factory Robot Orchestrator Reference
 
 <p align="center">
-  <strong>Goal-driven, closed-loop orchestration for industrial robots, AGVs/AMRs, and conveyors.</strong>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="Apache License 2.0"></a>
+  <img src="https://img.shields.io/badge/Python-3.12-3776AB.svg?logo=python&logoColor=white" alt="Python 3.12">
+  <img src="https://img.shields.io/badge/Node.js-22.22.3-339933.svg?logo=node.js&logoColor=white" alt="Node.js 22.22.3">
+  <img src="https://img.shields.io/badge/Isaac%20Sim-6.0.1-76B900.svg" alt="Isaac Sim 6.0.1">
 </p>
 
-<p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg?style=for-the-badge" alt="Apache License 2.0"></a>
-  <img src="https://img.shields.io/badge/Python-3.12%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.12+">
-  <img src="https://img.shields.io/badge/Node-22.22.3-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node 22.22.3">
-</p>
+**A two-host reference application for policy-gated orchestration of an NVIDIA
+Isaac Sim factory cell with NVIDIA Jetson AGX Thor and NVIDIA Isaac GR00T.**
 
----
+Policy-Gated Factory Robot Orchestrator Reference turns operator goals into
+controlled robot operations. PGFR Spine applies policy, dispatches actions over
+ROS 2, verifies outcomes from simulator state and camera observations, and
+records mission evidence. PGFR Console provides the operator interface, while
+Chat, Workflows, MCP, and OpenClaw adapters connect agent runtimes to the same
+control service.
 
-**Policy-Gated Factory Robot Orchestrator Reference** is the brain of the factory floor. An operator gives it a goal in plain
-language — *"tidy the conveyor and shelve the tote"* — and it perceives the floor **by camera**,
-plans the work, dispatches policy-gated robot actions — including coordinated two-arm pairs —
-**verifies every step against physics and cameras**, and retries or escalates when reality
-diverges from the plan.
+[Watch the reference mission](https://github.com/user-attachments/assets/9f15f687-9a6d-4669-ac43-73ba49f89427)
+or [download the video](docs/PGFR_Demo.mp4).
 
-**The IC Spine is a stable control and assurance layer between interchangeable agents,
-floor systems, and enterprise services.** OpenClaw and Claude Code connect to the same
-live Isaac Sim cell over the governed MCP seam. Swapping a harness does not move safety
-policy, verification, the operating playbook, or the audit journal out of the Spine; each
-harness and model combination still requires its own end-to-end acceptance run.
+## Key capabilities
 
-Policy-Gated Factory Robot Orchestrator Reference has two primary software components:
+- **Policy-gated execution:** all floor actions pass through PGFR Spine before
+  reaching ROS 2 or a robot controller.
+- **Closed-loop verification:** action results are matched by goal ID and
+  checked against simulator state and fresh camera observations.
+- **Isaac Sim reference cell:** two Franka arms, conveyors, two totes, an AMR,
+  a rack, and a deterministic reset profile.
+- **GR00T integration:** one fine-tuned checkpoint serves two arm-specific
+  policy processes on Jetson AGX Thor.
+- **Operator tools:** PGFR Console provides topology, Chat, Workflows, mission
+  history, inspection, and GPU telemetry views.
+- **Agent interfaces:** the floor API is available through MCP, OpenClaw, and
+  an OpenAI-compatible Chat service.
+- **Reproducible deployment:** container images, model revisions, runtime
+  inputs, and dependency locks are recorded and validated.
 
-- **[IC Spine](ic-spine/)** — the policy-gated orchestration, perception,
-  dispatch, verification, and audit service.
-- **[IC Console](ic-console/)** — the operator interface for topology, chat,
-  inspection, missions, and system telemetry.
-
-The complete Isaac Sim and GR00T implementation is organized under the
-**[robot-cell reference implementation](reference/policy-gated-factory-robot-orchestrator-reference/)**.
+The default acceptance workflow runs six serial GR00T placements followed by
+two tote transfers. Concurrent two-arm execution is a separate opt-in
+validation profile. Physical actions are not retried automatically.
 
 ## Architecture
 
-**Architecture and reference deployment topology** (hosts, interfaces,
-packages, and protocols):
+![Policy-Gated Factory Robot Orchestrator Reference deployment](docs/pgfr-spine-deployment.svg)
 
-![Policy-Gated Factory Robot Orchestrator Reference deployment view](docs/ic-spine-deployment.svg)
+| Component | Purpose | Interface |
+|---|---|---|
+| [PGFR Console](pgfr-console/) | Operator UI and read-only aggregation API | HTTP, port 8600 |
+| [PGFR Chat](servers/pgfr-chat/) | Model-driven operator commands | HTTP, port 8620 |
+| [PGFR Workflows](servers/pgfr-workflows/) | Reviewed workflow authoring and execution | HTTP, port 8610 |
+| [MCP server](servers/policy-gated-factory-robot-orchestrator-reference-mcp/) | Agent-facing floor tools and operating instructions | MCP over stdio |
+| [PGFR Spine](pgfr-spine/) | Policy, perception, dispatch, verification, and mission records | HTTP, port 8766 |
+| [Isaac Sim cell](reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/) | Simulated factory equipment, cameras, and ROS 2 endpoints | ROS 2 |
+| [GR00T integration](reference/policy-gated-factory-robot-orchestrator-reference/groot/) | Per-arm policy serving, relays, and the simulation-host bridge | Loopback services and ROS 2 |
 
-Repository map: [`STRUCTURE.md`](STRUCTURE.md).
+Traditional PGFR Chat calls the PGFR Spine HTTP API. The OpenClaw path reaches the
+same service through the MCP server. Both routes use the same policy and
+verification layer.
 
-Deployment guide: [`docs/REPRODUCIBLE-DEMO.md`](docs/REPRODUCIBLE-DEMO.md) ·
-validated platforms: [`docs/SUPPORT.md`](docs/SUPPORT.md) · endpoint
-integration: [`docs/ENDPOINT-INTEGRATION.md`](docs/ENDPOINT-INTEGRATION.md) ·
-upgrade from the former full-form names:
-[`docs/FULL-FORM-RENAME-UPGRADE.md`](docs/FULL-FORM-RENAME-UPGRADE.md).
-Use the deployment guide, rather than isolated quick-start fragments below,
-for a clean two-host installation and operator access from another machine.
+## Reference deployment
 
-Live evidence dated 2026-09-08 belongs to the pre-rename source snapshot. The
-current full-form rename has not yet completed a post-rename clean-clone and
-upgrade acceptance on both hosts; [`docs/SUPPORT.md`](docs/SUPPORT.md) records
-the exact boundary. A commit alone does not create new hardware evidence.
+| Host | Role | Validated configuration |
+|---|---|---|
+| Jetson control host | PGFR Spine, PGFR Console, Chat, Workflows, perception VLM, and GR00T policy serving | Jetson AGX Thor, aarch64 Ubuntu 24.04, Python 3.12, ROS 2 Jazzy |
+| RTX simulation host | Isaac Sim, cameras, robot executors, and the two-host bridge | x86_64 Ubuntu 24.04, NVIDIA RTX GPU, Docker, NVIDIA Container Runtime |
+| Operator system | Browser or MCP client | Network access to the control host through SSH by default |
 
-## The demo
+The standalone scripted baseline uses the official Isaac Sim 6.0.1 container
+and defaults to headless WebRTC. The learned GR00T deployment remains pinned to
+its validated Isaac Sim 6.0.0-dev2 X11 profile. See
+[validated deployment targets](docs/SUPPORT.md) for the exact scope and open
+qualification items.
 
-The primary demo is an **Isaac Sim warehouse cell** — two Frankas, an AMR,
-red cubes, blue cylinders, green bricks, two totes, and a rack — driven end-to-end by natural language,
-vision-only perception (Nemotron Nano 12B VL, fresh-frame guaranteed), every action physics-verified,
-every operation journaled with the camera frame the VLM saw.
+> [!IMPORTANT]
+> This repository is a reference implementation, not a certified functional
+> safety system. The current commit passes hardware-free validation. The
+> post-rename two-host clean-install and physical acceptance run is still
+> pending.
 
-https://github.com/user-attachments/assets/9f15f687-9a6d-4669-ac43-73ba49f89427
+## Quick start
 
-*one natural-language goal → sort → haul → verified — ([full video file](docs/IC_Demo.mp4))*
+Choose the deployment that matches the task:
 
-The learned-motion path uses **one fine-tuned GR00T checkpoint served by two
-policy processes**, one for each arm. Both processes load the same model. The
-shipped profile defaults to serial, proof-gated motion. When an operator
-explicitly enables its validated concurrent and flexible-order capabilities,
-the arms can execute one mixed-color pair, verify both placements, then advance
-to the next pair. Internal ports, hashes, and executor lineage live in the
-technical bundle rather than this overview:
-[`reference/policy-gated-factory-robot-orchestrator-reference/groot/`](reference/policy-gated-factory-robot-orchestrator-reference/groot/).
+| Deployment | Hosts | Use case | Instructions |
+|---|---:|---|---|
+| Scripted Isaac Sim baseline | One RTX workstation | Run and validate the reference cell without Thor or GR00T | Steps below |
+| Full GR00T demo | Jetson AGX Thor and an RTX workstation | Run perception, policy serving, orchestration, and the complete mission | [Installation guide](INSTALL.md) |
 
-The control-plane quick start has three stages: **bring up the body → bring up the Spine →
-connect an agent**, then operate. For the complete learned-motion setup — pinned model,
-two serving instances, relays, two-host bridge, and cell contracts — follow the
-[`reproducible GR00T deployment guide`](docs/REPRODUCIBLE-DEMO.md).
+### Scripted Isaac Sim baseline
 
-### 1. The body — Isaac Sim cell (GPU box)
+Prerequisites:
 
-The Isaac Sim cell is packaged as
-[`reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/ic_cell`](reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/)
-with a defined initialization interface:
+- x86_64 Ubuntu 22.04 or 24.04;
+- an NVIDIA RTX GPU with at least 16 GiB VRAM;
+- Docker Engine and NVIDIA Container Runtime;
+- an NVIDIA driver supported by Isaac Sim 6.0.1 (the preflight currently
+  requires 595.58.03 or newer); and
+- acceptance of the
+  [NVIDIA Isaac Sim license](https://docs.isaacsim.omniverse.nvidia.com/6.0.1/common/NVIDIA_Omniverse_License_Agreement.html).
 
-For a fresh x86_64 RTX workstation, use the pinned, safety-checked
-[`Isaac Sim workstation runbook`](ops/ISAAC-SIM-WORKSTATION.md). It stages the
-complete baseline, validates the host and NVIDIA's bundled compatibility
-checker, launches Isaac Sim 6.0.1 by immutable amd64 digest, and waits for both
-the application and streaming readiness markers. The supported default is
-NVIDIA's headless WebRTC service; local container X11 is an explicit
-compatibility profile.
-
-The default WebRTC advertisement is loopback-only. To use NVIDIA's native
-Streaming Client from another trusted machine, pass a literal workstation
-interface address with `--webrtc-host` and apply the peer-scoped firewall rules
-in the runbook. The browser-viewer Compose service is not included. The live
-qualification proved the headless service and signaling listener, but did not
-connect a WebRTC client.
-
-Do not populate an Isaac scripts mount with an unchecked recursive copy. Stage
-and verify the exact packaged baseline with the helper:
+Clone the repository and pull the pinned Isaac Sim image:
 
 ```bash
+git clone https://github.com/NVIDIA-AI-IOT/Policy-Gated-Factory-Robot-Orchestrator-Reference.git
+cd Policy-Gated-Factory-Robot-Orchestrator-Reference
+
 docker pull \
   nvcr.io/nvidia/isaac-sim:6.0.1@sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb
+```
+
+Prepare, check, and start the cell:
+
+```bash
 ops/isaac-sim-workstation.sh --prepare
 ops/isaac-sim-workstation.sh --check --accept-eula
 ops/isaac-sim-workstation.sh --run --accept-eula
 ```
 
-Use `--root` or `--mount` only as documented in the workstation runbook. The
-helper validates the complete bundle in a sibling directory and publishes it
-with one directory rename. It refuses a partial, modified, or stale nonempty
-target; choose a fresh mount instead of merging files. Markers stream to the
-container log, including `IC_CELL_UP markers=all` after the stage, robots,
-cameras, ROS 2 publishers, and deterministic initial state are ready.
+A successful launch prints:
 
-After launch, run the live scripted-baseline gate once from an idle scene:
+```text
+PGFR_ISAAC_BASELINE_READY ... marker=PGFR_CELL_UP ... streaming=true
+```
+
+Connect with the
+[Isaac Sim WebRTC Streaming Client](https://docs.isaacsim.omniverse.nvidia.com/6.0.1/installation/manual_livestream_clients.html).
+The default endpoint is local-only. Remote-client and X11 instructions are in
+the [RTX workstation runbook](ops/ISAAC-SIM-WORKSTATION.md).
+
+Run the scripted acceptance test from an idle scene:
 
 ```bash
 docker pull --platform linux/amd64 \
   docker.io/library/ros:jazzy-ros-base-noble@sha256:2589a8fba5257307857890173c069852c2abf913a0be7970f172478baecb09e4
 ops/accept-isaac-sim-workstation.sh \
-  --container ic-isaac-sim-baseline
+  --container pgfr-isaac-sim-baseline
 ```
 
-This command is scene-destructive: it resets, validates 15 fresh streams,
-issues exactly one left-Franka red-object move, verifies it, performs a final
-reset, and scans the current run's logs. It tests only the scripted baseline;
-it is not Thor or GR00T inference evidence.
+This test resets the scene, validates 15 ROS 2 streams, executes one simulated
+pick-and-place action, verifies the result, and resets the scene again. Do not
+run it while another simulation task is active.
 
-### 2. The Spine — floor service (brain host, e.g. Jetson Thor)
+### Full Jetson and RTX deployment
+
+The full deployment requires:
+
+- the validated Jetson and RTX host configurations;
+- access to the referenced Hugging Face model repositories;
+- credentials for the selected NVIDIA or OpenAI-compatible model endpoint; and
+- passwordless SSH from the simulation host to the Jetson control host.
+
+Start with [INSTALL.md](INSTALL.md), then follow the
+[two-host deployment guide](docs/REPRODUCIBLE-DEMO.md). The guides keep the
+stable scripted baseline and the learned GR00T profile separate.
+
+## Open the operator console
+
+The default deployment binds browser-facing services to loopback. From the
+operator system, create an SSH tunnel to the Jetson control host:
 
 ```bash
-cd ic-spine
-python3.12 -m venv --system-site-packages .venv    # system-site: sourced ROS rclpy
-.venv/bin/pip install -e ".[dev]"
-
-export IC_FLOOR_BACKEND=ros2 ROS_DOMAIN_ID=0
-export IC_FLOOR_SCENE=$PWD/configs/scene.our_demo.yaml
-export IC_VLM_URL=http://127.0.0.1:8001            # local OpenAI-compatible VLM
-export IC_VLM_MODEL=nvidia/NVIDIA-Nemotron-Nano-12B-v2-VL-NVFP4-QAD
-export IC_PERCEIVE_MODE=vision_only                # the agent works by sight
-export IC_JOURNAL_DIR=~/ic-journal                 # mission journal + evidence frames
-.venv/bin/policy_gated_factory_robot_orchestrator_reference serve --port 8766        # or the systemd unit pattern in ops/
+CONTROL_HOST=YOUR_USER@YOUR_JETSON_IP
+ssh -N -o ExitOnForwardFailure=yes \
+  -L 127.0.0.1:8600:127.0.0.1:8600 \
+  -L 127.0.0.1:8610:127.0.0.1:8610 \
+  -L 127.0.0.1:8620:127.0.0.1:8620 \
+  "$CONTROL_HOST"
 ```
 
-Validate the deployment before running a mission:
+Open [http://127.0.0.1:8600](http://127.0.0.1:8600). Before the first mission,
+open **Chat**, start a new conversation, and enter **Reset the scene**. Then run
+the `full-groot-dual-tote` workflow from the Workflows view.
 
-```bash
-curl -s http://127.0.0.1:8766/v1/health             # ROS context + signal freshness
-.venv/bin/pip install -e ../packages/conformance-kit
-.venv/bin/ic-conformance run --target http://127.0.0.1:8766   # must print CERTIFIED 9/9
-```
+Direct-LAN Console and Chat access is available only as a trusted-lab profile.
+It has no per-user authentication or TLS. Follow the
+[remote-access procedure](docs/REMOTE-ACCESS.md)
+before changing service bind addresses or firewall rules.
 
-`GET /docs` serves the full OpenAPI contract; the pinned copies live in
-[`schemas/`](schemas/) next to the cell-protocol schemas.
+## Documentation
 
-### 3. The brains — connect any harness
+| Document | Description |
+|---|---|
+| [Installation](INSTALL.md) | Choose and prepare the standalone or two-host deployment |
+| [Documentation index](docs/README.md) | Operator, deployment, integration, and developer guides |
+| [Two-host deployment](docs/REPRODUCIBLE-DEMO.md) | Prepare and start the Jetson and RTX deployment |
+| [Model providers](docs/MODEL-PROVIDERS.md) | Configure PGFR Chat endpoints, credentials, OpenClaw, and the perception boundary |
+| [Remote access](docs/REMOTE-ACCESS.md) | Open Console and Chat, or view Isaac Sim, from another system |
+| [Deployment validation](docs/VALIDATION.md) | Run ROS 2, conformance, mission, state, journal, and simulator checks |
+| [RTX workstation setup](ops/ISAAC-SIM-WORKSTATION.md) | Isaac Sim 6.0.1 prerequisites, launch profiles, streaming, and acceptance |
+| [Architecture](docs/ARCHITECTURE.md) | Components, request paths, trust boundaries, and data flow |
+| [Supported targets](docs/SUPPORT.md) | Validated platforms, evidence, and known limitations |
+| [ROS 2 contract](docs/floor-ros2-contract.md) | Topics, messages, goal matching, and verification semantics |
+| [Endpoint integration](docs/ENDPOINT-INTEGRATION.md) | Add a robot or external action endpoint |
+| [Rename upgrade](docs/FULL-FORM-RENAME-UPGRADE.md) | Migrate an installation that used the former product name and `IC` project prefix |
+| [Security](SECURITY.md) | Trust model, reporting, and deployment boundaries |
 
-Every MCP-capable harness gets the same handshake: **9 annotated floor tools + the operating
-playbook** ([`skills/policy-gated-factory-robot-orchestrator-reference-orchestrator/PLAYBOOK.md`](skills/policy-gated-factory-robot-orchestrator-reference-orchestrator/PLAYBOOK.md))
-shipped as server `instructions`. No profile setup, no prompt copying.
+## Development
 
-Once, on the brain host:
+Hardware-free validation runs in CI on Ubuntu 24.04 with Python 3.12.3, Node.js
+22.22.3, and uv 0.11.32. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
+component test commands and DCO requirements.
 
-```bash
-cd servers/policy-gated-factory-robot-orchestrator-reference-mcp && python3 -m venv .venv && .venv/bin/pip install -e .
-```
-
-**Claude Code** — any machine with SSH reach to the brain host:
-
-```bash
-claude mcp add --scope user ic-floor -- ssh <user>@<brain-host> '<repo-root>/servers/policy-gated-factory-robot-orchestrator-reference-mcp/.venv/bin/ic-mcp'
-# verify: /mcp shows ic-floor connected with 9 tools
-```
-
-**Codex CLI** — add to `~/.codex/config.toml`:
-
-```toml
-[mcp_servers.ic-floor]
-command = "ssh"
-args = ["<user>@<brain-host>", "<repo-root>/servers/policy-gated-factory-robot-orchestrator-reference-mcp/.venv/bin/ic-mcp"]
-```
-
-**Hermes / NIM agents / Claude Desktop / anything MCP** — register the same stdio command in
-the harness's MCP config. If it speaks MCP, it can drive the floor; the doctrine arrives in
-the handshake.
-
-**OpenClaw** — headless gateway/chat harness using the same governed MCP server:
-
-```bash
-npm ci && npm test             # pinned runtime + plugin vitest suite
-ops/gw.sh --bind loopback      # gateway :18790, state in ~/.policy-gated-factory-robot-orchestrator-reference/openclaw
-# after first start, in a second terminal:
-ops/sync-playbook.sh           # inject the playbook into the active profile
-# :18790 is a headless Gateway API; the operator dashboard is IC Console :8600
-```
-
-### 4. Operate
-
-For the first physical run, use the shipped deterministic
-[`full-groot-dual-tote` acceptance workflow](docs/REPRODUCIBLE-DEMO.md#6-run-the-physical-acceptance-workflow).
-It executes six serial GR00T placements and two tote hauls, with a fresh proof
-gate after every physical transaction.
-
-After that baseline passes, optionally revalidate the explicitly enabled
-mixed-color concurrent mode with this goal:
-
-> **Reset and inspect the simulated cell. Pick left blue and right green
-> together, then left green and right red together, then left red and right
-> blue together. Verify both totes after each pair. Finally, haul both totes to
-> the rack and verify completion.**
-
-The repository defaults intentionally reject concurrent, flexible-order motion.
-Before using this exact mixed-color goal, complete the two-server readiness
-checks and explicitly enable both capabilities as documented in the
-[`two-host deployment guide`](docs/REPRODUCIBLE-DEMO.md#optional-mixed-color-concurrent-revalidation).
-
-During either acceptance path, use the following operational controls and
-evidence:
-
-- **Progress** — `/ic/feedback` streams haul phases; every action carries a goal ID
-  (duplicates dropped, results matched exactly).
-- **Reset between runs** (operator-only under the policy gate):
-  In IC Console, open **Chat**, start a new conversation, and enter **`Reset the
-  scene`**. This explicit request restores the canonical
-  `groot_three_object` starting layout—with both totes on the work tables in
-  front of their Franka arms—and must complete successfully before a new
-  mission starts. The equivalent operator API call is:
-  ```bash
-  curl -s -X POST http://<brain-host>:8766/v1/dispatch -H "Content-Type: application/json" \
-       -H "x-role: operator" \
-       -d '{"action":"reset_scene","endpoint":"mobilebot","scene_profile":"groot_three_object","arm":"both","color":"red","layout_left":3,"layout_right":3,"seed":31302}'
-  ```
-  Wait for a verified reset result; do not start the workflow while another
-  task or reset is still running.
-- **Cancel a running task** — the live ROS cell currently refuses `cancel`
-  because its command would queue behind the active task. Use the site's
-  separately governed operator-abort or emergency-stop control instead.
-- **Audit** — `$IC_JOURNAL_DIR/journal.jsonl` + `frames/`: every operation with its result,
-  duration, mission ID, and the exact image the VLM saw.
-
-After startup, use
-[`docs/REPRODUCIBLE-DEMO.md#operator-access-from-another-machine`](docs/REPRODUCIBLE-DEMO.md#operator-access-from-another-machine)
-for the default loopback path or an explicitly firewalled direct-IP IC Console,
-and for the distinction between local X11, RealVNC, and NVIDIA WebRTC access to
-Isaac Sim. Direct-IP Console remains read-only by default. The guide also
-documents an explicit shared trusted-LAN Chat mode in which every client that
-can reach Console is granted automatic actuation access. That opt-in mode has
-no per-user authentication or TLS; network reachability is its authorization
-boundary.
-
-## Status
-
-The capability list describes the implemented reference surface. Statements
-about live mission evidence refer to the measured pre-rename cohort above, not
-to an unrecorded post-rename deployment.
-
-| Capability |
-|---|
-| **MCP server** ([`servers/policy-gated-factory-robot-orchestrator-reference-mcp`](servers/policy-gated-factory-robot-orchestrator-reference-mcp/)) — 9 annotated floor tools, with the playbook distributed as `instructions`; validated using the reference mission and conformance suite |
-| **Floor API** — versioned `/v1`, validated requests, request IDs, `_meta` freshness on every response, `GET /v1/health` (degraded-aware), self-documenting `/docs`, systemd-managed |
-| **Cell as a package** ([`ic_cell`](reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/)) — defined initialization interface and owned runtime state |
-| **Action protocol** — goal IDs (exact result matching), duplicate-drop, `/ic/feedback` progress stream, and fail-closed refusal of unsupported mid-flight `cancel` |
-| **Policy gate at the seam** — unknown actions refused, required params enforced, operator-only class (`x-role`) — one gate for every harness |
-| **Pinned contracts** ([`schemas/`](schemas/)) — OpenAPI (drift-guarded by test) + the cell protocol |
-| **Conformance kit** ([`packages/conformance-kit`](packages/conformance-kit/)) — `run` seam 9/9 · `mcp` server 11/11 · `skill` manifest 7/7, with all reference checks passing |
-| **Vision-only perception** — camera + Nemotron Nano 12B VL with a fresh-frame guarantee; dispatch stays physics-verified |
-| **One-model concurrent GR00T path** — one shared checkpoint, two per-arm serving processes, and three verified concurrent pairs |
-| **Mission journal** — every floor op + the exact VLM input frame, mission-grouped (`IC_JOURNAL_DIR`) |
-| **Audit store (SQLite)** — derived from the journal, 30-day retention; queryable via `GET /v1/missions` and the `mission_history` / `mission_detail` MCP tools |
-| **Creation workflows** — [`servers/TEMPLATE`](servers/TEMPLATE/) · [`connectors/TEMPLATE`](connectors/TEMPLATE/) + [`connector-sdk`](packages/connector-sdk/) · [`skills/TEMPLATE`](skills/TEMPLATE/) with catalogs |
-| **Canonical playbook** ([`skills/policy-gated-factory-robot-orchestrator-reference-orchestrator`](skills/policy-gated-factory-robot-orchestrator-reference-orchestrator/)) — synchronized with deployment profiles, distributed over MCP, and validated against its manifest |
-| **Hardware-free tests** — unit, protocol, runtime, relay, bridge, and MCP contract suites run without Isaac Sim or robot hardware |
-| **NeMo Gym environment** ([`connectors/nemo-gym`](connectors/nemo-gym/)) — benchmark any model/agent on the cell with physics-verified rewards; rollouts export to NeMo RL / VeRL |
-| **Live console** ([`ic-console`](ic-console/)) — read-only system topology with measured statuses + mission replay at `:8600` |
-| **Workflow builder** ([`servers/ic-workflows`](servers/ic-workflows/)) — compose MCP tool verbs into gated, journaled workflows from the console UI; publish as conformant skills |
-| **Chat gateway** ([`servers/ic-chat`](servers/ic-chat/)) — chat with a swappable OpenAI-compatible model endpoint that drives the cell through the gated, journaled tool loop |
-| **NL authoring assistant** ([`servers/ic-workflows`](servers/ic-workflows/) `/api/assist`) — drafts workflows and skills from natural language; outputs are schema-validated before publication |
-
-**Integrating your system or team?** Start from the matching template, then run
-`ic-conformance` to validate the integration:
-[`servers/TEMPLATE`](servers/TEMPLATE/README.md) (expose tools) ·
-[`connectors/TEMPLATE`](connectors/TEMPLATE/README.md) (wrap MES/VSS/QC systems) ·
-[`skills/TEMPLATE`](skills/TEMPLATE/SKILL.md) (ship know-how).
-
-## Hardware targets
-
-| Host | Role | Hardware |
-|---|---|---|
-| **Brain host** | floor service, MCP server, harness, local Nemotron perception VLM | NVIDIA Jetson AGX Thor (ARM64, Blackwell, ~128 GB unified) |
-| **Sim host** | Isaac Sim cell, ROS 2 bridge | Linux PC with NVIDIA RTX GPU |
-| **Operator host** | Claude Code / Codex / dashboard | anything with SSH or a browser |
+Repository layout is documented in [STRUCTURE.md](STRUCTURE.md). Exact runtime,
+container, model, and port identities are recorded in
+[deploy/reproducible-demo.yaml](deploy/reproducible-demo.yaml).
 
 ## License
 
-Policy-Gated Factory Robot Orchestrator Reference is licensed under the [Apache License 2.0](LICENSE).
-See [`NOTICE`](NOTICE) and [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md)
-for copyright and third-party attribution information.
+Copyright © 2026 NVIDIA Corporation and affiliates.
+
+This project is licensed under the [Apache License 2.0](LICENSE). See
+[NOTICE](NOTICE), [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md), and
+[ASSET-PROVENANCE.md](docs/ASSET-PROVENANCE.md) for attribution and asset
+provenance.

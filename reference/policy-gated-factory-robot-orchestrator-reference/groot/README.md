@@ -1,71 +1,67 @@
-# GR00T integration for action execution
+# GR00T action integration
 
-Policy-Gated Factory Robot Orchestrator Reference's primary learned-motion demo uses one fine-tuned GR00T
-checkpoint for all three object types and both Franka arms. The same checkpoint
-is loaded by two policy-server processes: one serves the left arm and one
-serves the right arm. These are two serving instances of one model, not two
-different models or per-color experts.
+The learned-action path uses one fine-tuned NVIDIA Isaac GR00T checkpoint for
+all three object types and both Franka arms. Two policy-server processes load
+the same checkpoint: one serves the left arm and one serves the right arm.
+These are independent serving instances, not separate models or per-color
+experts.
 
-## How concurrency works
+## Execution profiles
 
-```text
-IC Spine mission
-  -> choose one left/right object pair
-  -> capture one observation for each arm
-  -> query the two instances of the same GR00T model concurrently
-  -> apply both validated action streams in one paired cell transaction
-  -> verify both physical placements and both camera regions
-  -> continue to the next pair
-```
+| Profile | Workflow | Behavior |
+|---|---|---|
+| Default | `full-groot-dual-tote` | Executes six arm moves and two tote transfers serially |
+| Optional paired actions | `full-groot-dual-tote-concurrent` | Queries the two B=1 policy servers concurrently and applies one validated left/right pair as a cell transaction |
 
-The two arms move concurrently within a pair. The three pairs are intentionally
-sequenced because every completed placement changes the scene seen by the next
-pair. Unrelated floor operations remain serialized by IC Spine.
+The serial workflow is the supported default. It uses this move order:
 
-The executor verifies arm identity, observation identity, physical tracking,
-grasp, release, settling, and the resulting floor state. A policy response is
-not treated as success merely because inference returned normally.
+1. right green;
+2. left green;
+3. right red;
+4. left red;
+5. right blue; and
+6. left blue.
 
-## Demo command
+Each physical action is followed by fresh visual verification. A physical
+dispatch is never retried automatically.
 
-Run the demo with this order:
+The paired-action profile denies dispatch unless
+`PGFR_GROOT_PARALLEL_ENABLED=1` and `PGFR_GROOT_FLEXIBLE_ORDER=1` are both set
+and the two independent B=1 serving paths pass readiness checks. It accepts
+only three mixed-color pairs in this order:
 
-> Reset and inspect the simulated cell. Pick left blue and right green
-> together, then left green and right red together, then left red and right
-> blue together. Verify both totes after each pair. Finally, haul both totes to
-> the rack and verify completion.
+1. left blue and right green;
+2. left green and right red; and
+3. left red and right blue.
 
-This maps to three concurrent pairs executed sequentially:
+Each completed pair changes the next policy observation, so the pairs remain
+sequential even though the two actions within a pair run concurrently.
+Unrelated floor operations remain serialized by PGFR Spine.
 
-1. left blue + right green;
-2. left green + right red;
-3. left red + right blue.
+Both profiles validate policy-server identity, arm and observation identity,
+physical tracking, grasp, release, settling, and resulting floor state.
+Inference completion alone is not treated as action success.
 
-The demonstrated result placed all six objects using the shared model, then
-hauled both loaded totes to the rack with visual and authoritative floor-state
-verification.
-
-## What is preserved here
+## Runtime and installation
 
 The installable action runtime lives in [`runtime/`](runtime/). It contains
-ordinary Python source for measured home-state convergence, two-arm routing,
-shared-model deployment, mixed-color pair execution, and scene reset. Reset
-restores the complete action runtime automatically; no separate staging
-command is needed.
+the home-state convergence, two-arm routing, shared-model deployment,
+mixed-color pair execution, and scene-reset implementation. Reset restores the
+complete action runtime; no separate runtime staging command is required.
 
 Install it into an idle Isaac scripts mount with the checkpoint path and the
 two relay service-state paths:
 
 ```bash
-export IC_GROOT_MODEL_ROOT="$HOME/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24"
+export PGFR_GROOT_MODEL_ROOT="$HOME/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24"
 
 ops/install-groot-cell.sh \
   --mount /path/to/isaac-scripts \
-  --checkpoint-path "$IC_GROOT_MODEL_ROOT" \
+  --checkpoint-path "$PGFR_GROOT_MODEL_ROOT" \
   --left-service-state /groot-state/shared-left.json \
   --right-service-state /groot-state/shared-right.json
 
-systemctl --user start ic-groot-shared-stack.target
+systemctl --user start pgfr-groot-shared-stack.target
 ops/launch-groot-isaac.sh /path/to/isaac-scripts
 ```
 
@@ -87,8 +83,8 @@ First fetch and verify the pinned shared checkpoint on Thor, then install only
 its two shared profiles and target:
 
 ```bash
-export IC_GROOT_HF_REPO=mmallick/industrial-claw-groot-order744-cont24
-export IC_GROOT_HF_REVISION=9307ac9cba3a27c9a57ed2d90393ceefb28367e1
+export PGFR_GROOT_HF_REPO=mmallick/industrial-claw-groot-order744-cont24
+export PGFR_GROOT_HF_REVISION=9307ac9cba3a27c9a57ed2d90393ceefb28367e1
 ops/fetch-groot-models.sh
 ops/install-groot-thor-shared-profiles.sh
 ```
@@ -97,7 +93,7 @@ The Thor profile installer verifies the existing generic policy/relay unit
 contract and the model checksum. It refuses active shared units, occupied
 ports, stale readiness files, or differing existing profiles. It installs only
 `shared-left.env`, `shared-right.env`, and
-`ic-groot-shared-stack.target`; it never enables or starts them and does not
+`pgfr-groot-shared-stack.target`; it never enables or starts them and does not
 replace the generic templates used by other profiles.
 
 The simulation host then installs the dedicated bridge:
@@ -124,12 +120,12 @@ For the bridge defaults, render the cell contracts with policy ports
 `/groot-state`. Launch with:
 
 ```bash
-export IC_GROOT_STATE_ROOT="$HOME/.local/share/ic-spine/groot/remote-thor-v36"
+export PGFR_GROOT_STATE_ROOT="$HOME/.local/share/pgfr-spine/groot/remote-thor-v36"
 ops/launch-groot-isaac.sh /path/to/isaac-scripts
 ```
 
 The development lineage remains in
-[`groot_n1_7_ic_pipeline/`](groot_n1_7_ic_pipeline/). It includes:
+[`groot_n1_7_pgfr_pipeline/`](groot_n1_7_pgfr_pipeline/). It includes:
 
 - synchronized simulation capture and native-DROID conversion;
 - the official NVIDIA fine-tuning entry point and single-frame modality;

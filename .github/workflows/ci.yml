@@ -58,26 +58,26 @@ jobs:
             ./node_modules/.bin/openclaw config validate
           npm test
 
-      - name: Validate IC Spine
+      - name: Validate PGFR Spine
         run: |
-          uv sync --frozen --extra dev --project ic-spine
-          uv run --frozen --project ic-spine pytest -q ic-spine/tests
-          uv run --frozen --project ic-spine policy_gated_factory_robot_orchestrator_reference --help
+          uv sync --frozen --extra dev --project pgfr-spine
+          uv run --frozen --project pgfr-spine pytest -q pgfr-spine/tests
+          uv run --frozen --project pgfr-spine policy_gated_factory_robot_orchestrator_reference --help
 
-      - name: Validate IC Chat
+      - name: Validate PGFR Chat
         run: |
-          uv sync --frozen --extra dev --project servers/ic-chat
-          uv run --frozen --project servers/ic-chat pytest -q servers/ic-chat/tests
+          uv sync --frozen --extra dev --project servers/pgfr-chat
+          uv run --frozen --project servers/pgfr-chat pytest -q servers/pgfr-chat/tests
 
-      - name: Validate IC Workflows
+      - name: Validate PGFR Workflows
         run: |
-          uv sync --frozen --extra dev --project servers/ic-workflows
-          uv run --frozen --project servers/ic-workflows pytest -q servers/ic-workflows/tests
+          uv sync --frozen --extra dev --project servers/pgfr-workflows
+          uv run --frozen --project servers/pgfr-workflows pytest -q servers/pgfr-workflows/tests
 
-      - name: Validate IC Console
+      - name: Validate PGFR Console
         run: |
-          uv sync --frozen --extra dev --project ic-console
-          uv run --frozen --project ic-console pytest -q ic-console/tests
+          uv sync --frozen --extra dev --project pgfr-console
+          uv run --frozen --project pgfr-console pytest -q pgfr-console/tests
 
       - name: Validate MCP server
         run: |
@@ -86,18 +86,18 @@ jobs:
 
       - name: Validate hardware-free GR00T deployment contracts
         run: |
-          uv run --frozen --project servers/ic-workflows pytest -q \
+          uv run --frozen --project servers/pgfr-workflows pytest -q \
             reference/policy-gated-factory-robot-orchestrator-reference/groot/tests/test_cont24_v36_runtime.py \
             reference/policy-gated-factory-robot-orchestrator-reference/groot/tests/test_native_droid_relay_batch2.py \
             reference/policy-gated-factory-robot-orchestrator-reference/groot/tests/test_two_host_bridge.py
 
       - name: Validate deployment contracts
         run: |
-          uv run --frozen --project servers/ic-workflows pytest -q \
+          uv run --frozen --project servers/pgfr-workflows pytest -q \
             ops/test_deployment_contracts.py \
             ops/test_groot_sim_host_contract.py \
-            ops/test_ic_gpu_exporter.py \
+            ops/test_pgfr_gpu_exporter.py \
             ops/test_isaac_sim_acceptance.py \
             ops/test_isaac_sim_workstation.py \
-            ic-spine/tests/unit/test_isaac_lifecycle_contract.py
-          python -m compileall -q ic-spine/src servers ic-console/src ops
+            pgfr-spine/tests/unit/test_isaac_lifecycle_contract.py
+          python -m compileall -q pgfr-spine/src servers pgfr-console/src ops
