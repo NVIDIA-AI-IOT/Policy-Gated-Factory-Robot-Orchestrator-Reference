@@ -122,11 +122,14 @@ class Step(BaseModel):
         "check_predicate",
     ]
     args: Dict[str, Any] = Field(default_factory=dict)
-    # Gate the workflow on this step's outcome. Defaults: dispatch gates on
-    # physics-verified; check_predicate gates on answer == yes; reads never gate.
+    # Gate the workflow on this step's outcome. Defaults: serial dispatch gates
+    # on physics verification; parallel dispatch additionally gates on
+    # independent B=1 verification; check_predicate gates on answer == yes;
+    # reads never gate.
     require_verified: Optional[bool] = None
-    # NOTE: ignored for dispatch_task — physical actuation never auto-retries
-    # (an unverified dispatch may already have moved the arm). Applies to reads.
+    # NOTE: ignored for both dispatch tools — physical actuation never
+    # auto-retries (an unverified dispatch may already have moved an arm).
+    # Applies to reads.
     max_retries: int = Field(default=0, ge=0, le=3)
 
     @field_validator("args")

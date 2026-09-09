@@ -1,10 +1,11 @@
 # ic-workflows — build skills from tool verbs, in the browser
 
-The write-path sibling of [`ic-console`](../ic-console/): the console's
+The write-path sibling of [`ic-console`](../../ic-console/): the console's
 **Workflows tab** talks to this service. Compose the certified MCP tool verbs
-(`floor_state` · `perceive` · `dispatch_task` · `check_predicate`) into a
-linear, gated, retryable workflow; save it as reviewable YAML; dry-run it;
-run it through the seam's policy gate; publish it as a skill manifest.
+(`floor_state` · `perceive` · `dispatch_task` · `dispatch_parallel` ·
+`check_predicate`) into a linear, gated, retryable workflow; save it as
+reviewable YAML; dry-run it; run it through the seam's policy gate; publish it
+as a skill manifest.
 
 ```
 pip install -e servers/ic-workflows
@@ -21,8 +22,11 @@ Open the console (`ic-console`, :8600) → Workflows tab.
 3. **Dry-run** — resolves every template, touches nothing.
 4. **Run** — each step is one seam call under a per-run mission id
    (`wf-<name>-<hex>`), so the journal and console replay cover workflow runs
-   for free. Gated steps (dispatch: physics-`verified`; predicate: `yes`)
-   stop the run after their bounded retries.
+   for free. Gated steps stop the run unless serial dispatch is
+   physics-`verified`, parallel dispatch is both physics-`verified` and
+   `independent_b1_verified`, or a predicate returns `yes` with complete
+   evidence. Physical dispatch is never retried automatically. Read-only VLM
+   predicate steps may use their explicitly bounded retry count.
 5. **Publish** — writes `skills/wf-<name>/manifest.yaml` in the conformance
    kit's shape (`ic-conformance skill --manifest ...` passes; enforced by a test).
 

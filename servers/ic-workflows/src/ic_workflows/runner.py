@@ -36,7 +36,12 @@ def _now() -> str:
 
 
 def _step_ok(tool: str, response: Dict[str, Any]) -> bool:
-    if tool in PHYSICAL_TOOLS:
+    if tool == "dispatch_parallel":
+        return (
+            response.get("verified") is True
+            and response.get("independent_b1_verified") is True
+        )
+    if tool == "dispatch_task":
         return response.get("verified") is True
     if tool == "check_predicate":
         return bool(
@@ -134,7 +139,7 @@ class Runner:
                 ok = False
                 break
 
-            # dispatch_task actuates the world and is NOT idempotent. The seam
+            # Physical dispatch actuates the world and is NOT idempotent. The seam
             # returns verified=false even on its own confirm-timeout (ros2.py),
             # AFTER a command reached the arm — so an unverified/errored dispatch
             # cannot be safely re-sent (it would double-actuate). Physical

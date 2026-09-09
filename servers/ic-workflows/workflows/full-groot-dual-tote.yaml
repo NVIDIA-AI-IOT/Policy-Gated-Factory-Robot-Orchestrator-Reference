@@ -25,6 +25,7 @@ steps:
         cylinder, and one green rectangular brick in front of each Franka arm,
         with both gray three-compartment totes on the table.
       region: table_1
+    max_retries: 1
 
   - tool: dispatch_task
     args:
@@ -40,6 +41,7 @@ steps:
         The right green rectangular brick is visibly inside the right tote on
         its green compartment pad.
       region: tote_r
+    max_retries: 1
 
   - tool: dispatch_task
     args:
@@ -55,6 +57,7 @@ steps:
         The left green rectangular brick is visibly inside the left tote on
         its green compartment pad.
       region: tote
+    max_retries: 1
 
   - tool: dispatch_task
     args:
@@ -70,6 +73,7 @@ steps:
         The right red cube is visibly inside the right tote on its red
         compartment pad together with the green rectangular brick.
       region: tote_r
+    max_retries: 1
 
   - tool: dispatch_task
     args:
@@ -85,6 +89,7 @@ steps:
         The left red cube is visibly inside the left tote on its red
         compartment pad together with the green rectangular brick.
       region: tote
+    max_retries: 1
 
   - tool: dispatch_task
     args:
@@ -100,6 +105,7 @@ steps:
         The right tote visibly contains the green rectangular brick, red cube,
         and blue cylinder on their matching compartment pads.
       region: tote_r
+    max_retries: 1
 
   - tool: dispatch_task
     args:
@@ -115,6 +121,7 @@ steps:
         The left tote visibly contains the green rectangular brick, red cube,
         and blue cylinder on their matching compartment pads.
       region: tote
+    max_retries: 1
 
   - tool: dispatch_task
     args:
@@ -128,6 +135,7 @@ steps:
         The left gray three-compartment tote is visibly resting on a shelf
         level of the white rack and still contains all three sortable objects.
       region: rack_1
+    max_retries: 1
 
   - tool: dispatch_task
     args:
@@ -142,6 +150,7 @@ steps:
         shelf levels of the white rack, and both still contain their red cube,
         blue cylinder, and green rectangular brick.
       region: rack_1
+    max_retries: 1
 done_criteria: >-
   Exactly six physics-verified GR00T moves and two physics-verified tote hauls
   completed in order; every dispatch is followed by a fresh VLM answer=yes

@@ -98,6 +98,14 @@ class TestSpec:
             and wf.steps[index + 1].tool == "check_predicate"
             for index in dispatch_indices
         )
+        proofs = [step for step in wf.steps if step.tool == "check_predicate"]
+        assert len(proofs) == 9
+        assert all(proof.max_retries == 1 for proof in proofs)
+        assert all(
+            step.max_retries == 0
+            for step in wf.steps
+            if step.tool != "check_predicate"
+        )
 
         groot_moves = [
             wf.steps[index].args
@@ -153,6 +161,15 @@ class TestSpec:
             }
             assert {move["backend"] for move in moves} == {"groot"}
             assert len({move["color"] for move in moves}) == 1
+            assert pair.max_retries == 0
+        proofs = [step for step in wf.steps if step.tool == "check_predicate"]
+        assert len(proofs) == 8
+        assert all(proof.max_retries == 1 for proof in proofs)
+        assert all(
+            step.max_retries == 0
+            for step in wf.steps
+            if step.tool != "check_predicate"
+        )
         assert wf.dispatch_actions() == ["move", "pick_and_place"]
         assert (Path(__file__).parents[1] / "workflows" / "full-groot-dual-tote.yaml").is_file()
 
@@ -284,6 +301,51 @@ class TestRunner:
         assert out["timeline"][1]["attempts"] == 1
         assert len(runner.calls) == 2  # perceive + one dispatch; no re-dispatch
 
+    async def test_parallel_dispatch_requires_independent_b1_and_is_not_retried(
+        self,
+    ) -> None:
+        spec = wf_dict()
+        spec["steps"] = [
+            {
+                "tool": "dispatch_parallel",
+                "args": {
+                    "moves": [
+                        {
+                            "endpoint": "franka_left",
+                            "color": "green",
+                            "source": "conveyor_1",
+                            "destination": "tote_green",
+                            "backend": "groot",
+                        },
+                        {
+                            "endpoint": "franka_right",
+                            "color": "green",
+                            "source": "conveyor_2",
+                            "destination": "tote_green",
+                            "backend": "groot",
+                        },
+                    ]
+                },
+                "max_retries": 3,
+            },
+            {
+                "tool": "check_predicate",
+                "args": {"predicate": "both green bricks are in their totes"},
+            },
+        ]
+        runner = FakeRunner(
+            [
+                {"dispatched": True, "verified": True},
+                yes_proof(),  # must not be consumed
+            ]
+        )
+        out = await runner.run(Workflow.model_validate(spec), {"color": "green"})
+
+        assert out["ok"] is False
+        assert out["started_steps"] == 1
+        assert out["timeline"][0]["attempts"] == 1
+        assert len(runner.calls) == 1
+
     async def test_nongated_error_marks_run_degraded_not_failed(self) -> None:
         runner = FakeRunner(
             [
@@ -296,12 +358,12 @@ class TestRunner:
         assert out["ok"] is True
         assert out["degraded"] is True
 
-    async def test_read_step_retries(self) -> None:
-        # check_predicate is read-only/idempotent — retry IS allowed there.
+    async def test_vlm_read_step_allows_one_bounded_retry(self) -> None:
+        # check_predicate is read-only/idempotent, so one explicit retry is safe.
         spec = wf_dict()
         spec["steps"] = [{"tool": "check_predicate",
                           "args": {"predicate": "the cube is in the tote"},
-                          "max_retries": 2}]
+                          "max_retries": 1}]
         runner = FakeRunner([{"answer": "no"}, yes_proof()])
         out = await runner.run(Workflow.model_validate(spec), {"color": "red"})
         assert out["ok"] is True
@@ -325,6 +387,22 @@ class TestRunner:
         no = yes_proof()
         no["answer"] = "no"
         assert _step_ok("check_predicate", no) is False
+
+    def test_parallel_gate_requires_physics_and_independent_b1(self) -> None:
+        assert _step_ok("dispatch_task", {"verified": True}) is True
+        assert _step_ok(
+            "dispatch_parallel",
+            {"verified": True, "independent_b1_verified": True},
+        ) is True
+        assert _step_ok("dispatch_parallel", {"verified": True}) is False
+        assert _step_ok(
+            "dispatch_parallel",
+            {"verified": True, "independent_b1_verified": False},
+        ) is False
+        assert _step_ok(
+            "dispatch_parallel",
+            {"verified": False, "independent_b1_verified": True},
+        ) is False
 
 
 HDR = {"x-ic-workflows": "console"}  # CSRF guard header the console sends
