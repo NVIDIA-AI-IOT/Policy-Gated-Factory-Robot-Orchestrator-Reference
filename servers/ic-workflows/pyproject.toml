@@ -23,7 +23,11 @@ dependencies = [
 ic-chat = { path = "../ic-chat", editable = true }
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "pytest-asyncio>=0.23"]
+dev = [
+    "numpy==1.26.4",  # hardware-free deterministic GR00T relay contracts
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+]
 
 [project.scripts]
 ic-workflows = "ic_workflows.app:main"

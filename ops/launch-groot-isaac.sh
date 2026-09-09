@@ -38,7 +38,14 @@ case "$FAST_DDS_PROFILE" in /*) ;; *) fail "IC_FASTDDS_PROFILE must be an absolu
   fail "left GR00T service state is missing: $GROOT_STATE_ROOT/shared-left.json"
 [ -f "$GROOT_STATE_ROOT/shared-right.json" ] || \
   fail "right GR00T service state is missing: $GROOT_STATE_ROOT/shared-right.json"
-"$REPO/ops/check-sim-host.sh" --mount "$MOUNT"
+ISAAC_ROOT="${IC_ISAAC_ROOT:-$(cd "$MOUNT/.." && pwd)}"
+mkdir -p "$ISAAC_ROOT"/cache/{kit,ov,glcache,computecache,pip} \
+  "$ISAAC_ROOT"/{logs,data}
+IC_ISAAC_IMAGE="$IMAGE" \
+  IC_ISAAC_IMAGE_DIGEST="$IMAGE_DIGEST" \
+  DISPLAY="$DISPLAY_VALUE" \
+  "$REPO/ops/check-sim-host.sh" --profile x11 \
+    --state-root "$ISAAC_ROOT" --mount "$MOUNT"
 
 assert_no_active_simulator() {
   local container_id container_image image_id name source target_mount
@@ -64,16 +71,19 @@ wait_for_groot_runtime() {
   local deadline logs state
   deadline=$((SECONDS + READY_TIMEOUT))
   while [ "$SECONDS" -lt "$deadline" ]; do
-    logs="$(docker logs "$CONTAINER_NAME" 2>&1 | tail -n 4000 || true)"
-    if printf '%s\n' "$logs" | grep -Eq "$ERROR_MARKER_RE"; then
+    # This command creates a fresh container, so the complete log belongs to
+    # this launch. Do not let noisy Kit output roll an early error out of the
+    # pass/fail window; tail is reserved for diagnostics below.
+    logs="$(docker logs "$CONTAINER_NAME" 2>&1 || true)"
+    if grep -Eq "$ERROR_MARKER_RE" <<<"$logs"; then
       docker logs --tail 100 "$CONTAINER_NAME" >&2 || true
       fail "Isaac GR00T runtime reported a startup or physics error; container was left intact"
     fi
-    if printf '%s\n' "$logs" | grep -Fq 'IC_GROOT_RUNTIME_READY' \
-      && printf '%s\n' "$logs" | grep -Fq 'STARTUP_DONE full_scene+runner'; then
+    if grep -Fq 'IC_GROOT_RUNTIME_READY' <<<"$logs" \
+      && grep -Fq 'STARTUP_DONE full_scene+runner' <<<"$logs"; then
       sleep 5
-      logs="$(docker logs "$CONTAINER_NAME" 2>&1 | tail -n 4000 || true)"
-      if printf '%s\n' "$logs" | grep -Eq "$ERROR_MARKER_RE"; then
+      logs="$(docker logs "$CONTAINER_NAME" 2>&1 || true)"
+      if grep -Eq "$ERROR_MARKER_RE" <<<"$logs"; then
         docker logs --tail 100 "$CONTAINER_NAME" >&2 || true
         fail "Isaac GR00T runtime failed during the post-ready stability window; container was left intact"
       fi
@@ -95,15 +105,16 @@ wait_for_groot_runtime() {
 }
 
 assert_no_active_simulator
-if docker ps --format '{{.Names}}' | grep -qx "$CONTAINER_NAME"; then
+active_container_names="$(docker ps --format '{{.Names}}')" \
+  || fail "could not enumerate running Docker containers"
+if grep -qx "$CONTAINER_NAME" <<<"$active_container_names"; then
   fail "$CONTAINER_NAME is already active; this launcher will not replace it"
 fi
-if docker ps -a --format '{{.Names}}' | grep -qx "$CONTAINER_NAME"; then
+all_container_names="$(docker ps -a --format '{{.Names}}')" \
+  || fail "could not enumerate Docker containers"
+if grep -qx "$CONTAINER_NAME" <<<"$all_container_names"; then
   fail "$CONTAINER_NAME already exists but is stopped; remove it explicitly before launch"
 fi
-ISAAC_ROOT="${IC_ISAAC_ROOT:-$(cd "$MOUNT/.." && pwd)}"
-mkdir -p "$ISAAC_ROOT"/cache/{kit,ov,glcache,computecache,pip} \
-  "$ISAAC_ROOT"/{logs,data}
 XAUTH_FILE="${XDG_RUNTIME_DIR:-/tmp}/ic-isaac.xauth"
 rm -f "$XAUTH_FILE"
 touch "$XAUTH_FILE"

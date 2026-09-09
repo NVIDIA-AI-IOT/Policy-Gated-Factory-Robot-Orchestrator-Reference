@@ -1,13 +1,13 @@
 {
   "id": "policy-gated-factory-robot-orchestrator-reference-floor",
   "name": "Policy-Gated Factory Robot Orchestrator Reference Floor",
-  "description": "Granular factory-floor primitives (perceive / dispatch_task / floor_state / verify) that IC composes to run missions.",
+  "description": "Direct factory-floor adapter with six granular tools and a dispatch safety policy.",
   "activation": {
     "onStartup": true
   },
   "enabledByDefault": true,
   "contracts": {
-    "tools": ["perceive", "dispatch_task", "floor_state", "reset_scene", "verify"]
+    "tools": ["floor_state", "perceive", "dispatch_task", "reset_scene", "task_status", "verify"]
   },
   "configSchema": {
     "type": "object",

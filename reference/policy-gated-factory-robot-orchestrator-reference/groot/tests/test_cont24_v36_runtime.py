@@ -5,13 +5,13 @@
 from __future__ import annotations
 
 import ast
-import importlib.util
 import json
 from pathlib import Path
 import stat
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 
 
@@ -28,6 +28,8 @@ LAUNCHER = REPO / "ops" / "launch-groot-isaac.sh"
 GROOT_SYSTEMD = REPO / "ops" / "systemd" / "groot"
 DEPLOYMENT_MANIFEST = REPO / "deploy" / "reproducible-demo.yaml"
 THOR_INSTALLER = GROOT / "thor" / "install_deps.sh"
+THOR_DOCKERFILE = GROOT / "thor" / "Dockerfile"
+PREPARE_GROOT_RUNTIME = REPO / "ops" / "prepare-groot-runtime.sh"
 SERVING_HEALTH = ISAAC_DEPLOYMENT / "ic_serving_health.py"
 
 PYTHON_SOURCES = (
@@ -74,7 +76,7 @@ class PublicRuntimeTests(unittest.TestCase):
                 self.assertNotIn(forbidden, lowered, f"{path}: {forbidden}")
             self.assertNotIn("_source.replace", source, str(path))
 
-    def test_thor_installer_freezes_lock_and_supports_pinned_torchcodec(self) -> None:
+    def test_thor_installer_freezes_lock_and_requires_pinned_torchcodec(self) -> None:
         source = THOR_INSTALLER.read_text(encoding="utf-8")
         expected = (
             "libavfilter9",
@@ -91,6 +93,130 @@ class PublicRuntimeTests(unittest.TestCase):
         self.assertEqual(configured, expected)
         self.assertIn('--extra dev --frozen', source)
         self.assertIn('ffmpeg "${TORCHCODEC_FFMPEG6_RUNTIME[@]}"', source)
+        self.assertIn('UV_VERSION="0.11.32"', source)
+        self.assertIn(
+            'UV_INSTALLER_SHA256="43aff33a967fe40e8c17949d8c85c65bc43f3b5c94742393c957f56ab5ba80f4"',
+            source,
+        )
+        self.assertIn('https://astral.sh/uv/$UV_VERSION/install.sh', source)
+        self.assertIn("sha256sum --check --strict", source)
+        self.assertIn('"uv $UV_VERSION"*', source)
+        self.assertNotIn("https://astral.sh/uv/install.sh | sh", source)
+        self.assertIn(
+            'TORCHCODEC_WHEEL_SHA256="1421de7e6248cc33398c16b2d7ba5ada4bf5c2a38af7cc44a003f3b0c36eb314"',
+            source,
+        )
+        self.assertIn("zipfile.is_zipfile", source)
+        self.assertIn("torchcodec wheel is still a Git LFS pointer", source)
+        self.assertIn(
+            'TORCHCODEC_WHEEL_NAME="torchcodec-0.10.0a0-cp312-cp312-linux_aarch64.whl"',
+            source,
+        )
+        self.assertIn("exactly one validated Thor torchcodec wheel is required", source)
+        self.assertNotIn("DOCKER_CONTAINER", source)
+        self.assertNotIn("git clone", source)
+        self.assertNotIn("/tmp/torchcodec", source)
+        self.assertNotIn("libavdevice-dev", source)
+        self.assertIn(
+            "Python 3.12 is required for the validated Thor cp312 artifacts",
+            source,
+        )
+        self.assertNotIn("WARNING: Expected Python 3.12", source)
+        self.assertLess(
+            source.index('if [ "$PYTHON_VERSION" != "3.12" ]'),
+            source.index("if ! ldconfig -p"),
+        )
+        self.assertLess(
+            source.index("torchcodec wheel is still a Git LFS pointer"),
+            source.index("if ! ldconfig -p"),
+        )
+        thor_project = (GROOT / "thor" / "pyproject.toml").read_text(
+            encoding="utf-8"
+        )
+        thor_lock = (GROOT / "thor" / "uv.lock").read_text(encoding="utf-8")
+        self.assertIn("TorchCodec is intentionally a post-sync overlay", thor_project)
+        self.assertNotIn('"torchcodec', thor_project)
+        self.assertNotIn('name = "torchcodec"', thor_lock)
+
+    def test_runtime_preparation_materializes_wheel_before_publication(self) -> None:
+        source = PREPARE_GROOT_RUNTIME.read_text(encoding="utf-8")
+
+        self.assertIn("git lfs version", source)
+        self.assertIn(
+            'TORCHCODEC_WHEEL_RELATIVE="scripts/deployment/thor/wheels/'
+            'torchcodec-0.10.0a0-cp312-cp312-linux_aarch64.whl"',
+            source,
+        )
+        self.assertIn('lfs pull --include="$TORCHCODEC_WHEEL_RELATIVE"', source)
+        self.assertIn("zipfile.is_zipfile", source)
+        self.assertIn(
+            'TORCHCODEC_WHEEL_SHA256="1421de7e6248cc33398c16b2d7ba5ada4bf5c2a38af7cc44a003f3b0c36eb314"',
+            source,
+        )
+        self.assertLess(source.index("lfs pull"), source.index('mv -T "$tmp" "$DEST"'))
+        self.assertIn("flock -n 9", source)
+        self.assertIn('mv -T "$tmp" "$DEST"', source)
+        self.assertLess(
+            source.index("flock -n 9"),
+            source.index('[ ! -e "$DEST" ]'),
+        )
+
+        dockerfile = THOR_DOCKERFILE.read_text(encoding="utf-8")
+        self.assertIn(
+            "FROM nvidia/cuda:13.0.0-devel-ubuntu24.04@sha256:"
+            "1e8ac7a54c184a1af8ef2167f28fa98281892a835c981ebcddb1fad04bdd452d",
+            dockerfile,
+        )
+        self.assertIn("consumes the Thor pyproject.toml and lock in place", dockerfile)
+        self.assertNotIn("copies thor/pyproject.toml to repo root", dockerfile)
+
+    def test_thor_lock_keeps_binary_runtimes_on_attested_nvidia_wheels(
+        self,
+    ) -> None:
+        lock = tomllib.loads((GROOT / "thor" / "uv.lock").read_text(encoding="utf-8"))
+        packages = {package["name"]: package for package in lock["package"]}
+        nvidia_packages = (
+            "cuda-toolkit",
+            "nvidia-cublas",
+            "nvidia-cudnn-cu13",
+            "nvidia-cudss-cu13",
+            "tensorrt",
+            "tensorrt-cu13",
+            "tensorrt-cu13-bindings",
+            "tensorrt-cu13-libs",
+        )
+        for name in nvidia_packages:
+            package = packages[name]
+            self.assertEqual(
+                package["source"]["registry"],
+                "https://pypi.nvidia.com/",
+                name,
+            )
+            artifacts = [*package.get("wheels", [])]
+            if "sdist" in package:
+                artifacts.append(package["sdist"])
+            self.assertTrue(artifacts, name)
+            self.assertTrue(
+                all(item["url"].startswith("https://pypi.nvidia.com/") for item in artifacts),
+                name,
+            )
+
+        for name in ("tensorrt-cu13-bindings", "tensorrt-cu13-libs"):
+            self.assertNotIn("sdist", packages[name], name)
+            self.assertTrue(packages[name].get("wheels"), name)
+        tensorrt_libs = packages["tensorrt-cu13-libs"]["wheels"]
+        self.assertTrue(
+            any(
+                "manylinux_2_35_aarch64.whl" in wheel["url"]
+                and wheel["hash"]
+                == "sha256:f2f6fdaba477ef5536e9932d7f0ce2952ab3c87c5d0fbf93f080388390cba1de"
+                for wheel in tensorrt_libs
+            )
+        )
+        self.assertNotIn(
+            "sha256:d07fe8b65ce7edb94e805d0b6e9653afe742610b7d5e1b270c918bc9e58a36b1",
+            (GROOT / "thor" / "uv.lock").read_text(encoding="utf-8"),
+        )
 
     def test_v36_home_contract(self) -> None:
         source = PYTHON_SOURCES[0].read_text(encoding="utf-8")

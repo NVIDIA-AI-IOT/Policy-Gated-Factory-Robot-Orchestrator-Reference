@@ -72,7 +72,9 @@ TOOLS: Dict[str, Dict[str, Any]] = {
     "dispatch_parallel": {
         "route": "/v1/dispatch-parallel",
         "description": (
-            "One atomic left/right GR00T pair for the fixed dual layout-3 scene."
+            "One readiness-gated atomic left/right GR00T pair for the fixed "
+            "dual layout-3 scene. It requires both parallel and flexible-order "
+            "capabilities and accepts only the next qualified mixed pair."
         ),
         "params": {
             "moves": (
@@ -85,9 +87,9 @@ TOOLS: Dict[str, Dict[str, Any]] = {
             "moves": [
                 {
                     "endpoint": "franka_left",
-                    "color": "green",
+                    "color": "blue",
                     "source": "conveyor_1",
-                    "destination": "tote_green",
+                    "destination": "tote_blue",
                     "backend": "groot",
                 },
                 {

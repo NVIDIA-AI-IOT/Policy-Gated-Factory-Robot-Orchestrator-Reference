@@ -1,7 +1,7 @@
 # ic-workflows — build skills from tool verbs, in the browser
 
 The write-path sibling of [`ic-console`](../../ic-console/): the console's
-**Workflows tab** talks to this service. Compose the certified MCP tool verbs
+**Workflows tab** talks to this service. Compose its governed workflow verbs
 (`floor_state` · `perceive` · `dispatch_task` · `dispatch_parallel` ·
 `check_predicate`) into a linear, gated, retryable workflow; save it as
 reviewable YAML; dry-run it; run it through the seam's policy gate; publish it
@@ -15,7 +15,7 @@ Open the console (`ic-console`, :8600) → Workflows tab.
 
 ## The loop
 
-1. **Compose** — palette from `/api/tools` (the MCP toolset); args take
+1. **Compose** — workflow palette from `/api/tools`; args take
    literals, `${params.name}`, or `${steps.N.field}` (backward refs only).
 2. **Save** — validated spec → `workflows/<name>.yaml` (git-versioned;
    operator actions like `reset` are refused at save time, not just at run time).
@@ -27,6 +27,12 @@ Open the console (`ic-console`, :8600) → Workflows tab.
    `independent_b1_verified`, or a predicate returns `yes` with complete
    evidence. Physical dispatch is never retried automatically. Read-only VLM
    predicate steps may use their explicitly bounded retry count.
+   Any parallel step fails before contacting the Seam unless both
+   `IC_GROOT_PARALLEL_ENABLED=1` and `IC_GROOT_FLEXIBLE_ORDER=1`. Enable them
+   only after the documented two-server B=1 readiness checks. Same-color pairs
+   are rejected. The Seam admits only the next qualified Order744 pair from
+   authoritative state: left blue/right green, left green/right red, then left
+   red/right blue. The serial workflow remains the default.
 5. **Publish** — writes `skills/wf-<name>/manifest.yaml` in the conformance
    kit's shape (`ic-conformance skill --manifest ...` passes; enforced by a test).
 
@@ -54,9 +60,11 @@ this service adds zero privileged paths.
 
 `IC_FLOOR_SERVICE` (seam), `IC_WORKFLOWS_DIR` (default `workflows/`),
 `IC_SKILLS_DIR` (default `skills/`), `IC_WORKFLOWS_HOST/PORT` (default `:8610`),
-`IC_WORKFLOWS_CORS` (default allows the console origin :8600).
+`IC_WORKFLOWS_CORS` (default allows the console origin :8600),
+`IC_GROOT_PARALLEL_ENABLED` (default `0`), and `IC_GROOT_FLEXIBLE_ORDER`
+(default `0`).
 
 ## Tests
 
-`pytest servers/ic-workflows/tests` — 12 hardware-free tests (scripted seam),
+`pytest servers/ic-workflows/tests` runs the hardware-free scripted-Seam suite,
 including the published-manifest-passes-the-conformance-kit bar.

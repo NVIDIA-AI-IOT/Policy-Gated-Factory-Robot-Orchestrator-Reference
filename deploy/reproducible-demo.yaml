@@ -3,20 +3,44 @@
 schema_version: 2
 validated_on: 2026-08-08
 
-# These are the exact artifacts used by the validated two-host demo. Tags are
-# retained for readability; pull by digest where the registry permits it.
+# `validated_on` applies to the historical two-host GR00T demo and its
+# `isaac_sim` entry. Later independently qualified or identity-pinned release
+# cohorts are labeled below; adding them does not imply that the historical
+# two-host, Thor, or rename gates were rerun. Tags are retained for readability;
+# pull by digest where the registry permits it.
 runtime:
   python: "3.12.3"
   node: "22.22.3"
   uv: "0.11.32"
   huggingface_hub: "0.36.2"
   ros: jazzy
-  openclaw: "2026.7.1"  # also frozen in package-lock.json
+  openclaw: "2026.9.2"  # also frozen in package-lock.json
 
 containers:
+  # Historical GR00T/two-host image; intentionally remains on dev2/X11.
   isaac_sim:
     tag: nvcr.io/nvidia/isaac-sim:6.0.0-dev2
     digest: sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9
+  isaac_sim_scripted_baseline:
+    tag: nvcr.io/nvidia/isaac-sim:6.0.1
+    digest: sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb
+    platform: linux/amd64
+    profile: headless_webrtc
+    qualified_on: 2026-09-09
+    qualification_run_id: d70ed0c3940f
+    historical_qualification_run_id: 953020d69491
+    qualification_scope: scripted_baseline_without_webrtc_client_connection
+  ros_sidecar:
+    tag: docker.io/library/ros:jazzy-ros-base-noble
+    digest: sha256:2589a8fba5257307857890173c069852c2abf913a0be7970f172478baecb09e4
+    platform: linux/amd64
+    purpose: scripted_baseline_acceptance
+  thor_cuda_build:
+    tag: nvidia/cuda:13.0.0-devel-ubuntu24.04
+    digest: sha256:1e8ac7a54c184a1af8ef2167f28fa98281892a835c981ebcddb1fad04bdd452d
+    platform: linux/arm64
+    platform_digest: sha256:38c2598ded0fd3ed2b0b13351543fde493faba43ae580f81f0a9ab58d76fdd2d
+    qualification_scope: identity_pinned_after_tag_based_thor_qualification
   perception_vllm:
     tag: vllm/vllm-openai:v0.20.0-ubuntu2404
     digest: sha256:aff65d7198dd284c37dd0a18a606544cc5e92bfb0d5eb608b77e8b8f1c6b8b0d
@@ -30,6 +54,16 @@ containers:
       - --max-model-len=8192
       - --max-num-seqs=128
       - --trust-remote-code
+
+runtime_artifacts:
+  thor_torchcodec:
+    filename: torchcodec-0.10.0a0-cp312-cp312-linux_aarch64.whl
+    version: 0.10.0a0
+    sha256: 1421de7e6248cc33398c16b2d7ba5ada4bf5c2a38af7cc44a003f3b0c36eb314
+    source_revision: e5749287857afd97b78f1147166137de29746392
+    source_path: scripts/deployment/thor/wheels/torchcodec-0.10.0a0-cp312-cp312-linux_aarch64.whl
+    materialization: git_lfs
+    install_phase: post_uv_sync
 
 groot_serving:
   status: public
@@ -93,3 +127,4 @@ dependency_locks:
   console: ic-console/uv.lock
   chat: servers/ic-chat/uv.lock
   workflows: servers/ic-workflows/uv.lock
+  thor: reference/policy-gated-factory-robot-orchestrator-reference/groot/thor/uv.lock

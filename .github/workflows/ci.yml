@@ -41,9 +41,21 @@ jobs:
           bash -n ops/*.sh
           bash -n reference/policy-gated-factory-robot-orchestrator-reference/groot/thor/install_deps.sh
 
+      - name: Validate Thor lock metadata
+        run: uv lock --check --project reference/policy-gated-factory-robot-orchestrator-reference/groot/thor
+
       - name: Validate locked Node installation
         run: |
           npm ci
+          npm ls --all
+          npm audit --audit-level=high
+          OPENCLAW_CONFIG_PATH="$PWD/ops/openclaw.template.json" \
+            ./node_modules/.bin/openclaw config validate
+          rendered_config="$RUNNER_TEMP/openclaw-rendered.json"
+          sed 's#__MCP_COMMAND__#/usr/bin/true#' \
+            ops/openclaw.template.json > "$rendered_config"
+          OPENCLAW_CONFIG_PATH="$rendered_config" \
+            ./node_modules/.bin/openclaw config validate
           npm test
 
       - name: Validate IC Spine
@@ -72,12 +84,20 @@ jobs:
           uv sync --frozen --extra dev --project servers/policy-gated-factory-robot-orchestrator-reference-mcp
           uv run --frozen --project servers/policy-gated-factory-robot-orchestrator-reference-mcp pytest -q servers/policy-gated-factory-robot-orchestrator-reference-mcp/tests
 
+      - name: Validate hardware-free GR00T deployment contracts
+        run: |
+          uv run --frozen --project servers/ic-workflows pytest -q \
+            reference/policy-gated-factory-robot-orchestrator-reference/groot/tests/test_cont24_v36_runtime.py \
+            reference/policy-gated-factory-robot-orchestrator-reference/groot/tests/test_native_droid_relay_batch2.py \
+            reference/policy-gated-factory-robot-orchestrator-reference/groot/tests/test_two_host_bridge.py
+
       - name: Validate deployment contracts
         run: |
           uv run --frozen --project servers/ic-workflows pytest -q \
             ops/test_deployment_contracts.py \
             ops/test_groot_sim_host_contract.py \
             ops/test_ic_gpu_exporter.py \
+            ops/test_isaac_sim_acceptance.py \
             ops/test_isaac_sim_workstation.py \
             ic-spine/tests/unit/test_isaac_lifecycle_contract.py
           python -m compileall -q ic-spine/src servers ic-console/src ops

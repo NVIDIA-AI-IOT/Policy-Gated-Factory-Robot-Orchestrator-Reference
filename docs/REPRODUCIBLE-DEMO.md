@@ -15,12 +15,15 @@ Model, dataset, container, runtime, and port identities are pinned in
 [`../deploy/reproducible-demo.yaml`](../deploy/reproducible-demo.yaml) and
 [`../reference/policy-gated-factory-robot-orchestrator-reference/groot/models/manifest.yaml`](../reference/policy-gated-factory-robot-orchestrator-reference/groot/models/manifest.yaml).
 
-> **Publication boundary:** the 2026-09-08 acceptance used the base revision
-> plus uncommitted reproducibility fixes. Until the complete tree is published
-> at one immutable commit or tag, a clean clone of the base revision is not the
-> accepted system. Treat this as the release-candidate runbook and use its Git
-> clone steps for independent reproduction only after publication; see
-> [`SUPPORT.md`](SUPPORT.md#measured-acceptance-cohort).
+> **Historical acceptance boundary:** the 2026-09-08 acceptance used the base
+> revision plus the then-uncommitted reproducibility fixes. Those fixes were
+> subsequently committed together with the full-form product/package rename,
+> but the post-rename tree has not completed a clean-clone two-host acceptance
+> run. Do not use the historical base revision, date, or deployment-manifest
+> `validated_on` value as a post-rename release claim. Replace this guide's
+> commit placeholder only after the exact published candidate passes again;
+> see [`SUPPORT.md`](SUPPORT.md#measured-acceptance-cohort) and the
+> [rename upgrade guide](FULL-FORM-RENAME-UPGRADE.md).
 
 ## Deployment layout
 
@@ -28,7 +31,7 @@ Model, dataset, container, runtime, and port identities are pinned in
 |---|---|
 | Brain host | IC Spine, IC Console, IC Chat/OpenClaw, Nemotron perception VLM, two GR00T policy processes, and two relays |
 | Simulation host | Isaac Sim, ROS 2 cell node, cameras, executors, and the fail-closed two-host GR00T bridge |
-| Operator host | IC Console through loopback/SSH, or read-only direct LAN access when explicitly firewalled; Isaac Sim through local X11 or a separately secured viewer |
+| Operator host | IC Console through loopback/SSH, or read-only direct LAN access when explicitly firewalled; the standalone Isaac path uses NVIDIA's native WebRTC service by default, while the pinned GR00T path requires local X11 or a separately secured desktop mirror |
 
 Each long-running component has one owner. Installation prepares files while
 the corresponding services are idle; it never silently stops or replaces a
@@ -73,13 +76,22 @@ check catches a user manager that still has the old supplementary groups:
 docker version --format '{{.Server.Version}}'
 systemd-run --user --wait --pipe --collect \
   /usr/bin/docker version --format '{{.Server.Version}}'
-docker run --rm --runtime=nvidia --gpus all \
-  nvcr.io/nvidia/cuda:13.0.0-devel-ubuntu24.04 \
+docker run --rm --platform linux/arm64 --runtime=nvidia --gpus all \
+  docker.io/nvidia/cuda:13.0.0-devel-ubuntu24.04@sha256:1e8ac7a54c184a1af8ef2167f28fa98281892a835c981ebcddb1fad04bdd452d \
   nvidia-smi -L
 ```
 
 The final command is the Thor-specific GPU-container smoke test. It must report
 `GPU 0: NVIDIA Thor`; do not reuse the workstation's CUDA 12.8 test image here.
+
+The accepted GR00T policy and relay processes ran **bare metal on Thor** from
+the pinned native uv environment under `~/groot_shadow/Isaac-GR00T/`, owned by
+user systemd. Docker remains part of the host prerequisites because the
+perception VLM uses a pinned container and because the Thor Dockerfile was used
+for dependency qualification. That Dockerfile is not the canonical model-
+serving deployment and its container smoke result is not policy-inference or
+full-mission acceptance. Do not substitute it for the documented bare-metal
+policy services without a separate container-specific acceptance run.
 
 Clone the repository, install the measured host prerequisites, prepare the
 pinned GR00T source and environment, and then install the control plane:
@@ -121,9 +133,17 @@ cannot be mistaken for a release.
 
 The prerequisite installer pins Node and uv and installs the measured ROS and
 CUDA host packages. GR00T runtime preparation checks out the pinned NVIDIA
-Isaac-GR00T revision, applies the versioned Policy-Gated Factory Robot Orchestrator Reference patch, and builds
-its locked Thor environment. The bootstrap uses repository lockfiles and
-refuses to replace files beneath active IC services.
+Isaac-GR00T revision, applies the versioned Policy-Gated Factory Robot
+Orchestrator Reference patch, and builds its frozen Thor uv environment. The
+exact TorchCodec `0.10.0a0` LFS wheel is then installed after the frozen sync as
+a separately checksum-attested platform overlay; it is not a registry package
+resolved by that uv lock. The bootstrap uses repository lockfiles and refuses
+to replace files beneath active IC services.
+
+For an existing installation made before the full-form rename, stop here and
+follow [`FULL-FORM-RENAME-UPGRADE.md`](FULL-FORM-RENAME-UPGRADE.md). The
+bootstrap intentionally preserves operator environment files, so reinstalling
+without migrating their old paths is not an upgrade.
 
 Review the generated files under `~/.config/ic-spine/`. The seeded services
 bind to loopback. Keep that default and use an SSH tunnel, or set an exact
@@ -298,9 +318,12 @@ not start or enable them.
 
 ## 3. Prepare the simulation host
 
-The validated simulation host is an x86_64 Linux workstation with an NVIDIA
-RTX GPU, Docker, NVIDIA Container Runtime, X11, `xauth`, and the pinned Isaac
-Sim image. Clone the same repository commit on this host and accept NVIDIA's
+The measured two-host GR00T path uses an x86_64 Linux workstation with an
+NVIDIA RTX GPU, Docker, NVIDIA Container Runtime, X11, `xauth`, and its pinned
+Isaac Sim 6.0.0-dev2 image. This is intentionally separate from the standalone
+scripted-baseline helper, which defaults to stable Isaac Sim 6.0.1 and
+headless/WebRTC. Clone the same repository commit on this host and accept
+NVIDIA's
 [Isaac Sim license](https://docs.isaacsim.omniverse.nvidia.com/6.0.0/common/NVIDIA_Omniverse_License_Agreement.html)
 before pulling the image by digest:
 
@@ -345,13 +368,17 @@ test "$LOCAL_COMMIT" = "$REMOTE_COMMIT"
 REMOTE_DIRTY="$(ssh "$THOR_SSH" \
   'git -C ~/Policy-Gated-Factory-Robot-Orchestrator-Reference status --porcelain=v1 --untracked-files=all')"
 test -z "$REMOTE_DIRTY"
+: "${DISPLAY:?run from the workstation X11 owner session}"
 docker pull nvcr.io/nvidia/isaac-sim:6.0.0-dev2@sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9
 export IC_GROOT_ISAAC_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/policy-gated-factory-robot-orchestrator-reference/isaac-sim-groot"
 export IC_GROOT_ISAAC_MOUNT="$IC_GROOT_ISAAC_ROOT/scripts"
 ops/isaac-sim-workstation.sh --prepare \
   --root "$IC_GROOT_ISAAC_ROOT" \
   --container isaac-sim
-ops/check-sim-host.sh --mount "$IC_GROOT_ISAAC_MOUNT"
+IC_ISAAC_IMAGE=nvcr.io/nvidia/isaac-sim:6.0.0-dev2 \
+IC_ISAAC_IMAGE_DIGEST=sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9 \
+ops/check-sim-host.sh --profile x11 --mount "$IC_GROOT_ISAAC_MOUNT" \
+  --state-root "$IC_GROOT_ISAAC_ROOT"
 )
 ```
 
@@ -370,14 +397,22 @@ camera, GR00T, and rendering acceptance tests.
 
 To reproduce only the packaged scripted baseline on this host without the
 Thor-hosted learned policy or two-host bridge, use the
-[`Isaac Sim workstation helper`](../ops/ISAAC-SIM-WORKSTATION.md). It prepares
-the deterministic default mount, validates it, starts the pinned local image,
-and waits for `IC_CELL_UP`.
+[`Isaac Sim workstation helper`](../ops/ISAAC-SIM-WORKSTATION.md). That separate
+path prepares the deterministic default mount, runs the project preflight and
+NVIDIA's bundled compatibility checker, starts stable Isaac Sim 6.0.1 in its
+default headless/WebRTC profile, and waits for both cell and streaming
+readiness. Its scene-destructive acceptance command tests 15 fresh streams,
+one exactly-once scripted move, final reset, and current-run logs; it is not
+GR00T or Thor evidence.
 
 `IC_GROOT_ISAAC_MOUNT` is the host directory mounted at `/scripts` inside the
-Isaac container, not the Isaac Sim installation directory. The checker is
-read-only: it validates Linux/x86_64, Docker access, NVIDIA runtime and GPU
-visibility, X11, the exact image digest, mount existence, and available disk.
+Isaac container, not the Isaac Sim installation directory. The host checker is
+read-only: with the explicit GR00T overrides above it validates Linux/x86_64,
+Docker access, NVIDIA runtime and GPU visibility, X11, the exact dev2 image
+digest, mount existence, and at least 50,000,000,000 bytes of total filesystem
+capacity at the state cache. It reports currently available bytes without
+applying a free-space threshold. The standalone helper additionally runs
+NVIDIA's transient compatibility container under its stable image identity.
 
 Use a separate scripts mount for the GR00T deployment; do not reuse the
 standalone baseline's live mount. The two-host launcher mounts
@@ -386,16 +421,20 @@ sets the same Fast DDS profile, ROS domain, and RMW selected by the brain-host
 Seam environment. This enables NVIDIA's documented UDP transport for ROS 2
 participants on multiple machines or in containers.
 
-The current GR00T and standalone launchers require a real local X11 display.
-Their remote-viewing status is explicit in
-[the workstation runbook](../ops/ISAAC-SIM-WORKSTATION.md#remote-viewing-and-nvidia-alignment):
-RealVNC can mirror an existing desktop but is not the NVIDIA Isaac Sim WebRTC
-Streaming Client, and the current scripts do not start WebRTC or the browser
-viewer.
+The GR00T launcher requires a real local X11 display. The standalone launcher
+defaults to NVIDIA's headless WebRTC service and retains X11 only behind
+`--profile x11`. The repository has qualified the headless service and its
+signaling listener but has not connected a WebRTC client or deployed NVIDIA's
+separate browser-viewer Compose service. See the
+[workstation runbook](../ops/ISAAC-SIM-WORKSTATION.md#launch-the-supported-headlesswebrtc-profile).
 
-The preparation command above creates the external state tree and stages the
-packaged cell atomically. Do not replace that step with an unchecked recursive
-copy. Keep Isaac Sim stopped while the GR00T bundle is installed below.
+The preparation command above creates the external state tree, builds and
+validates the complete packaged cell in a sibling temporary directory, then
+publishes the bundle with one same-filesystem `mv -T` directory rename. A
+consumer cannot observe partially copied entrypoints. A nonempty divergent
+target is rejected rather than merged or overwritten. Do not replace
+preparation with an unchecked recursive copy. Keep Isaac Sim stopped while the
+GR00T bundle is installed below.
 
 Fast DDS traffic is peer-to-peer. If a host has a default-deny inbound
 firewall, it needs a peer-scoped UDP rule; when both hosts filter inbound
@@ -628,8 +667,10 @@ authorized to command the cell. It deliberately has no login, per-user
 identity, token expiry, or TLS: the static Console sends the public
 `X-IC-Chat: console` CSRF value automatically. Exact-origin CORS prevents a
 drive-by web page from using a browser to submit commands, but `console` is not
-an authentication secret and a non-browser client on the admitted network can
-reproduce the request. **Network reachability is actuation authority.** Keep
+an authentication secret; a non-browser client can call Chat directly and an
+attacker is not required to open the Console UI first. A client that can reach
+the admitted Chat listener can reproduce the request. **Network reachability
+is actuation authority.** Keep
 the default above for an untrusted network or one shared with non-operators; a
 production remote-write deployment needs an authenticated TLS endpoint.
 
@@ -690,15 +731,15 @@ Workflow Builder access is not required. Keep `8610`, `8766`, `18790`, `8001`,
 GR00T policy/relay ports, and the GPU exporter private. Use the SSH-forwarded
 default if Workflow Builder create/edit/run/schedule access is required.
 
-The current Isaac launchers render to the simulation host's real local X11
+The two-host GR00T launcher renders to the simulation host's real local X11
 desktop. Optional RealVNC access is a direct connection from RealVNC Viewer to
 `<sim-host-ip>:5900`, not a browser URL, and it mirrors the entire workstation.
 It is external to this repository and must be authenticated, encrypted, and
-firewalled to the operator IP. NVIDIA's recommended remote path is headless
-WebRTC; the current scripts do not start it, and `http://<sim-host-ip>:8210`
-exists only after NVIDIA's separate browser-viewer Compose stack is deployed.
-See the
-[workstation remote-viewing matrix](../ops/ISAAC-SIM-WORKSTATION.md#remote-viewing-and-nvidia-alignment).
+firewalled to the operator IP. The separate standalone launcher now defaults
+to NVIDIA's native headless WebRTC service on `49100/tcp` and `47998/udp`; it
+does not include the browser-viewer Compose service or port `8210`. No WebRTC
+client session has yet been acceptance-tested. See the
+[workstation WebRTC section](../ops/ISAAC-SIM-WORKSTATION.md#launch-the-supported-headlesswebrtc-profile).
 
 ## 6. Run the physical acceptance workflow
 
@@ -880,23 +921,64 @@ deterministic workflow run does not certify OpenClaw.
 
 The demonstrated mixed-color sequence is an explicit capability mode, not the
 shipped default. Attempt it only after the serial physical acceptance above and
-both B=1 GR00T servers have passed readiness. Stop OpenClaw, change only its MCP
-child environment, validate the config, and start it again:
+both B=1 GR00T servers have passed readiness. The Seam is the authoritative
+route guard, Workflows has its own pre-dispatch guard, and OpenClaw's MCP child
+enforces the certified sequence and visual-proof state. Seam and Workflows must
+receive both capability flags; the MCP child requires those flags plus
+`IC_CERTIFIED_GROOT_ORDER=1`. Stop them, update only the preserved installed
+environment/config copies, validate the OpenClaw config, and restart them
+together:
 
 ```bash
 cd "$HOME/Policy-Gated-Factory-Robot-Orchestrator-Reference"
-systemctl --user stop ic-openclaw.service
+systemctl --user stop \
+  ic-openclaw.service ic-workflows.service ic-seam.service
+for ENV_FILE in \
+  "$HOME/.config/ic-spine/seam.env" \
+  "$HOME/.config/ic-spine/workflows.env"; do
+  for FLAG in IC_GROOT_PARALLEL_ENABLED IC_GROOT_FLEXIBLE_ORDER; do
+    if grep -q "^$FLAG=" "$ENV_FILE"; then
+      sed -i "s/^$FLAG=.*/$FLAG=1/" "$ENV_FILE"
+    else
+      printf '%s=1\n' "$FLAG" >>"$ENV_FILE"
+    fi
+  done
+  grep -qx 'IC_GROOT_PARALLEL_ENABLED=1' "$ENV_FILE"
+  grep -qx 'IC_GROOT_FLEXIBLE_ORDER=1' "$ENV_FILE"
+done
 set -a
 . "$HOME/.config/ic-spine/openclaw.env"
 set +a
+./node_modules/.bin/openclaw config set \
+  mcp.servers.ic-floor.env.IC_CERTIFIED_GROOT_ORDER '"1"' --strict-json
 ./node_modules/.bin/openclaw config set \
   mcp.servers.ic-floor.env.IC_GROOT_PARALLEL_ENABLED '"1"' --strict-json
 ./node_modules/.bin/openclaw config set \
   mcp.servers.ic-floor.env.IC_GROOT_FLEXIBLE_ORDER '"1"' --strict-json
 ./node_modules/.bin/openclaw config validate
-systemctl --user start ic-openclaw.service
+systemctl --user start \
+  ic-seam.service ic-workflows.service ic-openclaw.service
+systemctl --user is-active \
+  ic-seam.service ic-workflows.service ic-openclaw.service
+for UNIT in ic-seam.service ic-workflows.service; do
+  PID="$(systemctl --user show --property MainPID --value "$UNIT")"
+  test "$PID" -gt 0
+  tr '\0' '\n' <"/proc/$PID/environ" | \
+    grep -Ex 'IC_GROOT_(PARALLEL_ENABLED|FLEXIBLE_ORDER)=1' | \
+    sort -u | grep -c '^' | grep -qx '2'
+done
+curl --fail http://127.0.0.1:8766/v1/health
+curl --fail http://127.0.0.1:8610/api/health
 ops/thor-deploy.sh --check
 ```
+
+Do not set only the MCP child flags: the Seam and Workflows will correctly
+refuse the route. Likewise, changing only the service environment does not
+authorize the MCP agent to leave its serial fallback. The bundled
+`full-groot-dual-tote-concurrent` workflow now contains only the exact
+blue/green, green/red, and red/blue sequence; other mixed pair identities are
+rejected at the Seam before ROS contact. Same-color, partial, skipped,
+out-of-order, and repeated pairs are also refused there before motion.
 
 Then submit this goal through IC Chat with the `openclaw` backend:
 
@@ -937,6 +1019,15 @@ Installation intentionally leaves all services disabled. This avoids enabling
 robot-control software at boot without an operator decision. See
 [`../ops/systemd/README.md`](../ops/systemd/README.md) for explicit manual and
 appliance-mode procedures.
+
+These are user services. Enabling a unit does not by itself guarantee that it
+will run after reboot with no interactive login: the user's systemd manager
+must be started, and it may stop after the final logout. Appliance-style boot
+persistence therefore also requires an administrator-approved
+`loginctl enable-linger <user>` (and site policy may prohibit lingering).
+Without linger, log in before starting the stack and do not describe the unit
+as unattended reboot-persistent. Apply the same decision separately to the
+simulation-host bridge.
 
 - A configuration change does not authorize replacing an active process.
 - Start, stop, restart, and cancel operations require an explicit target.

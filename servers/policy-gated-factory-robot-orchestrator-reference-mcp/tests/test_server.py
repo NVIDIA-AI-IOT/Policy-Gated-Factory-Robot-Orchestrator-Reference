@@ -170,11 +170,13 @@ def test_certified_groot_sequence_is_green_first_and_interleaved(monkeypatch):
 
 
 def test_certified_groot_sequence_uses_atomic_pairs_when_enabled(monkeypatch):
+    monkeypatch.setenv("IC_CERTIFIED_GROOT_ORDER", "1")
     monkeypatch.setenv("IC_GROOT_PARALLEL_ENABLED", "1")
     monkeypatch.setenv("IC_GROOT_FLEXIBLE_ORDER", "1")
     plan = json.loads(server.certified_groot_sequence())
-    assert plan["execution_mode"] == "concurrent_pairs"
+    assert plan["execution_mode"] == "concurrent_mixed_pairs"
     assert plan["active_capabilities"] == {
+        "certified_order_enabled": True,
         "parallel_enabled": True,
         "flexible_order_enabled": True,
         "mixed_color_parallel_enabled": True,
@@ -187,9 +189,9 @@ def test_certified_groot_sequence_uses_atomic_pairs_when_enabled(monkeypatch):
         "dispatch_parallel",
     ]
     assert [transaction["args"] for transaction in plan["transactions"]] == [
-        {"left_color": "green", "right_color": "green"},
-        {"left_color": "red", "right_color": "red"},
-        {"left_color": "blue", "right_color": "blue"},
+        {"left_color": "blue", "right_color": "green"},
+        {"left_color": "green", "right_color": "red"},
+        {"left_color": "red", "right_color": "blue"},
     ]
     assert all(
         [proof["region"] for proof in transaction["proofs"]] == ["tote", "tote_r"]
@@ -200,9 +202,12 @@ def test_certified_groot_sequence_uses_atomic_pairs_when_enabled(monkeypatch):
 def test_parallel_plan_reports_mixed_color_disabled_without_flexible_flag(
     monkeypatch,
 ):
+    monkeypatch.setenv("IC_CERTIFIED_GROOT_ORDER", "1")
     monkeypatch.setenv("IC_GROOT_PARALLEL_ENABLED", "1")
     monkeypatch.delenv("IC_GROOT_FLEXIBLE_ORDER", raising=False)
     plan = json.loads(server.certified_groot_sequence())
+    assert plan["execution_mode"] == "serial_fallback"
+    assert "transactions" not in plan
     assert plan["active_capabilities"]["mixed_color_parallel_enabled"] is False
     assert (
         plan["active_capabilities"][
@@ -216,14 +221,15 @@ def test_parallel_schema_rejection_does_not_open_a_proof_gate(seam, monkeypatch)
     monkeypatch.setenv("IC_CERTIFIED_GROOT_ORDER", "1")
     monkeypatch.setenv("IC_GROOT_PARALLEL_ENABLED", "1")
     monkeypatch.setenv("IC_GROOT_FLEXIBLE_ORDER", "1")
-    monkeypatch.setattr(
-        server,
-        "_post",
-        lambda *_args, **_kwargs: json.dumps({
+    def fake_post(route, *_args, **_kwargs):
+        if route == "/v1/floor-state":
+            return json.dumps({"tote": {}, "tote_r": {}})
+        return json.dumps({
             "detail": [{"msg": "Value error, stale same-color validator"}],
-        }),
-    )
-    result = json.loads(server.dispatch_parallel("red", "blue"))
+        })
+
+    monkeypatch.setattr(server, "_post", fake_post)
+    result = json.loads(server.dispatch_parallel("blue", "green"))
     assert result["dispatched"] is False
     assert result["status"] == "refused"
     assert "before motion" in result["reason"]
@@ -335,6 +341,7 @@ def test_parallel_dispatch_batches_both_arms_and_requires_two_proofs(
 ):
     _enable_certified(monkeypatch)
     monkeypatch.setenv("IC_GROOT_PARALLEL_ENABLED", "1")
+    monkeypatch.setenv("IC_GROOT_FLEXIBLE_ORDER", "1")
     _FakeSeam.dispatch_response = {
         "dispatched": True,
         "verified": True,
@@ -347,10 +354,10 @@ def test_parallel_dispatch_batches_both_arms_and_requires_two_proofs(
     }
     _FakeSeam.verify_response = {
         "answer": "yes",
-        "evidence": "green brick visible in the requested tote",
+        "evidence": "requested object visible in the requested tote",
     }
 
-    dispatched = json.loads(server.dispatch_parallel("green"))
+    dispatched = json.loads(server.dispatch_parallel("blue", "green"))
     assert dispatched["verified"] is True
     assert dispatched["independent_b1_verified"] is True
     assert dispatched["per_arm_relay_ports"] == {
@@ -369,11 +376,11 @@ def test_parallel_dispatch_batches_both_arms_and_requires_two_proofs(
     assert all(move["backend"] == "groot" for move in payload["moves"])
 
     first_proof = json.loads(
-        server.verify("the green brick is inside the left tote", region="tote")
+        server.verify("the blue cylinder is inside the left tote", region="tote")
     )
     assert first_proof["proof_gate"]["remaining_regions"] == ["tote_r"]
     blocked_duplicate = json.loads(
-        server.verify("the green brick is inside the left tote", region="tote")
+        server.verify("the blue cylinder is inside the left tote", region="tote")
     )
     assert blocked_duplicate["status"] == "refused"
 
@@ -383,85 +390,92 @@ def test_parallel_dispatch_batches_both_arms_and_requires_two_proofs(
     assert final_proof["proof_gate"]["state"] == "cleared"
     assert server._PENDING_PROOF is None
 
+    _FakeSeam.floor_state_response = {
+        "tote": {"blue": "in"},
+        "tote_r": {"green": "in"},
+    }
+    second = json.loads(server.dispatch_parallel("green", "red"))
+    assert second["verified"] is True
+    assert second["pending_visual_proof"]["pair_sequence"] == 2
+    assert second["pending_visual_proof"]["sequence_start"] == 3
+    assert second["pending_visual_proof"]["sequence_end"] == 4
 
-def test_flexible_order_accepts_mixed_pair_and_binds_each_region_identity(
+
+def test_certified_mixed_order_rejects_wrong_partial_and_serialized_pairs(
     seam, monkeypatch
 ):
     _enable_certified(monkeypatch)
     monkeypatch.setenv("IC_GROOT_PARALLEL_ENABLED", "1")
     monkeypatch.setenv("IC_GROOT_FLEXIBLE_ORDER", "1")
-    _FakeSeam.dispatch_response = {
-        "dispatched": True,
-        "verified": True,
-        "independent_b1_verified": True,
-        "parallel_results": {
-            "franka_left": {"verified": True},
-            "franka_right": {"verified": True},
-        },
-    }
-    _FakeSeam.verify_response = {
-        "answer": "yes",
-        "evidence": "requested object visible",
-    }
 
-    left_red = json.loads(server.dispatch_task(
+    wrong = json.loads(server.dispatch_parallel("green", "red"))
+    assert wrong["status"] == "refused"
+    assert wrong["expected_colors"] == {
+        "franka_left": "blue",
+        "franka_right": "green",
+    }
+    assert [path for path, _payload in _FakeSeam.calls] == ["/v1/floor-state"]
+
+    _FakeSeam.calls.clear()
+    serialized = json.loads(server.dispatch_task(
         action="move",
         endpoint="franka_left",
-        color="red",
+        color="blue",
         source="conveyor_1",
-        destination="tote_red",
-    ))
-    assert left_red["verified"] is True
-    blocked_right_blue = json.loads(server.dispatch_task(
-        action="move",
-        endpoint="franka_right",
-        color="blue",
-        source="conveyor_2",
         destination="tote_blue",
     ))
-    assert blocked_right_blue["status"] == "refused"
-    assert "visual proof" in blocked_right_blue["reason"]
-    left_red_proof = json.loads(
-        server.verify("the red cube is inside the left tote", region="tote")
-    )
-    assert left_red_proof["proof_gate"]["state"] == "cleared"
+    assert serialized["status"] == "refused"
+    assert "dispatch_parallel" in serialized["reason"]
+    assert [path for path, _payload in _FakeSeam.calls] == ["/v1/floor-state"]
 
-    right_blue = json.loads(server.dispatch_task(
-        action="move",
-        endpoint="franka_right",
-        color="blue",
-        source="conveyor_2",
-        destination="tote_blue",
+    _FakeSeam.calls.clear()
+    _FakeSeam.floor_state_response = {
+        "tote": {"blue": "in"},
+        "tote_r": {},
+    }
+    partial = json.loads(server.dispatch_parallel("blue", "green"))
+    assert partial["status"] == "refused"
+    assert "partial certified concurrent pair" in partial["reason"]
+    assert [path for path, _payload in _FakeSeam.calls] == ["/v1/floor-state"]
+
+    _FakeSeam.calls.clear()
+    _FakeSeam.floor_state_response = {"error": "ROS floor state unavailable"}
+    unavailable = json.loads(server.dispatch_parallel("blue", "green"))
+    assert unavailable["status"] == "refused"
+    assert "fails closed" in unavailable["reason"]
+    assert [path for path, _payload in _FakeSeam.calls] == ["/v1/floor-state"]
+
+
+def test_certified_mixed_order_blocks_haul_until_all_pairs_complete(
+    seam, monkeypatch
+):
+    _enable_certified(monkeypatch)
+    monkeypatch.setenv("IC_GROOT_PARALLEL_ENABLED", "1")
+    monkeypatch.setenv("IC_GROOT_FLEXIBLE_ORDER", "1")
+
+    outcome = json.loads(server.dispatch_task(
+        action="pick_and_place",
+        endpoint="mobilebot",
+        object_id="tote",
+        target_id="rack_1",
     ))
-    assert right_blue["verified"] is True
-    right_blue_proof = json.loads(
-        server.verify("the blue cylinder is inside the right tote", region="tote_r")
-    )
-    assert right_blue_proof["proof_gate"]["state"] == "cleared"
+    assert outcome["status"] == "refused"
+    assert "only after all three certified mixed pairs" in outcome["reason"]
+    assert [path for path, _payload in _FakeSeam.calls] == ["/v1/floor-state"]
 
-    dispatched = json.loads(server.dispatch_parallel("green", "red"))
-    assert dispatched["verified"] is True
-    path, payload = next(
-        call for call in _FakeSeam.calls if call[0] == "/v1/dispatch-parallel"
-    )
-    assert path == "/v1/dispatch-parallel"
-    assert [(move["endpoint"], move["color"]) for move in payload["moves"]] == [
-        ("franka_left", "green"),
-        ("franka_right", "red"),
-    ]
 
-    wrong = json.loads(
-        server.verify("the red cube is inside the left tote", region="tote")
-    )
-    assert wrong["status"] == "refused"
-    left = json.loads(
-        server.verify("the green brick is inside the left tote", region="tote")
-    )
-    assert left["proof_gate"]["remaining_regions"] == ["tote_r"]
-    right = json.loads(
-        server.verify("the red cube is inside the right tote", region="tote_r")
-    )
-    assert right["proof_gate"]["state"] == "cleared"
+def test_parallel_requires_certified_order_even_with_both_capability_flags(
+    seam, monkeypatch
+):
+    monkeypatch.delenv("IC_CERTIFIED_GROOT_ORDER", raising=False)
+    monkeypatch.setenv("IC_GROOT_PARALLEL_ENABLED", "1")
+    monkeypatch.setenv("IC_GROOT_FLEXIBLE_ORDER", "1")
+
+    outcome = json.loads(server.dispatch_parallel("blue", "green"))
+
+    assert outcome["status"] == "refused"
+    assert "IC_CERTIFIED_GROOT_ORDER=1" in outcome["reason"]
+    assert _FakeSeam.calls == []
 
 
 def test_certified_failed_action_retry_is_bounded(seam, monkeypatch):

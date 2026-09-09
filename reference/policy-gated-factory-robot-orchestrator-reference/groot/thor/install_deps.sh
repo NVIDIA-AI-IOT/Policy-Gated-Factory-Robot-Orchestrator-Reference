@@ -6,16 +6,16 @@
 # After install, use `source scripts/activate_thor.sh` in each new shell.
 set -euo pipefail
 
-# Track /tmp source-build dirs so they get cleaned up even when `set -e`
-# aborts the script mid-build (e.g. a failed `pip install`). Without this
-# trap, a failed source build leaves /tmp/torchcodec behind, and the next
-# run on the same host (CI runner / Docker build layer / dev machine)
-# silently reuses the stale clone.
-TMP_BUILD_DIRS=()
-trap 'for _d in "${TMP_BUILD_DIRS[@]:-}"; do rm -rf "$_d"; done' EXIT
+# Clean verified-installer scratch space even when `set -e` aborts.
+TMP_DIRS=()
+trap 'for _d in "${TMP_DIRS[@]:-}"; do rm -rf "$_d"; done' EXIT
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+UV_VERSION="0.11.32"
+UV_INSTALLER_SHA256="43aff33a967fe40e8c17949d8c85c65bc43f3b5c94742393c957f56ab5ba80f4"
+TORCHCODEC_WHEEL_SHA256="1421de7e6248cc33398c16b2d7ba5ada4bf5c2a38af7cc44a003f3b0c36eb314"
+TORCHCODEC_WHEEL_NAME="torchcodec-0.10.0a0-cp312-cp312-linux_aarch64.whl"
 
 # Use sudo only when not already root
 SUDO=""
@@ -32,8 +32,32 @@ fi
 
 PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
 if [ "$PYTHON_VERSION" != "3.12" ]; then
-    echo "WARNING: Expected Python 3.12 for Thor, detected Python $PYTHON_VERSION"
+    echo "ERROR: Python 3.12 is required for the validated Thor cp312 artifacts; detected Python $PYTHON_VERSION" >&2
+    exit 1
 fi
+
+# Fail before changing host packages or creating a venv unless the exact
+# TorchCodec artifact qualified on Thor is materialized and verifiable.
+mapfile -t TORCHCODEC_WHEELS < <(
+    find "$SCRIPT_DIR/wheels" -maxdepth 1 -type f -name 'torchcodec-*.whl' -print 2>/dev/null \
+        | LC_ALL=C sort
+)
+[[ "${#TORCHCODEC_WHEELS[@]}" -eq 1 \
+  && "${TORCHCODEC_WHEELS[0]##*/}" == "$TORCHCODEC_WHEEL_NAME" ]] \
+    || { echo "ERROR: exactly one validated Thor torchcodec wheel is required: $TORCHCODEC_WHEEL_NAME" >&2; exit 1; }
+TORCHCODEC_WHL="${TORCHCODEC_WHEELS[0]}"
+if grep -Fqx 'version https://git-lfs.github.com/spec/v1' "$TORCHCODEC_WHL"; then
+    echo "ERROR: torchcodec wheel is still a Git LFS pointer: $TORCHCODEC_WHL" >&2
+    echo "Run ops/prepare-groot-runtime.sh so the wheel is materialized before Docker build." >&2
+    exit 1
+fi
+if ! python3 -c 'import sys, zipfile; raise SystemExit(not zipfile.is_zipfile(sys.argv[1]))' "$TORCHCODEC_WHL"; then
+    echo "ERROR: torchcodec wheel is present but is not a valid wheel archive: $TORCHCODEC_WHL" >&2
+    exit 1
+fi
+printf '%s  %s\n' "$TORCHCODEC_WHEEL_SHA256" "$TORCHCODEC_WHL" \
+    | sha256sum --check --strict \
+    || { echo "ERROR: torchcodec wheel checksum does not match the validated Thor artifact" >&2; exit 1; }
 
 # The Thor-specific pyproject.toml and uv.lock are consumed in place from
 # $SCRIPT_DIR via `uv sync --project` below — we no longer copy them over
@@ -59,8 +83,8 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────────────────────
-# CUDA dev packages — Thor BSP only ships runtime libs; cmake builds (e.g.
-# torchcodec) need the compiler and headers.
+# CUDA dev packages — Thor BSP only ships runtime libs; GR00T's native CUDA
+# dependencies need the compiler and headers.
 # ──────────────────────────────────────────────────────────────────────────────
 if ! dpkg -s cuda-nvcc-13-0 &>/dev/null; then
     echo "Installing CUDA dev packages (nvcc, cudart-dev, nvrtc-dev)..."
@@ -109,12 +133,24 @@ fi
 # Python environment
 # ──────────────────────────────────────────────────────────────────────────────
 
-# Install uv if not present
+# Install the deployment-manifest uv release if it is absent.  Pinning the URL
+# alone is insufficient: verify the installer bytes before executing them and
+# reject any different uv already selected by PATH.
 if ! command -v uv &> /dev/null; then
-    echo "Installing uv..."
-    curl -LsSf https://astral.sh/uv/install.sh | sh
+    echo "Installing uv $UV_VERSION..."
+    UV_INSTALL_DIR="$(mktemp -d /tmp/uv-install.XXXXXX)"
+    TMP_DIRS+=("$UV_INSTALL_DIR")
+    curl -fsSL "https://astral.sh/uv/$UV_VERSION/install.sh" \
+        -o "$UV_INSTALL_DIR/install.sh"
+    printf '%s  %s\n' "$UV_INSTALLER_SHA256" "$UV_INSTALL_DIR/install.sh" \
+        | sha256sum --check --strict
+    UV_UNMANAGED_INSTALL="$HOME/.local/bin" sh "$UV_INSTALL_DIR/install.sh"
     export PATH="$HOME/.local/bin:$PATH"
 fi
+case "$(uv --version)" in
+    "uv $UV_VERSION"*) ;;
+    *) echo "ERROR: uv $UV_VERSION is required; found $(uv --version)" >&2; exit 1 ;;
+esac
 
 # Install platform-specific deps from the Thor pyproject without mutating
 # the repo-root pyproject.toml / uv.lock. See the Orin installer for
@@ -134,7 +170,7 @@ echo "Installing gr00t in editable mode from the repo root (--no-deps)..."
 uv pip install --python "$VENV_PYTHON" --no-deps -e "$REPO_ROOT"
 
 # ──────────────────────────────────────────────────────────────────────────────
-# torchcodec — prebuilt wheel or source build
+# torchcodec — checksum-verified prebuilt wheel only
 # Thor and Spark both use cp312 aarch64 wheels, but keep separate wheel
 # directories because the built bytes can differ across device stacks.
 # ──────────────────────────────────────────────────────────────────────────────
@@ -154,48 +190,8 @@ $SUDO apt-get update -qq
 $SUDO apt-get install -y --no-remove --no-install-recommends \
     ffmpeg "${TORCHCODEC_FFMPEG6_RUNTIME[@]}"
 
-if [ ! -d "$SCRIPT_DIR/wheels" ]; then
-    echo "Warning: Thor wheels directory not found at $SCRIPT_DIR/wheels — will attempt source build"
-fi
-TORCHCODEC_WHL=$(find "$SCRIPT_DIR/wheels" -name 'torchcodec-*.whl' -print -quit 2>/dev/null || true)
-if [ -n "$TORCHCODEC_WHL" ] && grep -q '^version https://git-lfs.github.com/spec/v1$' "$TORCHCODEC_WHL"; then
-    echo "Materializing the prebuilt torchcodec wheel from Git LFS..."
-    if ! command -v git-lfs &>/dev/null; then
-        $SUDO apt-get install -y --no-remove --no-install-recommends git-lfs
-    fi
-    git -C "$REPO_ROOT" lfs install --local
-    git -C "$REPO_ROOT" lfs pull \
-        --include='scripts/deployment/thor/wheels/torchcodec-*.whl' \
-        --exclude=''
-fi
-if [ -n "$TORCHCODEC_WHL" ] && ! python3 -c 'import sys, zipfile; raise SystemExit(not zipfile.is_zipfile(sys.argv[1]))' "$TORCHCODEC_WHL"; then
-    echo "ERROR: torchcodec wheel is present but is not a valid wheel archive: $TORCHCODEC_WHL" >&2
-    exit 1
-fi
-if [ -n "$TORCHCODEC_WHL" ]; then
-    echo "Installing torchcodec from prebuilt wheel: $TORCHCODEC_WHL"
-    uv pip install --python "$VENV_PYTHON" --force-reinstall --no-deps "$TORCHCODEC_WHL"
-else
-    echo "No prebuilt torchcodec wheel found — building from source..."
-    $SUDO apt-get install -y --no-remove --no-install-recommends \
-        libavdevice-dev libavfilter-dev libavformat-dev libavcodec-dev \
-        libavutil-dev libswresample-dev libswscale-dev \
-        pkg-config pybind11-dev python3-dev
-    uv pip install --python "$VENV_PYTHON" setuptools
-    NVIDIA_LIB_DIRS="$(find "${SITE_PKGS}/nvidia" -name "lib" -type d 2>/dev/null | tr '\n' ':')"
-    export LD_LIBRARY_PATH="${SITE_PKGS}/torch/lib:${NVIDIA_LIB_DIRS}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-    export CUDA_HOME=/usr/local/cuda-13.0
-    export CUDA_PATH=/usr/local/cuda-13.0
-    export CPATH="${CUDA_HOME}/include:${CPATH:-}"
-    export C_INCLUDE_PATH="${CUDA_HOME}/include:${C_INCLUDE_PATH:-}"
-    export CPLUS_INCLUDE_PATH="${CUDA_HOME}/include:${CPLUS_INCLUDE_PATH:-}"
-    rm -rf /tmp/torchcodec
-    TMP_BUILD_DIRS+=(/tmp/torchcodec)
-    git clone --depth 1 --branch v0.10.0 https://github.com/pytorch/torchcodec.git /tmp/torchcodec
-    cd /tmp/torchcodec
-    I_CONFIRM_THIS_IS_NOT_A_LICENSE_VIOLATION=1 uv pip install --python "$VENV_PYTHON" . --no-build-isolation
-    cd -
-fi
+echo "Installing torchcodec from validated wheel: $TORCHCODEC_WHL"
+uv pip install --python "$VENV_PYTHON" --force-reinstall --no-deps "$TORCHCODEC_WHL"
 
 echo ""
 echo "Install complete! In each new shell, activate with:"

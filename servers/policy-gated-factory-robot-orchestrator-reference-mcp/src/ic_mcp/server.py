@@ -43,6 +43,24 @@ CERTIFIED_GROOT_SERIAL_ORDER = (
     ("franka_left", "blue", "conveyor_1", "tote_blue"),
 )
 
+# The optional concurrent reference is a different, live-qualified schedule;
+# it is not the serial order grouped into same-color pairs. Each tuple is one
+# atomic B=2 cell transaction backed by two independent B=1 policy servers.
+CERTIFIED_GROOT_MIXED_PAIRS = (
+    (
+        ("franka_left", "blue", "conveyor_1", "tote_blue"),
+        ("franka_right", "green", "conveyor_2", "tote_green"),
+    ),
+    (
+        ("franka_left", "green", "conveyor_1", "tote_green"),
+        ("franka_right", "red", "conveyor_2", "tote_red"),
+    ),
+    (
+        ("franka_left", "red", "conveyor_1", "tote_red"),
+        ("franka_right", "blue", "conveyor_2", "tote_blue"),
+    ),
+)
+
 _SHAPES = {"red": "cube", "blue": "cylinder", "green": "brick"}
 _STATE_LOCK = RLock()
 _PENDING_PROOF: dict | None = None
@@ -59,12 +77,21 @@ def _parallel_groot_enabled() -> bool:
 
 
 def _flexible_groot_order_enabled() -> bool:
-    """Allow explicit operator-provided arm/color order without weakening proof gates."""
+    """Select the qualified mixed plan without weakening proof gates."""
     return os.environ.get("IC_GROOT_FLEXIBLE_ORDER", "0") == "1"
 
 
 def _proof_gate_enabled() -> bool:
     return _certified_order_enabled() or _flexible_groot_order_enabled()
+
+
+def _certified_mixed_mode() -> bool:
+    """True only for the explicitly enabled, policy-enforced mixed mission."""
+    return (
+        _certified_order_enabled()
+        and _parallel_groot_enabled()
+        and _flexible_groot_order_enabled()
+    )
 
 
 def _json_object(raw: str) -> dict:
@@ -122,6 +149,49 @@ def _completed_certified_prefix(state: dict) -> tuple[int, str | None]:
         prefix += 1
     if any(complete[prefix:]):
         return prefix, "tote contents are not a completed prefix of the certified order"
+    return prefix, None
+
+
+def _completed_certified_pair_prefix(state: dict) -> tuple[int, str | None]:
+    """Return completed mixed pairs; reject partial or out-of-order state.
+
+    A concurrent pair is indivisible at the orchestration boundary. Seeing
+    only one child at its destination, or seeing a later pair before the next
+    pair is complete, requires operator reconciliation rather than another
+    physical dispatch.
+    """
+    if not all(isinstance(state.get(name), dict) for name in ("tote", "tote_r")):
+        return 0, (
+            "authoritative tote state is unavailable; certified mixed "
+            "dispatch fails closed"
+        )
+
+    completion: list[tuple[bool, bool]] = []
+    for pair in CERTIFIED_GROOT_MIXED_PAIRS:
+        children: list[bool] = []
+        for endpoint, color, _source, _destination in pair:
+            tote_name = "tote_r" if endpoint == "franka_right" else "tote"
+            tote = state.get(tote_name)
+            children.append(
+                isinstance(tote, dict) and tote.get(color) == "in"
+            )
+        completion.append((children[0], children[1]))
+
+    prefix = 0
+    while prefix < len(completion) and all(completion[prefix]):
+        prefix += 1
+    if prefix == len(completion):
+        return prefix, None
+    if any(completion[prefix]):
+        return prefix, (
+            "tote contents show a partial certified concurrent pair; "
+            "reconcile both arm outcomes before another dispatch"
+        )
+    if any(any(pair) for pair in completion[prefix + 1:]):
+        return prefix, (
+            "tote contents are not a completed prefix of the certified "
+            "mixed-pair order"
+        )
     return prefix, None
 
 
@@ -278,7 +348,8 @@ def dispatch_task(
             payload["wait"] = False
 
         proof_gated = _proof_gate_enabled()
-        certified = _certified_order_enabled() and not _flexible_groot_order_enabled()
+        certified_mixed = _certified_mixed_mode()
+        certified = _certified_order_enabled() and not certified_mixed
         prefix = 0
         if proof_gated:
             if wait is False:
@@ -291,7 +362,33 @@ def dispatch_task(
                         "state": _PENDING_PROOF.get("state", "awaiting_vlm")
                     },
                 )
-        if certified:
+        if certified_mixed and action in {"move", "pick_and_place"}:
+            state = _json_object(_post("/v1/floor-state", {}))
+            pair_prefix, conflict = _completed_certified_pair_prefix(state)
+            if conflict:
+                return _refused(conflict, certified_pair_prefix=pair_prefix)
+            move_prefix = pair_prefix * 2
+            if (
+                move_prefix == 0
+                and _LAST_CERTIFIED_PREFIX is not None
+                and _LAST_CERTIFIED_PREFIX > 0
+            ):
+                _DISPATCH_ATTEMPTS.clear()
+            _LAST_CERTIFIED_PREFIX = move_prefix
+            if action == "move":
+                return _refused(
+                    "the active certified mixed mission requires one atomic "
+                    "dispatch_parallel transaction; do not expand it into "
+                    "serial dispatch_task calls",
+                    certified_pair_prefix=pair_prefix,
+                )
+            if pair_prefix < len(CERTIFIED_GROOT_MIXED_PAIRS):
+                return _refused(
+                    "both totes may be hauled only after all three certified "
+                    "mixed pairs",
+                    certified_pair_prefix=pair_prefix,
+                )
+        elif certified:
             state = _json_object(_post("/v1/floor-state", {}))
             prefix, conflict = _completed_certified_prefix(state)
             if conflict:
@@ -394,14 +491,13 @@ def dispatch_task(
 def dispatch_parallel(left_color: str, right_color: str | None = None) -> str:
     """Move one object per arm as one atomic GR00T transaction.
 
-    ``right_color`` defaults to ``left_color`` for the certified same-color
-    pair workflow. Mixed colors are accepted when the active capability report
-    says ``mixed_color_parallel_enabled=true``. Do not ask the operator to edit
-    environment variables: call this tool directly; it fails closed before
-    motion when the deployment has not enabled the capability. Two independent
-    B=1 policy servers load the same shared checkpoint, one per arm. Call verify
-    once on ``tote`` for the left identity and once on ``tote_r`` for the right
-    identity before another physical transaction.
+    The certified reference uses three exact mixed-color pairs reported by
+    ``certified_groot_sequence``. Mixed motion is available only when the
+    deployment has explicitly enabled both parallel and flexible-order modes
+    after readiness qualification. Two independent B=1 policy servers load the
+    same shared checkpoint, one per arm. Call verify once on ``tote`` for the
+    left identity and once on ``tote_r`` for the right identity before another
+    physical transaction.
     """
     global _LAST_CERTIFIED_PREFIX, _PENDING_PROOF
     with _STATE_LOCK:
@@ -410,18 +506,24 @@ def dispatch_parallel(left_color: str, right_color: str | None = None) -> str:
                 "concurrent GR00T is disabled; set IC_GROOT_PARALLEL_ENABLED=1 "
                 "only after the two-server B=1 cell contract passes readiness checks"
             )
-        if not _proof_gate_enabled():
+        if not _certified_order_enabled():
             return _refused(
-                "concurrent GR00T requires a certified or flexible proof-gated order"
+                "concurrent GR00T requires IC_CERTIFIED_GROOT_ORDER=1 so the "
+                "qualified mixed sequence is state-enforced"
             )
         left_color = str(left_color or "").strip().lower()
         right_color = str(right_color or left_color).strip().lower()
         if left_color not in _SHAPES or right_color not in _SHAPES:
             return _refused("left_color and right_color must be red, blue, or green")
-        flexible = _flexible_groot_order_enabled()
-        if left_color != right_color and not flexible:
+        if not _flexible_groot_order_enabled():
             return _refused(
-                "mixed-color parallel GR00T requires IC_GROOT_FLEXIBLE_ORDER=1"
+                "certified mixed-color parallel GR00T requires "
+                "IC_GROOT_FLEXIBLE_ORDER=1 after readiness qualification"
+            )
+        if left_color == right_color:
+            return _refused(
+                "the certified concurrent route requires one mixed-color "
+                "Order744 pair; same-color pairs are not qualified"
             )
         if _PENDING_PROOF is not None:
             return _refused(
@@ -430,29 +532,42 @@ def dispatch_parallel(left_color: str, right_color: str | None = None) -> str:
                 proof_gate={"state": _PENDING_PROOF.get("state", "awaiting_vlm")},
             )
 
-        prefix = 0
-        if not flexible:
+        certified_mixed = _certified_mixed_mode()
+
+        move_prefix = 0
+        pair_prefix = 0
+        if certified_mixed:
             state = _json_object(_post("/v1/floor-state", {}))
-            prefix, conflict = _completed_certified_prefix(state)
+            pair_prefix, conflict = _completed_certified_pair_prefix(state)
             if conflict:
-                return _refused(conflict, certified_prefix=prefix)
-            if prefix >= len(CERTIFIED_GROOT_SERIAL_ORDER):
+                return _refused(conflict, certified_pair_prefix=pair_prefix)
+            move_prefix = pair_prefix * 2
+            if (
+                move_prefix == 0
+                and _LAST_CERTIFIED_PREFIX is not None
+                and _LAST_CERTIFIED_PREFIX > 0
+            ):
+                _DISPATCH_ATTEMPTS.clear()
+            _LAST_CERTIFIED_PREFIX = move_prefix
+            if pair_prefix >= len(CERTIFIED_GROOT_MIXED_PAIRS):
                 return _refused("all six certified arm moves are already complete")
-            if prefix not in (0, 2, 4):
+            expected_pair = CERTIFIED_GROOT_MIXED_PAIRS[pair_prefix]
+            expected_colors = {
+                endpoint: color
+                for endpoint, color, _source, _destination in expected_pair
+            }
+            if (
+                left_color != expected_colors["franka_left"]
+                or right_color != expected_colors["franka_right"]
+            ):
                 return _refused(
-                    "parallel GR00T requires both arms to start a certified pair together",
-                    certified_prefix=prefix,
-                )
-            expected_color = CERTIFIED_GROOT_SERIAL_ORDER[prefix][1]
-            if left_color != expected_color or right_color != expected_color:
-                return _refused(
-                    "requested colors are not the next certified concurrent pair",
-                    expected_color=expected_color,
+                    "requested colors are not the next certified mixed pair",
+                    expected_colors=expected_colors,
                     requested_colors={
                         "franka_left": left_color,
                         "franka_right": right_color,
                     },
-                    certified_prefix=prefix,
+                    certified_pair_prefix=pair_prefix,
                 )
 
         attempt_key = ("move_pair", left_color, right_color)
@@ -522,11 +637,12 @@ def dispatch_parallel(left_color: str, right_color: str | None = None) -> str:
             "per_arm_relay_ports": outcome.get("per_arm_relay_ports") or {},
             "attempt": _DISPATCH_ATTEMPTS[attempt_key],
         }
-        if not flexible:
-            pending["sequence_start"] = prefix + 1
-            pending["sequence_end"] = prefix + 2
+        if certified_mixed:
+            pending["pair_sequence"] = pair_prefix + 1
+            pending["sequence_start"] = move_prefix + 1
+            pending["sequence_end"] = move_prefix + 2
         _PENDING_PROOF = pending
-        if verified and not flexible:
+        if verified and certified_mixed:
             _LAST_CERTIFIED_PREFIX = max(
                 _LAST_CERTIFIED_PREFIX or 0,
                 int(pending["sequence_end"]),
@@ -549,42 +665,46 @@ def certified_groot_sequence() -> str:
     one bounded ``dispatch_parallel`` call followed by separate left/right
     visual proofs. Otherwise follow the serial ``moves`` fallback exactly.
     """
-    if _parallel_groot_enabled():
+    certified_mixed = _certified_mixed_mode()
+    active_capabilities = {
+        "certified_order_enabled": _certified_order_enabled(),
+        "parallel_enabled": _parallel_groot_enabled(),
+        "flexible_order_enabled": _flexible_groot_order_enabled(),
+        "mixed_color_parallel_enabled": certified_mixed,
+        "configuration_change_required_for_mixed_color": not certified_mixed,
+    }
+    if certified_mixed:
         return json.dumps({
-            "contract": "fixed-layout3-dual-concurrent-physical-friction-v9",
-            "execution_mode": "concurrent_pairs",
-            "active_capabilities": {
-                "parallel_enabled": True,
-                "flexible_order_enabled": _flexible_groot_order_enabled(),
-                "mixed_color_parallel_enabled": (
-                    _flexible_groot_order_enabled()
-                ),
-                "configuration_change_required_for_mixed_color": (
-                    not _flexible_groot_order_enabled()
-                ),
-            },
+            "contract": "fixed-layout3-dual-concurrent-mixed-physical-friction-v10",
+            "execution_mode": "concurrent_mixed_pairs",
+            "active_capabilities": active_capabilities,
             "scene": {"layout_left": 3, "layout_right": 3, "seed": 31302},
             "transactions": [
                 {
                     "sequence": index,
                     "tool": "dispatch_parallel",
-                    "args": {"left_color": color, "right_color": color},
+                    "args": {
+                        "left_color": pair[0][1],
+                        "right_color": pair[1][1],
+                    },
                     "proofs": [
                         {
                             "region": "tote",
                             "predicate": (
-                                f"the {color} {_SHAPES[color]} is in the left tote"
+                                f"the {pair[0][1]} {_SHAPES[pair[0][1]]} "
+                                "is in the left tote"
                             ),
                         },
                         {
                             "region": "tote_r",
                             "predicate": (
-                                f"the {color} {_SHAPES[color]} is in the right tote"
+                                f"the {pair[1][1]} {_SHAPES[pair[1][1]]} "
+                                "is in the right tote"
                             ),
                         },
                     ],
                 }
-                for index, color in enumerate(("green", "red", "blue"), start=1)
+                for index, pair in enumerate(CERTIFIED_GROOT_MIXED_PAIRS, start=1)
             ],
             "rule": (
                 "call dispatch_parallel once per transaction; require verified=true "
@@ -595,12 +715,7 @@ def certified_groot_sequence() -> str:
     return json.dumps({
         "contract": "fixed-layout3-dual-sequential-physical-friction-v8",
         "execution_mode": "serial_fallback",
-        "active_capabilities": {
-            "parallel_enabled": False,
-            "flexible_order_enabled": _flexible_groot_order_enabled(),
-            "mixed_color_parallel_enabled": False,
-            "configuration_change_required_for_mixed_color": True,
-        },
+        "active_capabilities": active_capabilities,
         "scene": {"layout_left": 3, "layout_right": 3, "seed": 31302},
         "moves": [
             {

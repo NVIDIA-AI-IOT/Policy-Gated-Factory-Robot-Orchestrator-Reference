@@ -53,6 +53,39 @@ def _step_ok(tool: str, response: Dict[str, Any]) -> bool:
     return "error" not in response
 
 
+def _parallel_feature_refusal(args: Dict[str, Any]) -> str | None:
+    """Fail closed before a workflow can reach the parallel Seam route.
+
+    ``IC_GROOT_PARALLEL_ENABLED`` is set only after the two independent B=1
+    servers and cell contract pass readiness. The certified concurrent route
+    also requires the explicit flexible-order opt-in and rejects same-color
+    pairs. The Seam enforces the authoritative next-pair state and reports
+    per-arm execution evidence.
+    """
+    if os.environ.get("IC_GROOT_PARALLEL_ENABLED", "0") != "1":
+        return (
+            "concurrent GR00T is disabled; set IC_GROOT_PARALLEL_ENABLED=1 "
+            "only after the two-server B=1 readiness contract passes"
+        )
+    moves = args.get("moves")
+    colors = {
+        str(move.get("color") or "").strip().lower()
+        for move in moves
+        if isinstance(move, dict)
+    } if isinstance(moves, list) else set()
+    if os.environ.get("IC_GROOT_FLEXIBLE_ORDER", "0") != "1":
+        return (
+            "certified mixed-color parallel GR00T requires "
+            "IC_GROOT_FLEXIBLE_ORDER=1 after readiness qualification"
+        )
+    if len(colors) != 2:
+        return (
+            "the certified concurrent route requires one mixed-color "
+            "Order744 pair; same-color pairs are not qualified"
+        )
+    return None
+
+
 class Runner:
     def __init__(self, settings: Optional[RunnerSettings] = None) -> None:
         self.settings = settings or RunnerSettings()
@@ -138,6 +171,29 @@ class Runner:
                 results.append({})
                 ok = False
                 break
+
+            if step.tool == "dispatch_parallel":
+                refusal_reason = _parallel_feature_refusal(args)
+                if refusal_reason is not None:
+                    refusal = {
+                        "dispatched": False,
+                        "verified": False,
+                        "independent_b1_verified": False,
+                        "status": "refused",
+                        "reason": refusal_reason,
+                    }
+                    timeline.append({
+                        "step": i,
+                        "tool": step.tool,
+                        "args": args,
+                        "attempts": 0,
+                        "ok": False,
+                        "gated": True,
+                        "response": refusal,
+                    })
+                    results.append(refusal)
+                    ok = False
+                    break
 
             # Physical dispatch actuates the world and is NOT idempotent. The seam
             # returns verified=false even on its own confirm-timeout (ros2.py),

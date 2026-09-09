@@ -11,8 +11,11 @@ receives, in one handshake, both the tools and the operating manual:
 Thin by design: tools proxy the floor service (`IC_FLOOR_SERVICE`, default
 `http://127.0.0.1:8766`). Execution authority and physical safety remain at the
 Seam. When `IC_CERTIFIED_GROOT_ORDER=1`, this MCP boundary additionally enforces
-the validated six-move order, the configured GR00T backend, one fresh exact-object
-visual proof between physical actions, and at most one retry.
+the validated serial six-move fallback, the configured GR00T backend, one fresh
+exact-object visual proof between physical actions, and at most one retry. The
+optional certified concurrent plan is the separately qualified Order744
+sequence: left blue/right green, left green/right red, then left red/right
+blue. It is never synthesized by grouping the serial fallback by color.
 
 ## Run (on the brain host, next to the serve)
 
@@ -38,7 +41,16 @@ playbook arrives via instructions; no profile setup, no sync scripts.
 - `IC_MCP_ROLE` — Seam role header (default `agent`; operator use must be explicit)
 - `IC_DEFAULT_BACKEND` — deployment-selected arm executor (`groot` in the hardened demo)
 - `IC_CERTIFIED_GROOT_ORDER=1` — enable certified order/proof/retry enforcement
-- `IC_GROOT_PARALLEL_ENABLED=1` — expose the validated atomic two-arm GR00T transaction
-- `IC_GROOT_FLEXIBLE_ORDER=1` — opt into explicit operator-provided arm/color
-  order and mixed-color pairs while retaining the same proof/retry gates;
-  leave disabled for the certified fallback
+- `IC_GROOT_PARALLEL_ENABLED=1` — assert that the independent two-server B=1
+  readiness contract passed; required for any atomic two-arm transaction
+- `IC_GROOT_FLEXIBLE_ORDER=1` — together with certified-order and parallel
+  mode, select the exact three-pair mixed Order744 plan while retaining the
+  same proof/retry gates; leave disabled for the serial fallback
+
+All three settings default to `0` in the MCP process. With certified-order
+enforcement enabled but either concurrent flag disabled,
+`certified_groot_sequence` reports and enforces the unchanged serial fallback.
+With all three enabled, it reports the exact mixed transactions, rejects a
+wrong or partial pair before motion, rejects same-color pairs, and refuses to
+expand a pair into serial `dispatch_task` calls. The Seam independently checks
+the same exact next-pair order from authoritative floor state.

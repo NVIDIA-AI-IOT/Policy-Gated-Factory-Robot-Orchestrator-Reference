@@ -41,7 +41,8 @@ dependencies = [
     "scipy==1.15.3",
     "wandb==0.23.0",
     "pyzmq==27.0.1",
-    "torchcodec==0.10.0",
+    # TorchCodec is intentionally a post-sync overlay: install_deps.sh requires
+    # the exact checksum-verified cp312 aarch64 wheel qualified on Thor.
     # Keep these as direct pins: the Jetson Thor torch wheel does not bundle these runtime libs,
     # and we want them installed even if torch's transitive dependency metadata changes upstream.
     # Revisit if the Jetson AI Lab torch packages start vendoring them or declaring them reliably.
@@ -75,7 +76,6 @@ flash-attn = ["torch==2.10.0", "numpy==1.26.4", "triton==3.5.0"]
 [tool.uv.sources]
 torch = [{ index = "jetson-sbsa-cu130" }]
 torchvision = [{ index = "jetson-sbsa-cu130" }]
-torchcodec = [{ index = "jetson-sbsa-cu130" }]
 triton = [{ index = "jetson-sbsa-cu130" }]
 flash-attn = [{ index = "jetson-sbsa-cu130" }]
 diffusers = [{ index = "jetson-sbsa-cu130" }]

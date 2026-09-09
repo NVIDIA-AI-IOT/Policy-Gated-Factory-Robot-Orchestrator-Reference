@@ -43,6 +43,12 @@ from policy_gated_factory_robot_orchestrator_reference.floor.policy import Actio
 
 log = logging.getLogger("policy_gated_factory_robot_orchestrator_reference.serve")
 
+_CERTIFIED_GROOT_MIXED_COLOR_PAIRS = (
+    ("blue", "green"),
+    ("green", "red"),
+    ("red", "blue"),
+)
+
 
 class _Journal:
     """Append-only mission journal (phase 1 of the audit store). One JSONL line
@@ -195,6 +201,93 @@ class ParallelDispatchRequest(BaseModel):
         return self
 
 
+def _completed_certified_mixed_pair_prefix(
+    state: dict[str, Any],
+) -> tuple[int, str | None]:
+    """Measure the indivisible Order744 pair prefix from authoritative state."""
+    if not all(isinstance(state.get(name), dict) for name in ("tote", "tote_r")):
+        return 0, "authoritative tote state is unavailable"
+
+    completion = [
+        (
+            state["tote"].get(left_color) == "in",
+            state["tote_r"].get(right_color) == "in",
+        )
+        for left_color, right_color in _CERTIFIED_GROOT_MIXED_COLOR_PAIRS
+    ]
+    prefix = 0
+    while prefix < len(completion) and all(completion[prefix]):
+        prefix += 1
+    if prefix == len(completion):
+        return prefix, None
+    if any(completion[prefix]):
+        return prefix, (
+            "tote contents show a partial certified concurrent pair; "
+            "reconcile both arm outcomes"
+        )
+    if any(any(pair) for pair in completion[prefix + 1:]):
+        return prefix, (
+            "tote contents are not a completed prefix of the certified "
+            "mixed-pair order"
+        )
+    return prefix, None
+
+
+def _certified_mixed_sequence_refusal(
+    req: ParallelDispatchRequest, state: dict[str, Any]
+) -> dict[str, Any] | None:
+    prefix, conflict = _completed_certified_mixed_pair_prefix(state)
+    if conflict is not None:
+        return {
+            "dispatched": False,
+            "action": "move_pair",
+            "verified": False,
+            "independent_b1_verified": False,
+            "parallel_results": {},
+            "status": "refused",
+            "reason": conflict,
+            "certified_pair_prefix": prefix,
+        }
+    if prefix >= len(_CERTIFIED_GROOT_MIXED_COLOR_PAIRS):
+        return {
+            "dispatched": False,
+            "action": "move_pair",
+            "verified": False,
+            "independent_b1_verified": False,
+            "parallel_results": {},
+            "status": "refused",
+            "reason": "all three certified mixed pairs are already complete",
+            "certified_pair_prefix": prefix,
+        }
+
+    by_endpoint = {move.endpoint: move for move in req.moves}
+    requested = (
+        by_endpoint["franka_left"].color,
+        by_endpoint["franka_right"].color,
+    )
+    expected = _CERTIFIED_GROOT_MIXED_COLOR_PAIRS[prefix]
+    if requested != expected:
+        return {
+            "dispatched": False,
+            "action": "move_pair",
+            "verified": False,
+            "independent_b1_verified": False,
+            "parallel_results": {},
+            "status": "refused",
+            "reason": "requested colors are not the next certified mixed pair",
+            "certified_pair_prefix": prefix,
+            "expected_colors": {
+                "franka_left": expected[0],
+                "franka_right": expected[1],
+            },
+            "requested_colors": {
+                "franka_left": requested[0],
+                "franka_right": requested[1],
+            },
+        }
+    return None
+
+
 class VerifyRequest(BaseModel):
     predicate: str = Field(description="Yes/no question about the floor, e.g. 'the tote is on the rack'")
     region: str | None = Field(default=None, description="Region whose camera answers it")
@@ -226,6 +319,47 @@ def build_app() -> FastAPI:
     def _parallel_policy_refusal(
         req: ParallelDispatchRequest, request_obj: Request
     ) -> dict | None:
+        if os.environ.get("IC_GROOT_PARALLEL_ENABLED", "0") != "1":
+            return {
+                "dispatched": False,
+                "action": "move_pair",
+                "verified": False,
+                "independent_b1_verified": False,
+                "parallel_results": {},
+                "status": "refused",
+                "reason": (
+                    "concurrent GR00T is disabled; set "
+                    "IC_GROOT_PARALLEL_ENABLED=1 only after the two-server "
+                    "B=1 readiness contract passes"
+                ),
+            }
+        if os.environ.get("IC_GROOT_FLEXIBLE_ORDER", "0") != "1":
+            return {
+                "dispatched": False,
+                "action": "move_pair",
+                "verified": False,
+                "independent_b1_verified": False,
+                "parallel_results": {},
+                "status": "refused",
+                "reason": (
+                    "certified mixed-color parallel GR00T requires "
+                    "IC_GROOT_FLEXIBLE_ORDER=1 after readiness qualification"
+                ),
+            }
+        colors = {move.color for move in req.moves}
+        if len(colors) != 2:
+            return {
+                "dispatched": False,
+                "action": "move_pair",
+                "verified": False,
+                "independent_b1_verified": False,
+                "parallel_results": {},
+                "status": "refused",
+                "reason": (
+                    "the certified concurrent route requires one mixed-color "
+                    "Order744 pair; same-color pairs are not qualified"
+                ),
+            }
         for move in req.moves:
             params = move.model_dump()
             reason = policy.check("move", params, request_obj.headers.get("x-role"))
@@ -433,7 +567,12 @@ def build_app() -> FastAPI:
             )
             return refusal
         async with lock:
-            payload = await _dispatch_parallel(req)
+            state_before = await _floor_state()
+            refusal = _certified_mixed_sequence_refusal(req, state_before)
+            if refusal is None:
+                payload = await _dispatch_parallel(req)
+            else:
+                payload = refusal
         payload["_meta"] = _freshness()
         _record(
             "dispatch_parallel",

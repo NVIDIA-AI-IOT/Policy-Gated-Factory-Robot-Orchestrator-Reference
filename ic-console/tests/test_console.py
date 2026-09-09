@@ -331,7 +331,7 @@ class TestAPI:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         internal_url = "http://127.0.0.1:8620"
-        public_url = "http://10.110.50.252:8620"
+        public_url = "http://192.0.2.42:8620"
         monkeypatch.setenv("IC_CHAT_URL", internal_url)
         monkeypatch.setenv("IC_CHAT_PUBLIC_URL", public_url)
 

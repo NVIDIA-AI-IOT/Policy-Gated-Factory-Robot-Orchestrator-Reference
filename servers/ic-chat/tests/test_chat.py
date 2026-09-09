@@ -262,7 +262,7 @@ class TestBackends:
         app = web.Application()
         app.router.add_post("/v1/chat/completions", completions)
         server = await aiohttp_server(app)
-        api_key = "sk-internal-NVIDIA_42.token"
+        api_key = "unit-test-bearer-credential"
         model = "nvidia/internal-reasoning-model"
         monkeypatch.setenv(
             "IC_CHAT_MODEL_URL", str(server.make_url("")).rstrip("/")
@@ -1419,6 +1419,11 @@ class TestAPI:
         assert "pick_and_place tote_r onto rack_1" in SYSTEM_PROMPT
         assert "those rack flags take precedence" in SYSTEM_PROMPT
         assert "Never dispatch an arm move after both rack flags" in SYSTEM_PROMPT
+        assert "does not expose dispatch_parallel" in SYSTEM_PROMPT
+        assert "left blue/right green" in SYSTEM_PROMPT
+        assert "left green/right red" in SYSTEM_PROMPT
+        assert "left red/right blue" in SYSTEM_PROMPT
+        assert "same-color green/red/blue pairs are not" in SYSTEM_PROMPT
 
     def test_sessions_are_capped(self, tmp_path) -> None:
         client = self.make_client(EchoBackend(), tmp_path=tmp_path, max_sessions=3)

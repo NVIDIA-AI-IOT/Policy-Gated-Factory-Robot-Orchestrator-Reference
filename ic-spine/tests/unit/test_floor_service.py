@@ -105,7 +105,7 @@ def test_service_live_backend_routes_through_backend(monkeypatch: pytest.MonkeyP
         httpd.shutdown()
 
 
-def test_parallel_route_is_atomic_and_schema_bounded(
+def test_parallel_route_is_capability_gated_atomic_and_schema_bounded(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from fastapi.testclient import TestClient
@@ -113,6 +113,28 @@ def test_parallel_route_is_atomic_and_schema_bounded(
     from policy_gated_factory_robot_orchestrator_reference.floor import service as svc
 
     captured: list[list[dict]] = []
+    state_reads = 0
+    world: dict = {"tote": {}, "tote_r": {}}
+
+    def pair(left_color: str, right_color: str) -> dict:
+        return {
+            "moves": [
+                {
+                    "endpoint": "franka_left",
+                    "color": left_color,
+                    "source": "conveyor_1",
+                    "destination": f"tote_{left_color}",
+                    "backend": "groot",
+                },
+                {
+                    "endpoint": "franka_right",
+                    "color": right_color,
+                    "source": "conveyor_2",
+                    "destination": f"tote_{right_color}",
+                    "backend": "groot",
+                },
+            ]
+        }
 
     async def _parallel(_backend, moves):
         captured.append(moves)
@@ -128,50 +150,112 @@ def test_parallel_route_is_atomic_and_schema_bounded(
             },
         }
 
+    def _state(_backend):
+        nonlocal state_reads
+        state_reads += 1
+        return world
+
     monkeypatch.setattr(svc, "load_backend", lambda *a, **k: _FakeLiveBackend())
     monkeypatch.setattr(svc.ros2, "live_dispatch_parallel", _parallel)
-    payload = {
-        "moves": [
-            {
-                "endpoint": "franka_left",
-                "color": "green",
-                "source": "conveyor_1",
-                "destination": "tote_green",
-                "backend": "groot",
-            },
-            {
-                "endpoint": "franka_right",
-                "color": "green",
-                "source": "conveyor_2",
-                "destination": "tote_green",
-                "backend": "groot",
-            },
-        ]
-    }
+    monkeypatch.setattr(svc.ros2, "live_floor_state", _state)
+    monkeypatch.delenv("IC_GROOT_PARALLEL_ENABLED", raising=False)
+    monkeypatch.delenv("IC_GROOT_FLEXIBLE_ORDER", raising=False)
+    same_color = pair("green", "green")
+    first = pair("blue", "green")
+    second = pair("green", "red")
+    third = pair("red", "blue")
     with TestClient(svc.build_app()) as client:
-        accepted = client.post("/v1/dispatch-parallel", json=payload)
+        for payload in (same_color, first):
+            disabled = client.post("/v1/dispatch-parallel", json=payload)
+            assert disabled.status_code == 200
+            assert disabled.json()["status"] == "refused"
+            assert "IC_GROOT_PARALLEL_ENABLED=1" in disabled.json()["reason"]
+            assert captured == []
+            assert state_reads == 0
+
+        monkeypatch.setenv("IC_GROOT_PARALLEL_ENABLED", "1")
+        for payload in (same_color, first):
+            parallel_only = client.post("/v1/dispatch-parallel", json=payload)
+            assert parallel_only.json()["status"] == "refused"
+            assert "IC_GROOT_FLEXIBLE_ORDER=1" in parallel_only.json()["reason"]
+            assert captured == []
+            assert state_reads == 0
+
+        monkeypatch.setenv("IC_GROOT_FLEXIBLE_ORDER", "1")
+        rejected_same = client.post("/v1/dispatch-parallel", json=same_color)
+        assert rejected_same.json()["status"] == "refused"
+        assert "same-color pairs are not qualified" in rejected_same.json()["reason"]
+        assert captured == []
+        assert state_reads == 0
+
+        wrong_first = client.post("/v1/dispatch-parallel", json=second)
+        assert wrong_first.json()["status"] == "refused"
+        assert wrong_first.json()["expected_colors"] == {
+            "franka_left": "blue",
+            "franka_right": "green",
+        }
+        assert captured == []
+
+        accepted = client.post("/v1/dispatch-parallel", json=first)
         assert accepted.status_code == 200
         assert accepted.json()["independent_b1_verified"] is True
         assert accepted.json()["per_arm_relay_ports"] == {
             "franka_left": 5612,
             "franka_right": 5613,
         }
-        assert captured == [payload["moves"]]
+        assert captured == [first["moves"]]
 
-        mixed = dict(payload)
-        mixed["moves"] = [dict(move) for move in payload["moves"]]
-        mixed["moves"][1]["color"] = "red"
-        mixed["moves"][1]["destination"] = "tote_red"
-        accepted_mixed = client.post("/v1/dispatch-parallel", json=mixed)
-        assert accepted_mixed.status_code == 200
-        assert captured[-1] == mixed["moves"]
+        world = {"tote": {"blue": "in"}, "tote_r": {"green": "in"}}
+        repeated = client.post("/v1/dispatch-parallel", json=first)
+        assert repeated.json()["status"] == "refused"
+        assert repeated.json()["expected_colors"] == {
+            "franka_left": "green",
+            "franka_right": "red",
+        }
+        assert len(captured) == 1
 
-        mismatched = dict(mixed)
-        mismatched["moves"] = [dict(move) for move in mixed["moves"]]
+        world = {
+            "tote": {"blue": "in", "green": "in"},
+            "tote_r": {"green": "in"},
+        }
+        partial = client.post("/v1/dispatch-parallel", json=second)
+        assert partial.json()["status"] == "refused"
+        assert "partial certified concurrent pair" in partial.json()["reason"]
+        assert len(captured) == 1
+
+        world = {"tote": {"green": "in"}, "tote_r": {"red": "in"}}
+        out_of_order = client.post("/v1/dispatch-parallel", json=first)
+        assert out_of_order.json()["status"] == "refused"
+        assert "not a completed prefix" in out_of_order.json()["reason"]
+        assert len(captured) == 1
+
+        world = {"tote": {"blue": "in"}, "tote_r": {"green": "in"}}
+        accepted_second = client.post("/v1/dispatch-parallel", json=second)
+        assert accepted_second.json()["verified"] is True
+        assert len(captured) == 2
+
+        world = {
+            "tote": {"blue": "in", "green": "in"},
+            "tote_r": {"green": "in", "red": "in"},
+        }
+        accepted_third = client.post("/v1/dispatch-parallel", json=third)
+        assert accepted_third.json()["verified"] is True
+        assert len(captured) == 3
+
+        world = {
+            "tote": {"blue": "in", "green": "in", "red": "in"},
+            "tote_r": {"green": "in", "red": "in", "blue": "in"},
+        }
+        completed = client.post("/v1/dispatch-parallel", json=third)
+        assert completed.json()["status"] == "refused"
+        assert "already complete" in completed.json()["reason"]
+        assert len(captured) == 3
+
+        mismatched = pair("green", "red")
         mismatched["moves"][1]["destination"] = "tote_green"
         refused = client.post("/v1/dispatch-parallel", json=mismatched)
         assert refused.status_code == 422
-        assert len(captured) == 2
+        assert len(captured) == 3
 
 
 def test_scene_declared_action_args_reach_live_endpoint(

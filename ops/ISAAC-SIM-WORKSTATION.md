@@ -1,214 +1,299 @@
 # Scripted Isaac Sim workstation
 
-isaac-sim-workstation.sh prepares and launches the scripted, learned-policy-free
-baseline on the validated x86_64 Linux RTX simulation host. It uses the
-packaged ic_cell, ic_boot.py, and our_factory.usda; it does not install
-or start GR00T, a Thor bridge, IC Spine, or an agent.
+`isaac-sim-workstation.sh` prepares, validates, and launches the packaged
+scripted, learned-policy-free baseline on the validated x86_64 Linux RTX host.
+The supported default is NVIDIA Isaac Sim 6.0.1 in NVIDIA's official NGC
+container, running headless with the native WebRTC streaming service. The
+repository does not build a custom Isaac Sim image.
 
-The deterministic host root is:
+This path loads `ic_cell`, `ic_boot.py`, and `our_factory.usda` through a
+read-only mount. It does not install or start GR00T, a Thor bridge, IC Spine, or
+an agent. The GR00T launcher remains a separate, explicitly pinned
+6.0.0-dev2/X11 compatibility path.
+
+The default external host state is:
 
     ~/.local/share/policy-gated-factory-robot-orchestrator-reference/isaac-sim
 
-Its scripts child is mounted read-only at /scripts. Cache, configuration,
-data, and log leaves are writable by the image's unprivileged isaac-sim
-user, but their parent remains private to the host user.
+Its `scripts` child is mounted read-only. Writable cache, configuration, data,
+and log leaves serve the image's documented `1234:1234` user; their parent is
+mode `0700` and private to the host account.
 
 ## Host prerequisites
 
-The repository validates the simulation host but does not install or replace
-its NVIDIA driver, Docker Engine, or NVIDIA Container Toolkit. On a fresh
-Ubuntu x86_64 RTX workstation, install those components using NVIDIA's
-[Isaac Sim container setup](https://docs.isaacsim.omniverse.nvidia.com/latest/installation/install_container.html)
-and [technical requirements](https://docs.isaacsim.omniverse.nvidia.com/latest/installation/requirements.html),
-then install the X11 helpers used by the launch scripts:
+The repository validates but does not install or replace the NVIDIA driver,
+Docker Engine, or NVIDIA Container Toolkit. Follow NVIDIA's
+[Isaac Sim container setup](https://docs.isaacsim.omniverse.nvidia.com/6.0.1/installation/install_container.html)
+and
+[technical requirements](https://docs.isaacsim.omniverse.nvidia.com/6.0.1/installation/requirements.html).
+
+This project's qualified x86_64 path requires:
+
+- Ubuntu 22.04 or 24.04;
+- at least 4 available CPU cores and 32 GB RAM;
+- at least 50 GB total capacity on the filesystem holding the state cache;
+- an RTX GPU with at least 16 GiB VRAM;
+- NVIDIA Linux driver 595.58.03 or newer, which this project enforces as the
+  NVIDIA-tested 6.0.1 baseline rather than claiming it is a semantic minimum;
+- Docker with the NVIDIA runtime; and
+- `python3`, `ip`, and `ss` on the host.
+
+The x86_64 restriction is this repository's tested deployment scope, not a
+claim that NVIDIA's current image supports only x86_64. The default headless
+profile has no X11, `xhost`, `DISPLAY`, or Xauthority prerequisite.
+
+Verify the unprivileged host account before pulling the large Isaac image:
 
 ```bash
-sudo apt-get update
-sudo apt-get install --no-install-recommends xauth x11-xserver-utils
+uname -m
+. /etc/os-release
+printf 'OS=%s %s\n' "$ID" "$VERSION_ID"
+nproc
+awk '/^MemTotal:/ {printf "RAM: %.1f GiB\n", $2/1024/1024}' /proc/meminfo
+df -h "$HOME"
+nvidia-smi
+docker version --format '{{.Server.Version}}'
+docker info --format '{{json .Runtimes}}'
+command -v python3 ip ss
 ```
 
 If Docker group membership was added during installation, log out and back in.
-Run these checks without `sudo` from the local desktop account that will own
-Isaac Sim:
+Do not continue until Docker and `nvidia-smi` work without `sudo`.
+The checker enforces the 50,000,000,000-byte capacity baseline on
+`STATE_ROOT/cache` and reports its currently available bytes separately. It
+does not impose an unsupported free-space minimum.
+
+## Pull, prepare, and validate
+
+Review and accept NVIDIA's
+[Isaac Sim license](https://docs.isaacsim.omniverse.nvidia.com/6.0.1/common/NVIDIA_Omniverse_License_Agreement.html),
+then pull the qualified immutable amd64 image:
 
 ```bash
-uname -m                                      # x86_64
-nvidia-smi                                    # RTX GPU and driver are visible
-docker version --format '{{.Server.Version}}'
-docker run --rm --gpus all \
-  nvcr.io/nvidia/cuda:12.8.0-base-ubuntu24.04 nvidia-smi
-command -v xauth xhost
-printf 'DISPLAY=%s\n' "${DISPLAY:?run from the local X11 desktop}"
-```
-
-Do not continue until the GPU container smoke test succeeds. The pinned Isaac
-image is much larger and will not repair a broken host driver/runtime setup.
-
-## Prepare and validate
-
-Pull the manifest-pinned image only after reviewing and accepting NVIDIA's
-[Isaac Sim license](https://docs.isaacsim.omniverse.nvidia.com/6.0.0/common/NVIDIA_Omniverse_License_Agreement.html):
-
-    docker pull nvcr.io/nvidia/isaac-sim:6.0.0-dev2@sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9
-
-Then stage the baseline and run the read-only check from the local X11 desktop
-that will own the Isaac Sim window:
-
-```bash
-(
-  set -euo pipefail
-  ops/isaac-sim-workstation.sh --prepare
-  : "${DISPLAY:?run from the local X11 desktop}"
-  ops/isaac-sim-workstation.sh --check
-)
+docker pull \
+  nvcr.io/nvidia/isaac-sim:6.0.1@sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb
+ops/isaac-sim-workstation.sh --prepare
+ops/isaac-sim-workstation.sh --check --accept-eula
 ```
 
 Preparation never pulls an image or starts, stops, removes, or replaces a
-container. It is idempotent when the staged files exactly match the checkout.
-It refuses a partial, modified, or stale bundle; use a new --mount instead of
-silently mixing packages.
+container. It builds and validates the complete bundle in a sibling directory,
+then publishes it with one same-filesystem directory rename. Consumers cannot
+observe a partially copied set of entrypoints. An existing complete bundle is
+verified byte-for-byte and reused; a modified, stale, or partially populated
+mount is rejected rather than overwritten.
 
-## Launch
+`--check` first runs the repository host preflight, then starts only a
+transient `--rm` container at the same image digest to run NVIDIA's bundled
+`isaac-sim.compatibility_check.sh`. It requires the official result and emits:
 
-The launcher uses the caller's actual `DISPLAY` and `XAUTHORITY`. GDM commonly
-stores the cookie under the user's runtime directory; a non-GDM desktop must set
-its own readable cookie path:
+    System checking result: PASSED
+    IC_ISAAC_NVIDIA_CHECK_OK image=... result=PASSED
+    IC_ISAAC_BASELINE_CHECK_OK mount=... image=... profile=headless
+
+The check container runs as `1234:1234`, uses host networking, never pulls an
+image, and has anonymous telemetry disabled. It leaves no named container.
+A headless preflight also confirms that `ISAACSIM_HOST` is a literal address
+assigned to a real host interface.
+
+## Launch the supported headless/WebRTC profile
+
+The NVIDIA-default, local-only command is:
 
 ```bash
-(
-  set -euo pipefail
-  : "${DISPLAY:?run from the local X11 desktop}"
-  export XAUTHORITY="${XAUTHORITY:-/run/user/$(id -u)/gdm/Xauthority}"
-  test -r "$XAUTHORITY"
-  xauth -f "$XAUTHORITY" nlist "$DISPLAY" | grep -q .
-  ops/isaac-sim-workstation.sh --run --accept-eula
-)
+ops/isaac-sim-workstation.sh --run --accept-eula
 ```
 
-The measured GDM workstation used `DISPLAY=:1`; that is an observation, not a
-portable default. Do not copy it over the value in the local desktop session.
+It advertises `127.0.0.1`, signaling on `49100/tcp` and media on
+`47998/udp`. It uses `--network host`, the image's `runheadless.sh -v`
+entrypoint, and explicit user `1234:1234`. The launcher repeats the host and
+official compatibility gates before starting the named application container.
 
-Privacy telemetry is off by default. The launcher explicitly disables anonymous
-data, the telemetry endpoint, crash reporting, and the usage, performance, and
-personalization consent settings; merely omitting `PRIVACY_CONSENT` is not
-sufficient for the pinned development image. Add `--privacy-consent` only to
-opt in.
-The command waits up to 900 seconds by default. A successful launch emits:
+For a native WebRTC client on another trusted machine, select a literal IP
+actually assigned to the workstation:
 
-    IC_ISAAC_BASELINE_STARTING container=ic-isaac-sim-baseline ...
-    IC_ISAAC_BASELINE_READY container=ic-isaac-sim-baseline marker=IC_CELL_UP
+```bash
+SIM_HOST_IP=REPLACE_WITH_WORKSTATION_INTERFACE_IP
+ops/isaac-sim-workstation.sh --run --accept-eula \
+  --webrtc-host "$SIM_HOST_IP"
+```
 
-Follow the underlying application output with:
+Optional port overrides are explicit:
+
+```bash
+ops/isaac-sim-workstation.sh --run --accept-eula \
+  --webrtc-host "$SIM_HOST_IP" \
+  --webrtc-signal-port 49100 \
+  --webrtc-stream-port 47998
+```
+
+A successful default-profile launch requires the project marker, NVIDIA's
+streaming-app marker, a running container after the stability window, and an
+actual listening signaling TCP socket. It emits the advertised address and
+ports:
+
+    IC_ISAAC_BASELINE_STARTING container=ic-isaac-sim-baseline ... profile=headless webrtc_host=... signal_tcp=49100 stream_udp=47998
+    IC_ISAAC_BASELINE_READY container=ic-isaac-sim-baseline profile=headless marker=IC_CELL_UP streaming=true webrtc_host=... signal_tcp=49100 stream_udp=47998
+
+The launcher checks `49100/tcp` after readiness. It deliberately does not
+require a pre-client `47998/udp` socket because media binding can occur during
+client negotiation. Follow startup with:
 
     docker logs -f ic-isaac-sim-baseline
 
-The authoritative application marker is IC_CELL_UP markers=all, emitted only
-after the deferred scene reset and clean physics ticks. The launcher checks
-bootstrap/step errors before accepting that marker and observes a short
-post-ready stability window. A launch that reports IC_CELL_BOOT_ERR or
-IC_STEP_ERR, exits early, or times out fails and leaves the container intact
-for inspection. The launcher never stops or removes it.
+Use NVIDIA's
+[Isaac Sim WebRTC Streaming Client](https://docs.isaacsim.omniverse.nvidia.com/6.0.1/installation/manual_livestream_clients.html)
+and connect to the advertised host. This native-client endpoint is not an HTTP
+URL. The launcher does not include NVIDIA's separate browser-viewer Compose
+service, so it does not serve port `8210`.
 
-## Remote viewing and NVIDIA alignment
-
-The current launch helper starts the pinned Isaac Sim windowed application on
-a real local X11 display. It does not start a WebRTC signaling server or a
-browser viewer.
-
-| Access mode | Status in this repository | Client or endpoint | Inbound ports |
-|---|---|---|---|
-| Local X11 | Validated compatibility path | Workstation display selected by `DISPLAY` | None added by Isaac Sim |
-| RealVNC desktop mirror | Optional external operator setup; not provisioned by this repository | RealVNC Viewer to `<sim-host-ip>:5900`; this is not an HTTP URL | Normally `5900/tcp`, restricted to the operator address |
-| NVIDIA Isaac Sim WebRTC Streaming Client | NVIDIA-recommended remote path; not yet automated or validated here | Native client to `<sim-host-ip>` | `49100/tcp` and `47998/udp` |
-| NVIDIA browser viewer | NVIDIA Docker Compose path; not included in this repository | Chromium at `http://<sim-host-ip>:8210` | `8210/tcp`, `49100/tcp`, and `47998/udp` |
-
-For this validated GUI-container path, use RealVNC only to mirror an
-already-working real local desktop. It must not provide the virtual display on
-which Isaac Sim starts: NVIDIA warns that container GUI mode needs a real local
-display and can fail to create its Vulkan swapchain on VNC and other virtual
-displays. Before installing or enabling
-[RealVNC Server](https://help.realvnc.com/hc/en-us/articles/360002253198-Installing-and-Removing-RealVNC-Connect-Advanced-users),
-establish an exact source-address firewall rule. For a host that already uses
-UFW, first confirm that it is active, has default-deny inbound policy, and has
-no broader rule for port 5900; then add and review the operator rule:
+Isaac Sim livestreaming provides no application authentication and is not a
+production access-control boundary. Keep it on a trusted private network and
+authorize only the intended operator source. For a host that already uses UFW
+with default-deny inbound policy:
 
 ```bash
-SIM_IF=YOUR_SIMULATION_INTERFACE
-OPERATOR_IP=YOUR_OPERATOR_IP
+SIM_IF=REPLACE_WITH_WORKSTATION_INTERFACE
+OPERATOR_IP=REPLACE_WITH_OPERATOR_SOURCE_IP
 sudo ufw status verbose
 sudo ufw status numbered
 sudo ufw allow in on "$SIM_IF" proto tcp \
-  from "$OPERATOR_IP" to any port 5900 \
-  comment 'RealVNC from Isaac Sim operator'
+  from "$OPERATOR_IP" to any port 49100 \
+  comment 'Isaac Sim WebRTC signaling'
+sudo ufw allow in on "$SIM_IF" proto udp \
+  from "$OPERATOR_IP" to any port 47998 \
+  comment 'Isaac Sim WebRTC media'
 sudo ufw status numbered
 ```
 
-If UFW is not installed, establish the site's equivalent host or upstream
-control before continuing; do not install or reconfigure a firewall blindly on
-a remotely administered workstation. If VNC is already listening without that
-control, use the local desktop to stop or restrict it first. Then install,
-license, authenticate, encrypt, and enable RealVNC separately and verify it:
+If UFW is absent, use the site's equivalent host or upstream controls. Do not
+install, disable, or reconfigure a firewall blindly on a remote workstation.
+
+## Run the scripted-baseline acceptance gate
+
+The acceptance command is scene-destructive. It resets the scene, requires
+fresh payloads on all 15 camera/state streams, issues exactly one real
+`franka_left` red-object move, verifies the result, performs a final
+deterministic reset, and scans only the current container run for critical
+errors. It is the non-Thor scripted-baseline gate; it is not GR00T or Thor
+inference evidence.
+
+For the default launcher container:
 
 ```bash
-systemctl is-active vncserver-x11-serviced.service
-ss -ltn | grep ':5900 '
+docker pull --platform linux/amd64 \
+  docker.io/library/ros:jazzy-ros-base-noble@sha256:2589a8fba5257307857890173c069852c2abf913a0be7970f172478baecb09e4
+ops/accept-isaac-sim-workstation.sh \
+  --container ic-isaac-sim-baseline
 ```
 
-Open RealVNC Viewer on the operator machine and connect to
-`<sim-host-ip>:5900`. A browser cannot open that VNC endpoint. RealVNC mirrors
-the entire workstation desktop, not only Isaac Sim, so retain normal VNC
-authentication and never expose it to the public Internet.
+The harness requires the exact pinned image, launcher user/entrypoint/arguments,
+read-only `/scripts` bind, and byte-identical checkout payload before it
+publishes. It infers `ROS_DOMAIN_ID` from the target container; use
+`--ros-domain-id ID` only to confirm the exact target value. A mismatch is
+rejected rather than overridden. It never stops or removes the target. Success
+ends with:
 
-For NVIDIA's documented remote presentation path, follow the
-[Livestream Clients](https://docs.isaacsim.omniverse.nvidia.com/latest/installation/manual_livestream_clients.html)
-guide and implement a separate tested headless profile. WebRTC requires
-`--network=host` and `ISAACSIM_HOST=<sim-host-ip>`; Docker bridge networking
-and `-p` publication are not supported. The native and browser streaming
-endpoints have no built-in authentication or encryption, so keep them on a
-private/trusted network and restrict every inbound port to the operator IP.
-NVIDIA Isaac Sim livestreaming requires an NVIDIA GPU with NVENC support and a
-compatible driver. Each Isaac Sim instance can use only one livestreaming
-method and accept only one streaming client at a time.
-Port `8210` exists only when NVIDIA's browser-viewer Compose service is running;
-it is not available from this repository's current launcher.
+    IC_ISAAC_WORKSTATION_ACCEPTANCE_PASS container=ic-isaac-sim-baseline domain=<id> run_id=<id>
 
-## Network and asset caveats
+This gate intentionally changes simulated state twice. Do not run it while
+another user or workflow controls the same scene.
 
-Docker host networking is required for the containerized ROS 2 seam. The
-launcher gives Isaac a bounded, 2 GiB, shareable IPC namespace because Fast DDS
-uses shared memory for same-host payloads; fully isolated IPC namespaces can
-discover publishers over UDP while silently receiving no samples. This is not
-host IPC: only a deliberately joined container shares it. The baseline also
-sets ROS_LOCALHOST_ONLY=1 and ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST, so DDS
-discovery remains loopback-only unless an operator deliberately uses another
-launcher. No Docker ports are published.
+## Telemetry
 
-An external ROS 2 Jazzy container must select the same RMW and join Isaac's IPC
-namespace as the image's UID/GID (`1234:1234`). Matching ownership is required
-because Fast DDS creates per-participant shared-memory files with owner-write
-permissions. For example, after pulling the official ROS image, list topics with:
+Anonymous telemetry is off by default. Both the compatibility container and
+the application container set NVIDIA's documented
+`OMNI_TELEMETRY_DISABLE_ANONYMOUS_DATA=1`. The application also retains
+validated Kit-level telemetry, crash-reporting, and privacy settings as defense
+in depth.
+
+`--privacy-consent` explicitly opts the application container in by setting
+`PRIVACY_CONSENT=Y` and omitting the opt-out environment variable and
+Kit-level overrides. The transient compatibility check remains opted out.
+
+## Explicit local-X11 compatibility alternative
+
+Container GUI mode is not the supported default. NVIDIA generally recommends
+headless/WebRTC for a remote container and warns that container GUI mode needs
+a real local display. Use this profile only from the local desktop, not a
+virtual VNC/NoMachine/DCV display:
+
+```bash
+sudo apt-get update
+sudo apt-get install --no-install-recommends xauth
+export XAUTHORITY="${XAUTHORITY:-/run/user/$(id -u)/gdm/Xauthority}"
+test -r "$XAUTHORITY"
+xauth -f "$XAUTHORITY" nlist "${DISPLAY:?run from the local X11 desktop}" |
+  grep -q .
+ops/isaac-sim-workstation.sh --check --profile x11 --accept-eula
+ops/isaac-sim-workstation.sh --run --profile x11 --accept-eula
+```
+
+The helper copies only the selected display cookie into its private runtime
+state. It does not require or invoke broad `xhost` authorization. A non-GDM
+desktop should set its own readable Xauthority path. Never copy an observed
+`DISPLAY=:1` value blindly.
+
+RealVNC remains external workstation administration, not the canonical Isaac
+stream. It may mirror an already-working real local desktop, but it must not
+supply the virtual display on which Isaac starts. Retain VNC authentication and
+encryption, restrict `5900/tcp` to intended administrators, and never expose
+it to the public Internet.
+
+## ROS 2, networking, and assets
+
+The baseline uses host networking plus a bounded, 2 GiB, shareable IPC namespace
+because same-host Fast DDS payload delivery needs shared memory. It is not host
+IPC. The baseline uses Jazzy's `ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST`; it
+does not also set the deprecated `ROS_LOCALHOST_ONLY`, which would override the
+modern setting. This standalone profile does not open ROS discovery to Thor or
+another machine.
+
+A ROS 2 Jazzy sidecar must join the Isaac container's IPC namespace, select the
+same RMW, and use the matching `1234:1234` identity. For example:
 
     docker run --rm --network host \
       --ipc=container:ic-isaac-sim-baseline \
       --user 1234:1234 \
       -e HOME=/tmp \
       -e ROS_DOMAIN_ID=0 \
-      -e ROS_LOCALHOST_ONLY=1 \
       -e ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST \
       -e RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
       ros@sha256:2589a8fba5257307857890173c069852c2abf913a0be7970f172478baecb09e4 \
       ros2 topic list --no-daemon --spin-time 5 -t
 
-The scene references NVIDIA's Isaac 6.0 cloud assets. First launch therefore
-needs outbound HTTPS access to
-omniverse-content-production.s3-us-west-2.amazonaws.com; later launches use
-the persistent cache. This reference path requires a local X11 display. It is
-not the repository's headless or learned-policy deployment path.
+The scene uses NVIDIA's version-matched Isaac 6.0 cloud asset root. A cold first
+run needs outbound HTTPS access to
+`omniverse-content-production.s3-us-west-2.amazonaws.com`; warm runs use the
+persistent cache. The cloud assets themselves are not content-digest pinned.
 
-Before a deliberate retry, inspect the retained container and its logs. Stop
-it explicitly if it is still running, then remove the stopped container:
+NVIDIA's Isaac Sim 6.0.1
+[Setup Tips](https://docs.isaacsim.omniverse.nvidia.com/6.0.1/installation/install_faq.html)
+document a five-part local asset pack. NVIDIA publishes these MD5 values:
 
-    docker inspect ic-isaac-sim-baseline
-    docker logs ic-isaac-sim-baseline
-    docker stop ic-isaac-sim-baseline
-    docker rm ic-isaac-sim-baseline
+| Part | MD5 |
+|---|---|
+| 001 | `92149a1f50a21c0f04cca6507ab00653` |
+| 002 | `9b4b924e2d31bce41712d7637a0d6e42` |
+| 003 | `b1c62924beda91251d3f5318ffec2b00` |
+| 004 | `6bd7aa4d9b6c4161c2302e4c9418ade7` |
+| 005 | `c4a17942014be6b50492ae860496fef7` |
+
+This repository does not download or install that pack, and the local/offline
+path has not been qualified here. Only cold-online and warm-cache cloud
+behavior has been validated; do not claim offline support until the exact
+NVIDIA procedure and scene assets pass the acceptance gate.
+
+## Inspection and deliberate retry
+
+A failure leaves the named application container intact. Inspect it before a
+deliberate retry:
+
+```bash
+docker inspect ic-isaac-sim-baseline
+docker logs ic-isaac-sim-baseline
+docker stop ic-isaac-sim-baseline
+docker rm ic-isaac-sim-baseline
+```
+
+The launcher itself never stops, removes, or replaces an application container.

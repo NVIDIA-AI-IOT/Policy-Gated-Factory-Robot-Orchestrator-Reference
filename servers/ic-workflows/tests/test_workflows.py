@@ -138,7 +138,7 @@ class TestSpec:
         ]
         assert "fresh VLM answer=yes" in wf.done_criteria
 
-    def test_concurrent_groot_demo_keeps_serial_fallback_and_two_proofs(self) -> None:
+    def test_concurrent_groot_demo_matches_validated_mixed_order(self) -> None:
         path = (
             Path(__file__).parents[1]
             / "workflows"
@@ -148,10 +148,13 @@ class TestSpec:
 
         pairs = [step for step in wf.steps if step.tool == "dispatch_parallel"]
         assert len(pairs) == 3
-        assert [pair.args["moves"][0]["color"] for pair in pairs] == [
-            "green",
-            "red",
-            "blue",
+        assert [
+            tuple(move["color"] for move in pair.args["moves"])
+            for pair in pairs
+        ] == [
+            ("blue", "green"),
+            ("green", "red"),
+            ("red", "blue"),
         ]
         for pair in pairs:
             moves = pair.args["moves"]
@@ -160,7 +163,7 @@ class TestSpec:
                 "franka_right",
             }
             assert {move["backend"] for move in moves} == {"groot"}
-            assert len({move["color"] for move in moves}) == 1
+            assert len({move["color"] for move in moves}) == 2
             assert pair.max_retries == 0
         proofs = [step for step in wf.steps if step.tool == "check_predicate"]
         assert len(proofs) == 8
@@ -171,6 +174,8 @@ class TestSpec:
             if step.tool != "check_predicate"
         )
         assert wf.dispatch_actions() == ["move", "pick_and_place"]
+        assert "IC_GROOT_PARALLEL_ENABLED=1" in wf.description
+        assert "IC_GROOT_FLEXIBLE_ORDER=1" in wf.description
         assert (Path(__file__).parents[1] / "workflows" / "full-groot-dual-tote.yaml").is_file()
 
     def test_operator_actions_refused_at_save_time(self) -> None:
@@ -302,8 +307,10 @@ class TestRunner:
         assert len(runner.calls) == 2  # perceive + one dispatch; no re-dispatch
 
     async def test_parallel_dispatch_requires_independent_b1_and_is_not_retried(
-        self,
+        self, monkeypatch,
     ) -> None:
+        monkeypatch.setenv("IC_GROOT_PARALLEL_ENABLED", "1")
+        monkeypatch.setenv("IC_GROOT_FLEXIBLE_ORDER", "1")
         spec = wf_dict()
         spec["steps"] = [
             {
@@ -312,9 +319,9 @@ class TestRunner:
                     "moves": [
                         {
                             "endpoint": "franka_left",
-                            "color": "green",
+                            "color": "blue",
                             "source": "conveyor_1",
-                            "destination": "tote_green",
+                            "destination": "tote_blue",
                             "backend": "groot",
                         },
                         {
@@ -345,6 +352,71 @@ class TestRunner:
         assert out["started_steps"] == 1
         assert out["timeline"][0]["attempts"] == 1
         assert len(runner.calls) == 1
+
+    async def test_mixed_parallel_dispatch_requires_both_opt_in_flags(
+        self, monkeypatch,
+    ) -> None:
+        spec = wf_dict()
+        spec["steps"] = [{
+            "tool": "dispatch_parallel",
+            "args": {
+                "moves": [
+                    {
+                        "endpoint": "franka_left",
+                        "color": "blue",
+                        "source": "conveyor_1",
+                        "destination": "tote_blue",
+                        "backend": "groot",
+                    },
+                    {
+                        "endpoint": "franka_right",
+                        "color": "green",
+                        "source": "conveyor_2",
+                        "destination": "tote_green",
+                        "backend": "groot",
+                    },
+                ]
+            },
+        }]
+        workflow = Workflow.model_validate(spec)
+
+        monkeypatch.delenv("IC_GROOT_PARALLEL_ENABLED", raising=False)
+        monkeypatch.delenv("IC_GROOT_FLEXIBLE_ORDER", raising=False)
+        disabled = FakeRunner([])
+        outcome = await disabled.run(workflow, {})
+        assert outcome["ok"] is False
+        assert outcome["timeline"][0]["attempts"] == 0
+        assert "IC_GROOT_PARALLEL_ENABLED=1" in outcome["timeline"][0]["response"]["reason"]
+        assert disabled.calls == []
+
+        monkeypatch.setenv("IC_GROOT_PARALLEL_ENABLED", "1")
+        parallel_only = FakeRunner([])
+        outcome = await parallel_only.run(workflow, {})
+        assert outcome["ok"] is False
+        assert "IC_GROOT_FLEXIBLE_ORDER=1" in outcome["timeline"][0]["response"]["reason"]
+        assert parallel_only.calls == []
+
+        monkeypatch.setenv("IC_GROOT_FLEXIBLE_ORDER", "1")
+        same_color_spec = yaml.safe_load(yaml.safe_dump(spec))
+        right_move = same_color_spec["steps"][0]["args"]["moves"][1]
+        right_move["color"] = "blue"
+        right_move["destination"] = "tote_blue"
+        same_color = FakeRunner([])
+        outcome = await same_color.run(
+            Workflow.model_validate(same_color_spec), {}
+        )
+        assert outcome["ok"] is False
+        assert "same-color pairs" in outcome["timeline"][0]["response"]["reason"]
+        assert same_color.calls == []
+
+        qualified = FakeRunner([{
+            "dispatched": True,
+            "verified": True,
+            "independent_b1_verified": True,
+        }])
+        outcome = await qualified.run(workflow, {})
+        assert outcome["ok"] is True
+        assert len(qualified.calls) == 1
 
     async def test_nongated_error_marks_run_degraded_not_failed(self) -> None:
         runner = FakeRunner(

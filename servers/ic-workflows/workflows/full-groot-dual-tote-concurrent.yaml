@@ -1,20 +1,22 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 name: full-groot-dual-tote-concurrent
-version: 0.1.0
+version: 1.0.0
 description: >-
-  Fixed layout-3 demonstration: sort each color with both Franka arms through
-  one batched GR00T checkpoint, verify each tote separately, then haul both
-  totes serially to the rack.
+  Readiness-gated fixed layout-3 demonstration: execute the validated mixed
+  Order744 pair sequence through two independent B=1 GR00T servers, verify
+  each tote separately after every pair, then haul both totes serially to the
+  rack. Requires IC_GROOT_PARALLEL_ENABLED=1 and
+  IC_GROOT_FLEXIBLE_ORDER=1; otherwise use full-groot-dual-tote.
 owner: policy-gated-factory-robot-orchestrator-reference
 steps:
   - tool: dispatch_parallel
     args:
       moves:
         - endpoint: franka_left
-          color: green
+          color: blue
           source: conveyor_1
-          destination: tote_green
+          destination: tote_blue
           backend: groot
         - endpoint: franka_right
           color: green
@@ -23,7 +25,7 @@ steps:
           backend: groot
   - tool: check_predicate
     args:
-      predicate: the green brick is inside the green compartment of the left tote
+      predicate: the blue cylinder is inside the blue compartment of the left tote
       region: tote
     max_retries: 1
   - tool: check_predicate
@@ -35,9 +37,9 @@ steps:
     args:
       moves:
         - endpoint: franka_left
-          color: red
+          color: green
           source: conveyor_1
-          destination: tote_red
+          destination: tote_green
           backend: groot
         - endpoint: franka_right
           color: red
@@ -46,7 +48,7 @@ steps:
           backend: groot
   - tool: check_predicate
     args:
-      predicate: the red cube is inside the red compartment of the left tote
+      predicate: the green brick is inside the green compartment of the left tote
       region: tote
     max_retries: 1
   - tool: check_predicate
@@ -58,9 +60,9 @@ steps:
     args:
       moves:
         - endpoint: franka_left
-          color: blue
+          color: red
           source: conveyor_1
-          destination: tote_blue
+          destination: tote_red
           backend: groot
         - endpoint: franka_right
           color: blue
@@ -69,7 +71,7 @@ steps:
           backend: groot
   - tool: check_predicate
     args:
-      predicate: the blue cylinder is inside the blue compartment of the left tote
+      predicate: the red cube is inside the red compartment of the left tote
       region: tote
     max_retries: 1
   - tool: check_predicate
@@ -100,6 +102,7 @@ steps:
       region: rack_1
     max_retries: 1
 done_criteria: >-
-  Both arms physics-verify all six GR00T placements, fresh VLM evidence verifies
+  The explicitly enabled blue/green, green/red, and red/blue Order744 pairs
+  each physics-verify independent B=1 inference, fresh VLM evidence verifies
   every tote compartment, and both totes are physically hauled and visually
   verified on rack_1.

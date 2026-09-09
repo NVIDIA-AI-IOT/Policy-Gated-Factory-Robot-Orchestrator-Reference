@@ -7,8 +7,8 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SOURCE_ROOT="$REPO/reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell"
 CHECKER="$REPO/ops/check-sim-host.sh"
-IMAGE="nvcr.io/nvidia/isaac-sim:6.0.0-dev2"
-DIGEST="sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9"
+IMAGE="nvcr.io/nvidia/isaac-sim:6.0.1"
+DIGEST="sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb"
 IMAGE_REF="$IMAGE@$DIGEST"
 ASSET_ROOT="https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0"
 
@@ -16,7 +16,13 @@ MODE=""
 STATE_ROOT="${IC_ISAAC_ROOT:-$HOME/.local/share/policy-gated-factory-robot-orchestrator-reference/isaac-sim}"
 MOUNT="${IC_ISAAC_MOUNT:-}"
 CONTAINER_NAME="${IC_ISAAC_CONTAINER:-ic-isaac-sim-baseline}"
+PRESENTATION_PROFILE="headless"
 DISPLAY_VALUE="${DISPLAY:-:1}"
+DISPLAY_OPTION_SET=false
+WEBRTC_HOST="${ISAACSIM_HOST:-127.0.0.1}"
+WEBRTC_SIGNAL_PORT="${ISAACSIM_SIGNAL_PORT:-49100}"
+WEBRTC_STREAM_PORT="${ISAACSIM_STREAM_PORT:-47998}"
+WEBRTC_OPTION_SET=false
 ROS_DOMAIN_ID_VALUE="${ROS_DOMAIN_ID:-0}"
 READY_TIMEOUT=900
 ACCEPT_EULA=false
@@ -31,7 +37,8 @@ usage: ops/isaac-sim-workstation.sh MODE [OPTIONS]
 Modes (choose exactly one):
   --prepare              Stage the scripted baseline and create private host state.
                          Does not pull an image or start a container.
-  --check                Read-only validation of the prepared baseline and host.
+  --check                Validate the prepared baseline and host, including
+                         NVIDIA's transient compatibility-check container.
   --run                  Start the prepared baseline from the pinned local image.
 
 Options:
@@ -39,17 +46,26 @@ Options:
   --mount PATH           Directory mounted read-only at /scripts
                          (default: ROOT/scripts).
   --container NAME       Container name (default: ic-isaac-sim-baseline).
-  --display DISPLAY      Local X11 display (default: $DISPLAY, otherwise :1).
+  --profile PROFILE      Presentation profile: headless (default) or x11.
+  --webrtc-host IP       Host interface address advertised by headless WebRTC
+                         (default: $ISAACSIM_HOST, otherwise 127.0.0.1).
+  --webrtc-signal-port PORT
+                         WebRTC signaling TCP port (default: 49100).
+  --webrtc-stream-port PORT
+                         WebRTC media UDP port (default: 47998).
+  --display DISPLAY      Local display for the explicit x11 profile
+                         (default: $DISPLAY, otherwise :1).
   --ros-domain-id ID     ROS 2 domain, 0..232 (default: $ROS_DOMAIN_ID, otherwise 0).
   --timeout SECONDS      Readiness timeout for --run (default: 900).
   --no-wait              Return after Docker starts instead of waiting for IC_CELL_UP.
-  --accept-eula          Required with --run; passes ACCEPT_EULA=Y to Isaac Sim.
+  --accept-eula          Required with --check and --run; passes ACCEPT_EULA=Y
+                         only to NVIDIA containers started by those modes.
   --privacy-consent      Optional telemetry opt-in; otherwise Kit telemetry and
                          all three privacy consent settings are forced off.
   -h, --help             Show this help.
 
 The image is immutable in this launcher:
-  nvcr.io/nvidia/isaac-sim:6.0.0-dev2@sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9
+  nvcr.io/nvidia/isaac-sim:6.0.1@sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb
 
 Prepare is idempotent only while the installed files exactly match this checkout.
 It refuses conflicting files and never replaces an existing container.
@@ -68,7 +84,11 @@ while [ "$#" -gt 0 ]; do
     --root) [ "$#" -ge 2 ] || fail "--root requires PATH"; STATE_ROOT="$2"; shift 2 ;;
     --mount) [ "$#" -ge 2 ] || fail "--mount requires PATH"; MOUNT="$2"; shift 2 ;;
     --container) [ "$#" -ge 2 ] || fail "--container requires NAME"; CONTAINER_NAME="$2"; shift 2 ;;
-    --display) [ "$#" -ge 2 ] || fail "--display requires DISPLAY"; DISPLAY_VALUE="$2"; shift 2 ;;
+    --profile) [ "$#" -ge 2 ] || fail "--profile requires PROFILE"; PRESENTATION_PROFILE="$2"; shift 2 ;;
+    --webrtc-host) [ "$#" -ge 2 ] || fail "--webrtc-host requires IP"; WEBRTC_HOST="$2"; WEBRTC_OPTION_SET=true; shift 2 ;;
+    --webrtc-signal-port) [ "$#" -ge 2 ] || fail "--webrtc-signal-port requires PORT"; WEBRTC_SIGNAL_PORT="$2"; WEBRTC_OPTION_SET=true; shift 2 ;;
+    --webrtc-stream-port) [ "$#" -ge 2 ] || fail "--webrtc-stream-port requires PORT"; WEBRTC_STREAM_PORT="$2"; WEBRTC_OPTION_SET=true; shift 2 ;;
+    --display) [ "$#" -ge 2 ] || fail "--display requires DISPLAY"; DISPLAY_VALUE="$2"; DISPLAY_OPTION_SET=true; shift 2 ;;
     --ros-domain-id) [ "$#" -ge 2 ] || fail "--ros-domain-id requires ID"; ROS_DOMAIN_ID_VALUE="$2"; shift 2 ;;
     --timeout) [ "$#" -ge 2 ] || fail "--timeout requires SECONDS"; READY_TIMEOUT="$2"; shift 2 ;;
     --no-wait) WAIT_FOR_READY=false; shift ;;
@@ -97,12 +117,36 @@ case "$STATE_ROOT$MOUNT" in *$'\n'*|*,*) fail "paths must not contain a newline 
 [[ "$READY_TIMEOUT" =~ ^[1-9][0-9]*$ ]] \
   && [ "$READY_TIMEOUT" -le 3600 ] \
   || fail "timeout must be an integer from 1 through 3600 seconds"
-if [ "$MODE" != prepare ]; then
-  [[ "$DISPLAY_VALUE" =~ ^:[0-9]+(\.[0-9]+)?$ ]] \
-    || fail "only a local X11 display such as :1 is supported"
+command -v python3 >/dev/null 2>&1 || fail "missing command: python3"
+case "$PRESENTATION_PROFILE" in
+  headless)
+    $DISPLAY_OPTION_SET && fail "--display is valid only with --profile x11"
+    python3 -c \
+      'import ipaddress, sys; ipaddress.ip_address(sys.argv[1])' \
+      "$WEBRTC_HOST" \
+      || fail "--webrtc-host must be a literal IP address"
+    for port in "$WEBRTC_SIGNAL_PORT" "$WEBRTC_STREAM_PORT"; do
+      [[ "$port" =~ ^[1-9][0-9]*$ ]] && [ "$port" -le 65535 ] \
+        || fail "WebRTC ports must be integers from 1 through 65535"
+    done
+    [ "$WEBRTC_SIGNAL_PORT" != "$WEBRTC_STREAM_PORT" ] \
+      || fail "WebRTC signal and stream ports must differ"
+    ;;
+  x11)
+    $WEBRTC_OPTION_SET && fail "--webrtc-* options are valid only with --profile headless"
+    if [ "$MODE" != prepare ]; then
+      [[ "$DISPLAY_VALUE" =~ ^:[0-9]+(\.[0-9]+)?$ ]] \
+        || fail "only a local X11 display such as :1 is supported"
+    fi
+    ;;
+  *) fail "--profile must be headless or x11" ;;
+esac
+if [ "$MODE" = prepare ]; then
+  ! $ACCEPT_EULA || fail "--accept-eula is valid only with --check or --run"
+else
+  $ACCEPT_EULA || fail "--$MODE requires --accept-eula (review NVIDIA's Omniverse license first)"
 fi
 if [ "$MODE" != run ]; then
-  ! $ACCEPT_EULA || fail "--accept-eula is valid only with --run"
   ! $PRIVACY_CONSENT || fail "--privacy-consent is valid only with --run"
   $WAIT_FOR_READY || fail "--no-wait is valid only with --run"
 fi
@@ -193,7 +237,7 @@ ensure_state_dirs() {
 }
 
 prepare() {
-  local stage relative
+  local stage relative mount_parent
   [ "$(uname -s)" = Linux ] || fail "validated simulation host requires Linux"
   [ "$(uname -m)" = x86_64 ] || fail "validated simulation host requires x86_64"
   require_docker
@@ -209,10 +253,12 @@ prepare() {
       printf 'IC_ISAAC_BASELINE_PREPARED mount=%s state=%s unchanged=true\n' "$MOUNT" "$STATE_ROOT"
       return
     fi
-  else
-    install -d -m 0755 "$MOUNT"
   fi
 
+  mount_parent="$(dirname "$MOUNT")"
+  if [ ! -d "$mount_parent" ]; then
+    install -d -m 0700 "$mount_parent"
+  fi
   stage="$(mktemp -d "${MOUNT}.prepare.XXXXXX")"
   trap 'rm -rf "$stage"' RETURN
   while IFS= read -r relative; do
@@ -223,28 +269,68 @@ prepare() {
   install -m 0644 "$SOURCE_ROOT/our_factory.usda" "$stage/our_factory.usda"
   PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$stage" python3 -c \
     'from ic_cell.actions import discover_actions; r=discover_actions(); assert r.action_names == ("haul", "inspect", "move", "pick_and_place", "reset", "spawn")'
-  mv "$stage/ic_cell" "$stage/ic_boot.py" "$stage/our_factory.usda" "$MOUNT/"
-  rmdir "$stage"
+  # Validate the complete sibling tree before publishing it. GNU mv -T uses
+  # one directory rename here (and can replace only the known-empty target),
+  # so readers can observe either no bundle/the old empty directory or the
+  # complete bundle, never a partially copied set of entrypoints.
+  chmod 0755 "$stage"
+  mv -T "$stage" "$MOUNT"
   trap - RETURN
   verify_baseline
   printf 'IC_ISAAC_BASELINE_PREPARED mount=%s state=%s unchanged=false\n' "$MOUNT" "$STATE_ROOT"
   printf 'No image was pulled and no container was started.\n'
 }
 
+run_nvidia_compatibility_check() {
+  local output
+  if ! output="$(docker run --pull never --rm --network host --gpus all \
+    --user 1234:1234 \
+    -e ACCEPT_EULA=Y \
+    -e OMNI_TELEMETRY_DISABLE_ANONYMOUS_DATA=1 \
+    --entrypoint bash \
+    "$IMAGE_REF" \
+    /isaac-sim/isaac-sim.compatibility_check.sh \
+    --/app/quitAfter=10 --no-window 2>&1)"; then
+    printf '%s\n' "$output" >&2
+    fail "NVIDIA's bundled Isaac Sim compatibility checker failed"
+  fi
+  printf '%s\n' "$output"
+  case "$output" in
+    *'System checking result: PASSED'*) ;;
+    *) fail "NVIDIA compatibility checker did not report PASSED" ;;
+  esac
+  printf 'IC_ISAAC_NVIDIA_CHECK_OK image=%s result=PASSED\n' "$IMAGE_REF"
+}
+
 check() {
   verify_baseline
   local directory
+  local -a checker_args
   command -v python3 >/dev/null 2>&1 || fail "missing command: python3"
   for directory in \
     cache/main cache/computecache config data logs pkg hub-cache runtime; do
     [ -d "$STATE_ROOT/$directory" ] \
       || fail "state directory is missing; run --prepare first: $STATE_ROOT/$directory"
   done
+  checker_args=(
+    --profile "$PRESENTATION_PROFILE"
+    --state-root "$STATE_ROOT"
+    --mount "$MOUNT"
+  )
+  if [ "$PRESENTATION_PROFILE" = headless ]; then
+    checker_args+=(
+      --webrtc-host "$WEBRTC_HOST"
+      --webrtc-signal-port "$WEBRTC_SIGNAL_PORT"
+      --webrtc-stream-port "$WEBRTC_STREAM_PORT"
+    )
+  fi
   IC_ISAAC_IMAGE="$IMAGE" IC_ISAAC_IMAGE_DIGEST="$DIGEST" \
-    DISPLAY="$DISPLAY_VALUE" "$CHECKER" --mount "$MOUNT"
+    DISPLAY="$DISPLAY_VALUE" "$CHECKER" "${checker_args[@]}"
+  run_nvidia_compatibility_check
   PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$MOUNT" python3 -c \
     'from ic_cell.actions import discover_actions; r=discover_actions(); assert r.action_names == ("haul", "inspect", "move", "pick_and_place", "reset", "spawn")'
-  printf 'IC_ISAAC_BASELINE_CHECK_OK mount=%s image=%s\n' "$MOUNT" "$IMAGE_REF"
+  printf 'IC_ISAAC_BASELINE_CHECK_OK mount=%s image=%s profile=%s\n' \
+    "$MOUNT" "$IMAGE_REF" "$PRESENTATION_PROFILE"
 }
 
 find_xauthority() {
@@ -285,43 +371,82 @@ prepare_xauthority() {
   printf '%s\n' "$target"
 }
 
+verify_streaming_listener() {
+  local listeners
+  [ "$PRESENTATION_PROFILE" = headless ] || return
+  listeners="$(ss -H -ltn "sport = :$WEBRTC_SIGNAL_PORT" 2>/dev/null || true)"
+  [ -n "$listeners" ] \
+    || fail "WebRTC signaling TCP port $WEBRTC_SIGNAL_PORT is not listening after application readiness"
+}
+
+assert_streaming_ports_available() {
+  local listeners
+  [ "$PRESENTATION_PROFILE" = headless ] || return
+  listeners="$(ss -H -ltn "sport = :$WEBRTC_SIGNAL_PORT" 2>/dev/null || true)"
+  [ -z "$listeners" ] \
+    || fail "WebRTC signaling TCP port $WEBRTC_SIGNAL_PORT is already in use"
+  listeners="$(ss -H -lun "sport = :$WEBRTC_STREAM_PORT" 2>/dev/null || true)"
+  [ -z "$listeners" ] \
+    || fail "WebRTC media UDP port $WEBRTC_STREAM_PORT is already in use"
+}
+
 wait_for_cell() {
-  local deadline logs state
+  local deadline logs state cell_ready=false stream_ready=false
+  if [ "$PRESENTATION_PROFILE" = x11 ]; then
+    stream_ready=true
+  fi
   deadline=$((SECONDS + READY_TIMEOUT))
   while [ "$SECONDS" -lt "$deadline" ]; do
-    logs="$(docker logs "$CONTAINER_NAME" 2>&1 | tail -n 2000 || true)"
-    if printf '%s\n' "$logs" | grep -Eq 'IC_CELL_BOOT_ERR|IC_STEP_ERR'; then
+    # This launcher creates a fresh, uniquely named container, so its complete
+    # log belongs to this boot. Never truncate the pass/fail scan: noisy Kit
+    # startup can push an early physics/bootstrap error beyond a tail window.
+    logs="$(docker logs "$CONTAINER_NAME" 2>&1 || true)"
+    if grep -Eq 'IC_CELL_BOOT_ERR|IC_STEP_ERR' <<<"$logs"; then
       docker logs --tail 80 "$CONTAINER_NAME" >&2 || true
       fail "Isaac cell reported a physics/bootstrap error; container was left intact"
     fi
-    if printf '%s\n' "$logs" | grep -Fq 'IC_CELL_UP markers=all'; then
+    if grep -Fq 'IC_CELL_UP markers=all' <<<"$logs"; then
+      cell_ready=true
+    fi
+    if grep -Fq 'Isaac Sim Full Streaming App is loaded.' <<<"$logs"; then
+      stream_ready=true
+    fi
+    if $cell_ready && $stream_ready; then
       # Keep observing briefly so an immediately-following asynchronous physics
       # failure cannot be hidden behind a success marker in the same launch.
       sleep 5
-      logs="$(docker logs "$CONTAINER_NAME" 2>&1 | tail -n 2000 || true)"
-      if printf '%s\n' "$logs" | grep -Eq 'IC_CELL_BOOT_ERR|IC_STEP_ERR'; then
+      logs="$(docker logs "$CONTAINER_NAME" 2>&1 || true)"
+      if grep -Eq 'IC_CELL_BOOT_ERR|IC_STEP_ERR' <<<"$logs"; then
         docker logs --tail 80 "$CONTAINER_NAME" >&2 || true
         fail "Isaac cell failed during the post-ready stability window; container was left intact"
       fi
       state="$(docker container inspect --format '{{.State.Status}}' "$CONTAINER_NAME" 2>/dev/null || true)"
       [ "$state" = running ] \
         || fail "container stopped during the post-ready stability window (state=${state:-missing}); it was left intact"
-      printf 'IC_ISAAC_BASELINE_READY container=%s marker=IC_CELL_UP\n' "$CONTAINER_NAME"
+      verify_streaming_listener
+      if [ "$PRESENTATION_PROFILE" = headless ]; then
+        printf 'IC_ISAAC_BASELINE_READY container=%s profile=headless marker=IC_CELL_UP streaming=true webrtc_host=%s signal_tcp=%s stream_udp=%s\n' \
+          "$CONTAINER_NAME" "$WEBRTC_HOST" "$WEBRTC_SIGNAL_PORT" \
+          "$WEBRTC_STREAM_PORT"
+      else
+        printf 'IC_ISAAC_BASELINE_READY container=%s profile=x11 marker=IC_CELL_UP\n' \
+          "$CONTAINER_NAME"
+      fi
       return
     fi
     state="$(docker container inspect --format '{{.State.Status}}' "$CONTAINER_NAME" 2>/dev/null || true)"
     if [ "$state" != running ]; then
       docker logs --tail 80 "$CONTAINER_NAME" >&2 || true
-      fail "container stopped before IC_CELL_UP (state=${state:-missing}); it was left intact"
+      fail "container stopped before required readiness markers (state=${state:-missing}); it was left intact"
     fi
     sleep 2
   done
   docker logs --tail 80 "$CONTAINER_NAME" >&2 || true
-  fail "timed out waiting for IC_CELL_UP; the running container was left intact"
+  fail "timed out waiting for required readiness markers; the running container was left intact"
 }
 
 run() {
-  local xauth_file container_id
+  local xauth_file="" container_id
   local -a docker_args
   $ACCEPT_EULA \
     || fail "--run requires --accept-eula (review NVIDIA's Omniverse license first)"
@@ -329,25 +454,25 @@ run() {
   assert_container_absent
   assert_mount_idle
   check
-  command -v xauth >/dev/null 2>&1 || fail "missing command: xauth"
-  xauth_file="$(prepare_xauthority)"
+  if [ "$PRESENTATION_PROFILE" = x11 ]; then
+    command -v xauth >/dev/null 2>&1 || fail "missing command: xauth"
+    xauth_file="$(prepare_xauthority)"
+  fi
   assert_container_absent
   assert_mount_idle
+  # Host networking gives Isaac direct ownership of these ports. Verify both
+  # immediately before launch so the readiness listener cannot be unrelated.
+  assert_streaming_ports_available
 
   docker_args=(
     run -d --pull never --name "$CONTAINER_NAME"
-    --entrypoint /isaac-sim/isaac-sim.sh
+    --user 1234:1234
     --gpus all --network host --ipc=shareable --shm-size 2g
     -e ACCEPT_EULA=Y
-    -e DISPLAY="$DISPLAY_VALUE"
-    -e XAUTHORITY=/tmp/ic-isaac.xauth
     -e IC_STAGE=/scripts/our_factory.usda
     -e ROS_DOMAIN_ID="$ROS_DOMAIN_ID_VALUE"
-    -e ROS_LOCALHOST_ONLY=1
     -e ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
     -e RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-    --mount "type=bind,source=/tmp/.X11-unix,target=/tmp/.X11-unix,readonly"
-    --mount "type=bind,source=$xauth_file,target=/tmp/ic-isaac.xauth,readonly"
     --mount "type=bind,source=$MOUNT,target=/scripts,readonly"
     --mount "type=bind,source=$STATE_ROOT/cache/main,target=/isaac-sim/.cache"
     --mount "type=bind,source=$STATE_ROOT/cache/computecache,target=/isaac-sim/.nv/ComputeCache"
@@ -357,16 +482,38 @@ run() {
     --mount "type=bind,source=$STATE_ROOT/pkg,target=/isaac-sim/.local/share/ov/pkg"
     --mount "type=bind,source=$STATE_ROOT/hub-cache,target=/var/cache/hub"
   )
-  if $PRIVACY_CONSENT; then docker_args+=(-e PRIVACY_CONSENT=Y); fi
+  if [ "$PRESENTATION_PROFILE" = headless ]; then
+    docker_args+=(
+      --entrypoint /isaac-sim/runheadless.sh
+      -e ISAACSIM_HOST="$WEBRTC_HOST"
+      -e ISAACSIM_SIGNAL_PORT="$WEBRTC_SIGNAL_PORT"
+      -e ISAACSIM_STREAM_PORT="$WEBRTC_STREAM_PORT"
+    )
+  else
+    docker_args+=(
+      --entrypoint /isaac-sim/isaac-sim.sh
+      -e DISPLAY="$DISPLAY_VALUE"
+      -e XAUTHORITY=/tmp/ic-isaac.xauth
+      --mount "type=bind,source=/tmp/.X11-unix,target=/tmp/.X11-unix,readonly"
+      --mount "type=bind,source=$xauth_file,target=/tmp/ic-isaac.xauth,readonly"
+    )
+  fi
+  if $PRIVACY_CONSENT; then
+    docker_args+=(-e PRIVACY_CONSENT=Y)
+  else
+    docker_args+=(-e OMNI_TELEMETRY_DISABLE_ANONYMOUS_DATA=1)
+  fi
+  docker_args+=("$IMAGE_REF")
+  if [ "$PRESENTATION_PROFILE" = headless ]; then
+    docker_args+=(-v)
+  fi
   docker_args+=(
-    "$IMAGE_REF"
     --/persistent/isaac/asset_root/default="$ASSET_ROOT"
     --/persistent/app/omniverse/bookmarks/Isaac_Cloud_Assets="$ASSET_ROOT"
   )
   if ! $PRIVACY_CONSENT; then
-    # Isaac Sim 6.0.0-dev2's application config enables anonymous telemetry
-    # even when PRIVACY_CONSENT is absent. Override both telemetry transport
-    # and consent settings explicitly; omission alone is not an opt-out.
+    # Retain the validated Kit-level controls as defense in depth alongside
+    # NVIDIA's documented container opt-out environment variable.
     docker_args+=(
       --/telemetry/enableAnonymousAppName=false
       --/telemetry/enableAnonymousData=false
@@ -380,13 +527,22 @@ run() {
   docker_args+=(--exec /scripts/ic_boot.py)
   container_id="$(docker "${docker_args[@]}")" \
     || fail "Docker did not start the container; any failed container was left intact"
-  printf 'IC_ISAAC_BASELINE_STARTING container=%s id=%s display=%s\n' \
-    "$CONTAINER_NAME" "$container_id" "$DISPLAY_VALUE"
+  if [ "$PRESENTATION_PROFILE" = headless ]; then
+    printf 'IC_ISAAC_BASELINE_STARTING container=%s id=%s profile=headless webrtc_host=%s signal_tcp=%s stream_udp=%s\n' \
+      "$CONTAINER_NAME" "$container_id" "$WEBRTC_HOST" \
+      "$WEBRTC_SIGNAL_PORT" "$WEBRTC_STREAM_PORT"
+  else
+    printf 'IC_ISAAC_BASELINE_STARTING container=%s id=%s profile=x11 display=%s\n' \
+      "$CONTAINER_NAME" "$container_id" "$DISPLAY_VALUE"
+  fi
   printf 'Logs: docker logs -f %q\n' "$CONTAINER_NAME"
   if $WAIT_FOR_READY; then
     wait_for_cell
   else
     printf 'Expected marker: IC_CELL_UP markers=all\n'
+    if [ "$PRESENTATION_PROFILE" = headless ]; then
+      printf 'Expected marker: Isaac Sim Full Streaming App is loaded.\n'
+    fi
   fi
 }
 

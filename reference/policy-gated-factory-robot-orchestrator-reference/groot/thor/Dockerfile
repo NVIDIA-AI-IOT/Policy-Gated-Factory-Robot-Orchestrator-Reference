@@ -1,4 +1,4 @@
-FROM nvidia/cuda:13.0.0-devel-ubuntu24.04
+FROM nvidia/cuda:13.0.0-devel-ubuntu24.04@sha256:1e8ac7a54c184a1af8ef2167f28fa98281892a835c981ebcddb1fad04bdd452d
 
 ENV NVIDIA_DRIVER_CAPABILITIES=graphics,utility,compute
 ENV DEBIAN_FRONTEND=noninteractive
@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y \
 
 COPY . /workspace/
 
-# install_deps.sh copies thor/pyproject.toml to repo root before uv sync
+# install_deps.sh consumes the Thor pyproject.toml and lock in place with a
+# frozen sync; it does not mutate the repository-root dependency files.
 ENV DOCKER_CONTAINER=1
 ENV UV_PROJECT_ENVIRONMENT=/opt/gr00t-venv
 RUN cd /workspace && bash scripts/deployment/thor/install_deps.sh

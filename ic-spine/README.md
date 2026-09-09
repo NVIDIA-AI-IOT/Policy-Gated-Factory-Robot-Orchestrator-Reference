@@ -67,6 +67,17 @@ The service publishes its OpenAPI documentation at `/docs` and health state
 at `/v1/health`. Deployment templates live under
 [`ops/systemd/`](../ops/systemd/).
 
+`/v1/dispatch-parallel` is fail-closed at the Seam itself. Set
+`IC_GROOT_PARALLEL_ENABLED=1` only after the independent two-server B=1
+readiness contract passes; the route also requires
+`IC_GROOT_FLEXIBLE_ORDER=1`. Both flags default to `0`. With both enabled, the
+Seam rejects same-color pairs and uses authoritative floor state to permit only
+the exact next Order744 pair: left blue/right green, left green/right red, then
+left red/right blue. State measurement and dispatch share one route lock, so a
+partial, skipped, out-of-order, or repeated pair is refused before motion. MCP
+adds per-session visual-proof and retry semantics; the bundled workflow places
+two explicit proof barriers after each accepted pair.
+
 ## Configuration
 
 - [`configs/scene.example.yaml`](configs/scene.example.yaml) defines floor

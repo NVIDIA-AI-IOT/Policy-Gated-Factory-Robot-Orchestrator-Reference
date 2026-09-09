@@ -1,11 +1,11 @@
 {
   "agents": {
+    "ownership": "explicit",
     "defaults": {
       "skipBootstrap": true
     },
-    "list": [
-      {
-        "id": "main",
+    "entries": {
+      "main": {
         "name": "Policy-Gated Factory Robot Orchestrator Reference",
         "skills": [],
         "tools": {
@@ -14,8 +14,7 @@
           ]
         }
       },
-      {
-        "id": "ic-console",
+      "ic-console": {
         "name": "Policy-Gated Factory Robot Orchestrator Reference Console",
         "contextInjection": "never",
         "skills": [],
@@ -24,24 +23,11 @@
             "ic-floor__*"
           ],
           "loopDetection": {
-            "enabled": true,
-            "historySize": 30,
-            "warningThreshold": 6,
-            "unknownToolThreshold": 6,
-            "criticalThreshold": 12,
-            "globalCircuitBreakerThreshold": 20,
-            "detectors": {
-              "genericRepeat": true,
-              "knownPollNoProgress": true,
-              "pingPong": true
-            },
-            "postCompactionGuard": {
-              "windowSize": 3
-            }
+            "enabled": true
           }
         }
       }
-    ]
+    }
   },
   "mcp": {
     "servers": {

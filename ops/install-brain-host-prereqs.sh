@@ -34,7 +34,8 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 $SUDO apt-get update
-$SUDO apt-get install -y --no-remove --no-install-recommends ca-certificates curl gnupg
+$SUDO apt-get install -y --no-remove --no-install-recommends \
+  ca-certificates curl git-lfs gnupg
 
 tmp_dir="$(mktemp -d /tmp/ic-host-prereqs.XXXXXX)"
 cleanup() { rm -rf "$tmp_dir"; }
@@ -135,6 +136,7 @@ case "$("$HOME/.local/bin/uv" --version)" in
   *) fail "unexpected uv version: $("$HOME/.local/bin/uv" --version)" ;;
 esac
 [ -f /opt/ros/jazzy/setup.bash ] || fail "ROS Jazzy setup file is missing"
+git lfs version >/dev/null 2>&1 || fail "Git LFS is unavailable after installation"
 CUDA_RUNTIME_DIR=/usr/local/cuda-13.0/targets/sbsa-linux/lib
 for library in \
   libcupti.so.13 \

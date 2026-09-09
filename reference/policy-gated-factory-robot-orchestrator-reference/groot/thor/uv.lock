@@ -607,7 +607,6 @@ dependencies = [
     { name = "tensorrt" },
     { name = "termcolor" },
     { name = "torch" },
-    { name = "torchcodec" },
     { name = "torchvision" },
     { name = "transformers" },
     { name = "triton" },
@@ -663,7 +662,6 @@ requires-dist = [
     { name = "tensorrt", specifier = ">=10.14.1.48.post1" },
     { name = "termcolor", specifier = "==3.2.0" },
     { name = "torch", specifier = "==2.10.0", index = "https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple" },
-    { name = "torchcodec", specifier = "==0.10.0", index = "https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple" },
     { name = "torchvision", specifier = "==0.25.0", index = "https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple" },
     { name = "transformers", specifier = "==4.57.6" },
     { name = "triton", specifier = "==3.5.0", index = "https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple" },
@@ -1945,14 +1943,6 @@ dependencies = [
 ]
 wheels = [
     { url = "https://pypi.jetson-ai-lab.io/sbsa/cu130/+f/c59/7ddc0c1f8de6c/torch-2.10.0-cp312-cp312-linux_aarch64.whl", hash = "sha256:c597ddc0c1f8de6c54fc7c7c09bfe5f70e04a5024383740e99a02eb13498ced5" },
-]
-
-[[package]]
-name = "torchcodec"
-version = "0.10.0"
-source = { registry = "https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple" }
-wheels = [
-    { url = "https://pypi.jetson-ai-lab.io/sbsa/cu130/+f/993/01406faba507d/torchcodec-0.10.0-cp312-cp312-linux_aarch64.whl", hash = "sha256:99301406faba507d2e06995f29ba2d1950086a032829b0c5d953416283882ddc" },
 ]
 
 [[package]]

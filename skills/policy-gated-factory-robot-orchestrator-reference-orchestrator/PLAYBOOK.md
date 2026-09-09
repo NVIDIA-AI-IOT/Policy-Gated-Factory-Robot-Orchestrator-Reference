@@ -12,7 +12,7 @@
 
 - **Dispatch exactly ONE cell transaction at a time and WAIT for its result and fresh visual proof before the next.** Independent `dispatch_task` calls remain serial; never issue two of them concurrently. When `dispatch_parallel` is explicitly enabled, it is one bounded transaction containing exactly one validated left-arm move and one validated right-arm move; two independent B=1 policy servers run the same shared GR00T checkpoint, one per arm. The MCP proof gate then requires separate, identity-bound evidence from `tote` and `tote_r`. If a dispatch is unverified, use `floor_state` to reconcile it and never blindly repeat a timed-out or unverified action.
 
-### Certified dual-arm GR00T order
+### Certified dual-arm GR00T serial fallback
 
 For the hardened six-object scene (`groot_three_object`, layout `3/3`, seed
 `31302`), the physically validated pick-and-place order is fixed:
@@ -29,21 +29,28 @@ move is a separate MCP `dispatch_task` call and its fresh visual proof must
 clear before the next move. After all six moves verify, haul `tote`, verify it
 on `rack_1`, then haul `tote_r` and verify both totes on `rack_1`.
 
-If the MCP server exposes and enables `dispatch_parallel`, the bounded
-concurrent variant replaces each adjacent same-color pair above with one
-atomic call: green pair, verify both totes; red pair, verify both totes; blue
-pair, verify both totes. This mode is valid only for the same fixed layout-3
-scene and shared checkpoint. If the tool or its two-server B=1 readiness gate is not
-available, use the six serial calls above unchanged.
+The optional concurrent reference is not the serial order grouped by color.
+When `certified_groot_sequence` reports `execution_mode` =
+`concurrent_mixed_pairs`, follow its three transactions exactly:
+
+1. left blue + right green; verify blue in `tote` and green in `tote_r`;
+2. left green + right red; verify green in `tote` and red in `tote_r`;
+3. left red + right blue; verify red in `tote` and blue in `tote_r`.
+
+That plan is exposed only when certified-order enforcement is active and the
+deployment has explicitly enabled both parallel and flexible-order
+capabilities after the two-server B=1 readiness gate. Never substitute the
+failed same-color green/red/blue grouping. If the capability report remains
+`serial_fallback`, use the six serial calls above unchanged.
 
 ### Arm selection for whole-cell requests
 
 For a vague whole-cell instruction such as "check the table and put the blocks
 in their matching totes," use **both arms by default**; do not ask the operator
 to restate the mission. In the hardened layout-3 scene, prefer the three
-bounded same-color `dispatch_parallel` transactions in the certified
-green/red/blue order when that tool is enabled. Otherwise use the six certified
-serial moves above.
+exact mixed `dispatch_parallel` transactions returned by
+`certified_groot_sequence` when its mixed capability is enabled. Otherwise
+use the six certified serial moves above.
 
 An explicit arm-count instruction overrides only that default:
 
@@ -62,32 +69,25 @@ set, and never silently activate the idle arm after the operator requested one
 arm. If the operator names different colors for the two arms and says
 "together," use the mixed-color transaction described below.
 
-### Explicit flexible-order evaluation
+### Explicit mixed-order evaluation
 
-When the deployment explicitly enables `IC_GROOT_FLEXIBLE_ORDER=1`, an
-operator may provide an arm/color order that overrides only the fixed sequence
-above. Preserve the operator's barriers: phrases such as "once done" mean the
-preceding dispatch and its fresh visual proof must clear before continuing;
-"together" means one `dispatch_parallel(left_color, right_color)` transaction,
-never two independent tool calls. Mixed-color pairs are allowed only in this
-mode. All endpoint/source/destination validation, physics verification,
-bounded retry, zone guards, and per-arm visual proofs remain mandatory. If the
-flag is not enabled, use the certified sequence and report the refusal rather
-than improvising.
+`IC_GROOT_FLEXIBLE_ORDER=1` does not enable motion by itself. In the certified
+mission it combines with `IC_GROOT_PARALLEL_ENABLED=1` to select the exact
+three-pair Order744 plan above; the MCP state machine rejects skipped,
+reversed, partial, or serialized pairs. Preserve its barriers: each
+`dispatch_parallel(left_color, right_color)` result and both identity-bound
+visual proofs must clear before continuing. All endpoint/source/destination
+validation, physics verification, bounded retry, zone guards, and per-arm
+visual proofs remain mandatory. Arbitrary flexible order is not exposed by
+this route.
 
 `certified_groot_sequence` is the authoritative runtime capability report. If
 its `active_capabilities.mixed_color_parallel_enabled` value is `true`, call
-`dispatch_parallel(left_color, right_color)` directly for an explicitly
-requested mixed-color pair. Do not ask the operator to edit environment
-variables, do not describe this as bypassing a guard, and do not substitute
-serial moves. If the tool refuses, quote its exact returned reason; never infer
-that the flexible-order flag is disabled from an unrelated lower-layer error.
-
-Example: “pick red with left; once done pick blue with right; then pick green
-with left and red with right together” maps to: `dispatch_task(left, red)` →
-left-tote proof → `dispatch_task(right, blue)` → right-tote proof →
-`dispatch_parallel(left_color=green, right_color=red)` → green/left-tote proof
-and red/right-tote proof. Do not reorder or collapse either serial barrier.
+the exact `transactions` it returns. Do not ask the operator to edit environment
+variables, do not describe this as bypassing a guard, and do not
+substitute serial or same-color moves. If the tool refuses, quote its exact
+returned reason; never infer that a flag is disabled from an unrelated
+lower-layer error.
 
 ## Floor operations (Policy-Gated Factory Robot Orchestrator Reference cell)
 
@@ -106,9 +106,9 @@ You operate a robotic warehouse **sorting cell**: turn a goal into floor actions
 - `perceive(region)` — looks through that region's camera (Cosmos VLM) and fuses it with the symbolic state; returns `vision`, `vision_discrepancies`, `vision_agrees`. **Symbolic ground truth always wins a conflict — a mismatch is flagged, never applied.**
 - `dispatch_task` — execute ONE action (see Actions). Every dispatch is checked by the safety gate first.
 - `dispatch_parallel(left_color, right_color?)` — when enabled, execute one
-  atomic left/right GR00T pair. `right_color` defaults to `left_color`; mixed
-  colors additionally require flexible-order mode. It is not a general-purpose
-  parallel scheduler.
+  atomic left/right GR00T pair. The certified reference accepts only the next
+  transaction returned by `certified_groot_sequence`; it is not a
+  general-purpose parallel scheduler.
 - `reset_scene` — operator recovery action. Call it only when the user
   explicitly requests a reset; it reuses the hardened Isaac reset transaction,
   refuses while another task is active, and must return `verified=true`.
