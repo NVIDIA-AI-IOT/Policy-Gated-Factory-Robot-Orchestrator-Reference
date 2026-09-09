@@ -6,5 +6,5 @@ success rate through journaled missions. Create your own: [`TEMPLATE/`](TEMPLATE
 
 | Skill | Composes | Status |
 |---|---|---|
-| [`industrial-claw-orchestrator`](industrial-claw-orchestrator/) | floor tools → sort + haul + verify | ✅ manifest 7/7 · mission-proven on 3 harnesses |
+| [`policy-gated-factory-robot-orchestrator-reference-orchestrator`](policy-gated-factory-robot-orchestrator-reference-orchestrator/) | floor tools → sort + haul + verify | ✅ manifest 7/7 · mission-proven on 3 harnesses |
 | [`TEMPLATE`](TEMPLATE/) | — | the paved road |

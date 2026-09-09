@@ -6,8 +6,11 @@ from __future__ import annotations
 
 import pytest
 
-from industrial_claw.input_sources.base import InputSource
-from industrial_claw.input_sources.mock import MockInputSource, MockSnapshot
+from policy_gated_factory_robot_orchestrator_reference.input_sources.base import InputSource
+from policy_gated_factory_robot_orchestrator_reference.input_sources.mock import (
+    MockInputSource,
+    MockSnapshot,
+)
 
 
 def test_abstract_cannot_instantiate() -> None:

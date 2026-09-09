@@ -327,6 +327,23 @@ class TestAPI:
             assert 'id="safety"' not in resp.text
             assert "/static/safety.js" not in resp.text
 
+    def test_public_chat_url_only_changes_the_browser_csp(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        internal_url = "http://127.0.0.1:8620"
+        public_url = "http://10.110.50.252:8620"
+        monkeypatch.setenv("IC_CHAT_URL", internal_url)
+        monkeypatch.setenv("IC_CHAT_PUBLIC_URL", public_url)
+
+        app = build_app(make_agg({"/v1/health": HEALTHY}))
+        with TestClient(app) as client:
+            csp = client.get("/").headers["content-security-policy"]
+
+        assert public_url in csp
+        assert f"img-src 'self' data: {public_url}" in csp
+        assert internal_url not in csp
+        assert app.state.aggregator.settings.chat_url == internal_url
+
     def test_static_js_escapes_untrusted_fields(self) -> None:
         # Guard against regressing the stored-XSS fix: every innerHTML sink for
         # journal-sourced values must route through esc().

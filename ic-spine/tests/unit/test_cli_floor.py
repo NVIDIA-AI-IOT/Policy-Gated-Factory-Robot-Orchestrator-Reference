@@ -3,7 +3,7 @@
 
 """Tests for the granular floor CLI subcommands the TS plugin shells out to.
 
-Each is a thin, JSON-emitting bridge over industrial_claw.floor, sharing one
+Each is a thin, JSON-emitting bridge over policy_gated_factory_robot_orchestrator_reference.floor, sharing one
 ``--state`` file so perceive reflects what dispatch did in a prior invocation.
 """
 from __future__ import annotations
@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from industrial_claw.cli import main
+from policy_gated_factory_robot_orchestrator_reference.cli import main
 
 
 def _json_out(capsys: pytest.CaptureFixture[str]) -> dict:

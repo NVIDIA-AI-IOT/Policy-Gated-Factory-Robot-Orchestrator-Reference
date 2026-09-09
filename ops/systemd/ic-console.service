@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [Unit]
-Description=Industrial Claw live operator console
+Description=Policy-Gated Factory Robot Orchestrator Reference live operator console
 Wants=network-online.target ic-seam.service ic-chat.service ic-workflows.service ic-gpu-exporter.service
 After=network-online.target ic-seam.service ic-chat.service ic-workflows.service ic-gpu-exporter.service
 

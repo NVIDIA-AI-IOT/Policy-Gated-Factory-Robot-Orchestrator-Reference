@@ -4,8 +4,8 @@
 """Tests for the VLMClient Protocol and MockVLMClient."""
 from __future__ import annotations
 
-from industrial_claw.clients.vlm.base import VLMResponse
-from industrial_claw.clients.vlm.mock import MockVLMClient
+from policy_gated_factory_robot_orchestrator_reference.clients.vlm.base import VLMResponse
+from policy_gated_factory_robot_orchestrator_reference.clients.vlm.mock import MockVLMClient
 
 
 async def test_mock_returns_canned_predicate() -> None:

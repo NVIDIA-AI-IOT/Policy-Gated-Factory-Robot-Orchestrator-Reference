@@ -55,8 +55,8 @@ PY
   || fail "repository is $actual_visibility, requested $VISIBILITY"
 
 "$HF_BIN" upload "$MODEL_REPO" \
-  "$REPO/reference/industrial-claw/groot/models/README.md" README.md \
-  --commit-message "Add Industrial Claw Order744-cont24 model card"
+  "$REPO/reference/policy-gated-factory-robot-orchestrator-reference/groot/models/README.md" README.md \
+  --commit-message "Add Policy-Gated Factory Robot Orchestrator Reference Order744-cont24 model card"
 "$HF_BIN" upload "$MODEL_REPO" "$sums" SHA256SUMS \
   --commit-message "Add model artifact checksums"
 "$HF_BIN" upload "$MODEL_REPO" "$CHECKPOINT" . \

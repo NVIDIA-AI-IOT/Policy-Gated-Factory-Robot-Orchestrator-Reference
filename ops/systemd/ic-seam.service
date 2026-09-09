@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [Unit]
-Description=Industrial Claw ROS 2 floor Seam
+Description=Policy-Gated Factory Robot Orchestrator Reference ROS 2 floor Seam
 Wants=network-online.target
 After=network-online.target
 
@@ -11,7 +11,7 @@ Type=simple
 WorkingDirectory=__IC_REPO__/ic-spine
 EnvironmentFile=__IC_HOME__/.config/ic-spine/seam.env
 Environment=PYTHONDONTWRITEBYTECODE=1
-ExecStart=__IC_REPO__/ic-spine/.venv/bin/industrial_claw serve --host 127.0.0.1 --port 8766
+ExecStart=__IC_REPO__/ic-spine/.venv/bin/policy_gated_factory_robot_orchestrator_reference serve --host 127.0.0.1 --port 8766
 Restart=on-failure
 RestartSec=3
 TimeoutStopSec=20

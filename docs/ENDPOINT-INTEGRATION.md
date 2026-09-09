@@ -1,6 +1,6 @@
 # Integrating endpoints without changing the Spine
 
-Industrial Claw has three independent endpoint boundaries. Keeping them
+Policy-Gated Factory Robot Orchestrator Reference has three independent endpoint boundaries. Keeping them
 separate is what makes the repository modular.
 
 ## Robot and machine actions
@@ -58,7 +58,7 @@ handler while it is being migrated out of `runtime.py`.
 Validate discovery without launching Isaac Sim:
 
 ```bash
-cd reference/industrial-claw/isaac-cell
+cd reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell
 python validate_actions.py
 ```
 

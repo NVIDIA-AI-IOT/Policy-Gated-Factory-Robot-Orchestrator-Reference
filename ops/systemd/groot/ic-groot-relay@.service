@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 [Unit]
-Description=Industrial Claw native DROID relay (%i)
+Description=Policy-Gated Factory Robot Orchestrator Reference native DROID relay (%i)
 Requires=ic-groot-policy@%i.service
 After=ic-groot-policy@%i.service
 StartLimitIntervalSec=300

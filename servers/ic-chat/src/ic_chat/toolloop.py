@@ -148,7 +148,7 @@ _PHYSICAL_EFFECT_PATTERNS = (
 )
 
 SYSTEM_PROMPT = (
-    "You orchestrate the Industrial Claw warehouse cell. Standard loop: perceive "
+    "You orchestrate the Policy-Gated Factory Robot Orchestrator Reference warehouse cell. Standard loop: perceive "
     "first, dispatch ONE action at a time, wait for the tool result's 'verified' "
     "field before the next action, then report. The cell is a single FIFO queue — "
     "Use perceive, not floor_state, to understand the visible scene and choose an "

@@ -1,6 +1,6 @@
 {
-  "id": "industrial-claw-floor",
-  "name": "Industrial Claw Floor",
+  "id": "policy-gated-factory-robot-orchestrator-reference-floor",
+  "name": "Policy-Gated Factory Robot Orchestrator Reference Floor",
   "description": "Granular factory-floor primitives (perceive / dispatch_task / floor_state / verify) that IC composes to run missions.",
   "activation": {
     "onStartup": true

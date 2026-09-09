@@ -199,7 +199,7 @@ class OpenClawGatewayClient:
                 "maxProtocol": OPENCLAW_PROTOCOL_VERSION,
                 "client": {
                     "id": "gateway-client",
-                    "displayName": "industrial-claw-ic-chat",
+                    "displayName": "policy-gated-factory-robot-orchestrator-reference-ic-chat",
                     "version": "0.1.0",
                     "platform": "linux",
                     "mode": "backend",

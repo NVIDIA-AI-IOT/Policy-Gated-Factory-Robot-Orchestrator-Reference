@@ -8,15 +8,20 @@ import json
 
 import pytest
 
-from industrial_claw.action_endpoints.mock import MockActionEndpoint
-from industrial_claw.agents.action import ActionAgent
-from industrial_claw.agents.brain import BrainAgent, InvalidPlanError
-from industrial_claw.agents.perception import PerceptionAgent
-from industrial_claw.clients.llm.base import LLMResponse
-from industrial_claw.clients.llm.mock import MockLLMClient
-from industrial_claw.clients.vlm.mock import MockVLMClient
-from industrial_claw.input_sources.mock import MockInputSource
-from industrial_claw.types import Capability, Pose, SubtaskKind
+from policy_gated_factory_robot_orchestrator_reference.action_endpoints.mock import (
+    MockActionEndpoint,
+)
+from policy_gated_factory_robot_orchestrator_reference.agents.action import ActionAgent
+from policy_gated_factory_robot_orchestrator_reference.agents.brain import (
+    BrainAgent,
+    InvalidPlanError,
+)
+from policy_gated_factory_robot_orchestrator_reference.agents.perception import PerceptionAgent
+from policy_gated_factory_robot_orchestrator_reference.clients.llm.base import LLMResponse
+from policy_gated_factory_robot_orchestrator_reference.clients.llm.mock import MockLLMClient
+from policy_gated_factory_robot_orchestrator_reference.clients.vlm.mock import MockVLMClient
+from policy_gated_factory_robot_orchestrator_reference.input_sources.mock import MockInputSource
+from policy_gated_factory_robot_orchestrator_reference.types import Capability, Pose, SubtaskKind
 
 
 def _build_brain(llm_text: str) -> BrainAgent:

@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 [Unit]
-Description=Industrial Claw one-checkpoint two-instance B=1 GR00T stack
+Description=Policy-Gated Factory Robot Orchestrator Reference one-checkpoint two-instance B=1 GR00T stack
 Requires=ic-groot-policy@shared-left.service
 Requires=ic-groot-policy@shared-right.service
 Requires=ic-groot-relay@shared-left.service

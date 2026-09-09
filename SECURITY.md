@@ -7,7 +7,7 @@ vulnerability, exploit path, credential, or security-sensitive proof of concept.
 
 ## Trust model (current state)
 
-Industrial Claw is **local-first agent infrastructure for trusted factory operators**. It is not
+Policy-Gated Factory Robot Orchestrator Reference is **local-first agent infrastructure for trusted factory operators**. It is not
 designed today as a shared multi-tenant boundary between adversarial users on one gateway. Hardening
 for production deployment — NVIDIA NemoClaw sandboxing, OpenShell policy enforcement, NIM-routed
 inference, audit logs, RBAC for operator accounts — lands in a later plan and will come with an
@@ -40,7 +40,7 @@ the next hardening targets before anything binds beyond loopback:
 ## Scope of useful reports today
 
 The most useful reports show a **current, reproducible boundary bypass with demonstrated impact**
-against the Python orchestration engine (`ic-spine/`) or the gateway runtime that runs Industrial Claw
+against the Python orchestration engine (`ic-spine/`) or the gateway runtime that runs Policy-Gated Factory Robot Orchestrator Reference
 agents. Scanner output, prompt-injection-only chains against the LLM, or reports that rely on hostile
 users sharing one trusted gateway are usually not security vulnerabilities under this model.
 

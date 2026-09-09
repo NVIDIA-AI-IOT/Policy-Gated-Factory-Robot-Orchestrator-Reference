@@ -5,8 +5,8 @@
 
 from __future__ import annotations
 
-from industrial_claw.action_endpoints.base import ActionResult
-from industrial_claw.floor import ros2
+from policy_gated_factory_robot_orchestrator_reference.action_endpoints.base import ActionResult
+from policy_gated_factory_robot_orchestrator_reference.floor import ros2
 
 
 class _Bridge:

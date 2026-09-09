@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Industrial Claw conformance kit — the certification bar for seam implementations.
+"""Policy-Gated Factory Robot Orchestrator Reference conformance kit — the certification bar for seam implementations.
 
 Black-box: point it at any floor-service endpoint and it verifies the contract —
 schemas, policy gate, honesty semantics. "New adapter = pass the kit."

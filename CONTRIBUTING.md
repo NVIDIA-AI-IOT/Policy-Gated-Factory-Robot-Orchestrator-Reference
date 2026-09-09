@@ -1,6 +1,6 @@
-# Contributing to Industrial Claw
+# Contributing to Policy-Gated Factory Robot Orchestrator Reference
 
-Thank you for your interest in contributing to Industrial Claw.
+Thank you for your interest in contributing to Policy-Gated Factory Robot Orchestrator Reference.
 
 ## If you're working on this repo
 
@@ -15,7 +15,7 @@ Thank you for your interest in contributing to Industrial Claw.
 - **Commit style:** Conventional Commits prefix (`feat:`, `fix:`, `chore:`, `docs:`, `test:`, etc.) with a scope
   when meaningful (`feat(agents): ...`, `docs(readme): ...`).
 - **TypeScript runtime work** uses the pinned OpenClaw package dependency and
-  the Industrial Claw plugin under [`plugins/openclaw/`](plugins/openclaw/).
+  the Policy-Gated Factory Robot Orchestrator Reference plugin under [`plugins/openclaw/`](plugins/openclaw/).
 
 ## Developer Certificate of Origin
 

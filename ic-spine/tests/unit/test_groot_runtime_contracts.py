@@ -11,9 +11,8 @@ import struct
 import time
 from pathlib import Path
 
-
 REFERENCE_ROOT = (
-    Path(__file__).resolve().parents[3] / "reference" / "industrial-claw"
+    Path(__file__).resolve().parents[3] / "reference" / "policy-gated-factory-robot-orchestrator-reference"
 )
 GROOT_ROOT = REFERENCE_ROOT / "groot"
 RUNTIME_ROOT = GROOT_ROOT / "runtime" / "native_droid_work"

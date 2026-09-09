@@ -11,7 +11,7 @@ The three non-negotiables (the `ic-conformance mcp` check enforces them):
 
 Backing your tools with HTTP? Point at a certified seam (`ic-conformance run`)
 and pass through its results untouched — never invent success the seam didn't
-report. See servers/industrial-claw-mcp for the reference implementation.
+report. See servers/policy-gated-factory-robot-orchestrator-reference-mcp for the reference implementation.
 """
 from __future__ import annotations
 

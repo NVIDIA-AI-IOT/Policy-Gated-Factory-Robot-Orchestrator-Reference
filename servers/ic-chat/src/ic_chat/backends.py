@@ -160,7 +160,7 @@ class OpenClawBackend(OpenAIBackend):
             config_path
             or os.environ.get(
                 "IC_OPENCLAW_CONFIG",
-                str(Path.home() / ".industrial-claw" / "openclaw" / "openclaw.json"),
+                str(Path.home() / ".policy-gated-factory-robot-orchestrator-reference" / "openclaw" / "openclaw.json"),
             )
         ).expanduser()
         config: Dict[str, Any] = {}
@@ -178,7 +178,12 @@ class OpenClawBackend(OpenAIBackend):
             if isinstance(endpoint.get("chatCompletions"), dict)
             else {}
         )
-        token = api_key or os.environ.get("IC_OPENCLAW_TOKEN", "") or auth.get("token", "")
+        token = (
+            api_key
+            or os.environ.get("IC_OPENCLAW_TOKEN", "")
+            or os.environ.get("OPENCLAW_GATEWAY_TOKEN", "")
+            or auth.get("token", "")
+        )
         url = base_url or os.environ.get("IC_OPENCLAW_URL", "http://127.0.0.1:18790")
         target = model or os.environ.get("IC_OPENCLAW_AGENT_MODEL", "openclaw/ic-console")
         super().__init__(
@@ -211,6 +216,7 @@ class OpenClawBackend(OpenAIBackend):
                 base_url is not None
                 or api_key is not None
                 or os.environ.get("IC_OPENCLAW_TOKEN")
+                or os.environ.get("OPENCLAW_GATEWAY_TOKEN")
                 or (self.native_tool_owner and self.config_path.exists())
                 or chat_endpoint.get("enabled") is True
             )

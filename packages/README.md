@@ -1,6 +1,6 @@
 # Packages
 
-Industrial Claw ships two reusable Python packages:
+Policy-Gated Factory Robot Orchestrator Reference ships two reusable Python packages:
 
 - [`conformance-kit/`](conformance-kit/) checks an IC Spine floor endpoint,
   MCP server, or skill manifest against the public contracts.

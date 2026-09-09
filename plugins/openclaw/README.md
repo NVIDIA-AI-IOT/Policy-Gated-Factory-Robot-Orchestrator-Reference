@@ -2,6 +2,6 @@
 
 The gateway plugin — the only runtime-specific code. Registers the five floor tools
 (floor_state, perceive, dispatch_task, reset_scene, verify) plus the dispatch safety policy inside an
-OpenClaw runtime. Source moved here from `extensions/industrial-claw-floor/`
-(two path-hint strings updated for the new layout; on `main`/`fox-brain-restructure` it still lives at `extensions/industrial-claw-floor/` for the vendored-runtime demo).
+OpenClaw runtime. Source moved here from the extension directory used by historical
+branches; two path-hint strings were updated for this layout.
 Wiring it against the pinned `openclaw` dependency is future work — see ../../STRUCTURE.md.

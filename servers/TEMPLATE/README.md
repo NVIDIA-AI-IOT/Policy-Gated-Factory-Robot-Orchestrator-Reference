@@ -2,7 +2,7 @@
 
 Expose your system (video analytics, QC, fleet data, …) as tools any brain in the
 ecosystem can use — one handshake, doctrine included. Reference implementation:
-[`../industrial-claw-mcp`](../industrial-claw-mcp/).
+[`../policy-gated-factory-robot-orchestrator-reference-mcp`](../policy-gated-factory-robot-orchestrator-reference-mcp/).
 
 ## The workflow
 

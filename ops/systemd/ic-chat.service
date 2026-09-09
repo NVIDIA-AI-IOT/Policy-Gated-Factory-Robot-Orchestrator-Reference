@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [Unit]
-Description=Industrial Claw Chat Gateway
+Description=Policy-Gated Factory Robot Orchestrator Reference Chat Gateway
 Wants=network-online.target
 Wants=ic-seam.service ic-openclaw.service
 After=network-online.target ic-seam.service ic-openclaw.service

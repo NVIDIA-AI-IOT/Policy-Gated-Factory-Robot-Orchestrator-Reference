@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from industrial_claw.runs.recorder import RunRecorder
+from policy_gated_factory_robot_orchestrator_reference.runs.recorder import RunRecorder
 
 
 def test_recorder_creates_run_directory(tmp_path: Path) -> None:

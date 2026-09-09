@@ -39,12 +39,18 @@ jobs:
       - name: Validate shell sources
         run: |
           bash -n ops/*.sh
-          bash -n reference/industrial-claw/groot/thor/install_deps.sh
+          bash -n reference/policy-gated-factory-robot-orchestrator-reference/groot/thor/install_deps.sh
 
       - name: Validate locked Node installation
         run: |
           npm ci
           npm test
+
+      - name: Validate IC Spine
+        run: |
+          uv sync --frozen --extra dev --project ic-spine
+          uv run --frozen --project ic-spine pytest -q ic-spine/tests
+          uv run --frozen --project ic-spine policy_gated_factory_robot_orchestrator_reference --help
 
       - name: Validate IC Chat
         run: |
@@ -63,10 +69,15 @@ jobs:
 
       - name: Validate MCP server
         run: |
-          uv sync --frozen --extra dev --project servers/industrial-claw-mcp
-          uv run --frozen --project servers/industrial-claw-mcp pytest -q servers/industrial-claw-mcp/tests
+          uv sync --frozen --extra dev --project servers/policy-gated-factory-robot-orchestrator-reference-mcp
+          uv run --frozen --project servers/policy-gated-factory-robot-orchestrator-reference-mcp pytest -q servers/policy-gated-factory-robot-orchestrator-reference-mcp/tests
 
       - name: Validate deployment contracts
         run: |
-          uv run --frozen --project servers/ic-workflows pytest -q ops/test_deployment_contracts.py ops/test_ic_gpu_exporter.py
+          uv run --frozen --project servers/ic-workflows pytest -q \
+            ops/test_deployment_contracts.py \
+            ops/test_groot_sim_host_contract.py \
+            ops/test_ic_gpu_exporter.py \
+            ops/test_isaac_sim_workstation.py \
+            ic-spine/tests/unit/test_isaac_lifecycle_contract.py
           python -m compileall -q ic-spine/src servers ic-console/src ops

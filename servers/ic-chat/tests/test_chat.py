@@ -235,6 +235,67 @@ class TestBackends:
         assert mismatch["ready"] is False
         assert mismatch["advertised_models"] == ["reasoning-model"]
 
+    async def test_openai_uses_sk_style_ic_chat_key_for_tool_call(
+        self, aiohttp_server, monkeypatch
+    ) -> None:
+        seen: Dict[str, Any] = {}
+
+        async def completions(request: web.Request) -> web.Response:
+            seen["authorization"] = request.headers.get("authorization")
+            seen["body"] = await request.json()
+            return web.json_response({
+                "choices": [{
+                    "message": {
+                        "content": "",
+                        "tool_calls": [{
+                            "id": "internal-call-1",
+                            "type": "function",
+                            "function": {
+                                "name": "dispatch_task",
+                                "arguments": '{"color":"red"}',
+                            },
+                        }],
+                    }
+                }]
+            })
+
+        app = web.Application()
+        app.router.add_post("/v1/chat/completions", completions)
+        server = await aiohttp_server(app)
+        api_key = "sk-internal-NVIDIA_42.token"
+        model = "nvidia/internal-reasoning-model"
+        monkeypatch.setenv(
+            "IC_CHAT_MODEL_URL", str(server.make_url("")).rstrip("/")
+        )
+        monkeypatch.setenv("IC_CHAT_API_KEY", api_key)
+        monkeypatch.setenv("IC_CHAT_MODEL", model)
+        tool = {
+            "name": "dispatch_task",
+            "description": "Move one object through the policy gate.",
+            "parameters": {
+                "type": "object",
+                "properties": {"color": {"type": "string"}},
+                "required": ["color"],
+            },
+        }
+
+        out = await OpenAIBackend().respond(
+            [{"role": "user", "content": "move the red object"}], [tool]
+        )
+
+        assert seen["authorization"] == f"Bearer {api_key}"
+        assert seen["body"]["model"] == model
+        assert seen["body"]["tools"] == [{"type": "function", "function": tool}]
+        assert seen["body"]["tool_choice"] == "auto"
+        assert out == {
+            "content": "",
+            "tool_calls": [{
+                "id": "internal-call-1",
+                "name": "dispatch_task",
+                "arguments": {"color": "red"},
+            }],
+        }
+
     def test_anthropic_reuses_openclaw_nim_key(self, monkeypatch) -> None:
         monkeypatch.delenv("IC_CHAT_API_KEY", raising=False)
         monkeypatch.setenv("NVIDIA_NIM_API_KEY", "shared-openclaw-key")
@@ -253,6 +314,31 @@ class TestBackends:
         )
         assert backend.timeout_s == 900.0
         assert backend.gateway.timeout_s == 900.0
+
+    def test_openclaw_reuses_official_gateway_token(self, monkeypatch, tmp_path) -> None:
+        monkeypatch.delenv("IC_OPENCLAW_TOKEN", raising=False)
+        monkeypatch.setenv("OPENCLAW_GATEWAY_TOKEN", "shared-gateway-token")
+        backend = OpenClawBackend(
+            base_url="http://127.0.0.1:18790",
+            config_path=str(tmp_path / "missing-openclaw.json"),
+            native_gateway=True,
+        )
+
+        assert backend.configured is True
+        assert backend.api_key == "shared-gateway-token"
+        assert backend.gateway.token == "shared-gateway-token"
+
+    def test_openclaw_prefers_ic_token_override(self, monkeypatch, tmp_path) -> None:
+        monkeypatch.setenv("IC_OPENCLAW_TOKEN", "ic-token")
+        monkeypatch.setenv("OPENCLAW_GATEWAY_TOKEN", "official-token")
+        backend = OpenClawBackend(
+            base_url="http://127.0.0.1:18790",
+            config_path=str(tmp_path / "missing-openclaw.json"),
+            native_gateway=True,
+        )
+
+        assert backend.api_key == "ic-token"
+        assert backend.gateway.token == "ic-token"
 
     def test_openclaw_explicit_timeout_overrides_environment(self, monkeypatch) -> None:
         monkeypatch.setenv("IC_OPENCLAW_TIMEOUT_S", "900")

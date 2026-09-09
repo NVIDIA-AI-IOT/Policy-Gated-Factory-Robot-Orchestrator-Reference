@@ -12,7 +12,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from industrial_claw.floor import Endpoint, FloorState, dispatch, floor_state, perceive
+from policy_gated_factory_robot_orchestrator_reference.floor import (
+    Endpoint,
+    FloorState,
+    dispatch,
+    floor_state,
+    perceive,
+)
 
 
 def test_seed_default_matches_the_demo_scene() -> None:
@@ -82,7 +88,7 @@ async def test_dispatch_missing_block_does_not_mutate() -> None:
 
 
 def test_from_scene_carries_faulty() -> None:
-    from industrial_claw.floor.scene import Scene, SceneEndpoint
+    from policy_gated_factory_robot_orchestrator_reference.floor.scene import Scene, SceneEndpoint
 
     st = FloorState.from_scene(
         Scene(
@@ -95,7 +101,7 @@ def test_from_scene_carries_faulty() -> None:
 
 
 def test_load_or_seed_seeds_faulty_from_scene(tmp_path: Path) -> None:
-    from industrial_claw.floor.scene import Scene, SceneEndpoint
+    from policy_gated_factory_robot_orchestrator_reference.floor.scene import Scene, SceneEndpoint
 
     path = tmp_path / "f.json"
     scene = Scene(

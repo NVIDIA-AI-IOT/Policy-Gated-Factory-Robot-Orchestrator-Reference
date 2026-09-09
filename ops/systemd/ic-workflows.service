@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [Unit]
-Description=Industrial Claw gated workflow runner
+Description=Policy-Gated Factory Robot Orchestrator Reference gated workflow runner
 Wants=network-online.target ic-seam.service
 After=network-online.target ic-seam.service
 

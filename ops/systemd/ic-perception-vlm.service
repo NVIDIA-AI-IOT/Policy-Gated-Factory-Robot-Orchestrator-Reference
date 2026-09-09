@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [Unit]
-Description=Industrial Claw pinned perception VLM
+Description=Policy-Gated Factory Robot Orchestrator Reference pinned perception VLM
 After=network-online.target
 Wants=network-online.target
 

@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-# Industrial Claw scene — the fixed Isaac demo cell (HIL / ros2 backend).
+# Policy-Gated Factory Robot Orchestrator Reference scene — the fixed Isaac demo cell (HIL / ros2 backend).
 # Franka_Left sorts red/blue/green into a 3-compartment tote; MobileBot AMR hauls it to the rack.
 schema_version: 1
 tables:

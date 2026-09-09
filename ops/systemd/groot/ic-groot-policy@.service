@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 [Unit]
-Description=Industrial Claw GR00T policy server (%i)
+Description=Policy-Gated Factory Robot Orchestrator Reference GR00T policy server (%i)
 After=network-online.target
 Wants=network-online.target
 StartLimitIntervalSec=300
@@ -15,8 +15,8 @@ Environment=PYTHONUNBUFFERED=1
 Environment=NO_ALBUMENTATIONS_UPDATE=1
 Environment=HF_HUB_OFFLINE=1
 Environment=TRANSFORMERS_OFFLINE=1
-Environment=HF_HOME=__IC_HOME__/groot_shadow/hf-home
-Environment=HF_TOKEN_PATH=__IC_HOME__/groot_shadow/hf-home/token
+Environment=HF_HOME=__IC_HOME__/policy-gated-factory-robot-orchestrator-reference-models/hf-home
+Environment=HF_TOKEN_PATH=__IC_HOME__/policy-gated-factory-robot-orchestrator-reference-models/hf-home/token
 Environment=CUDA_HOME=/usr/local/cuda-13.0
 Environment=CUDA_PATH=/usr/local/cuda-13.0
 Environment=TRITON_PTXAS_PATH=/usr/local/cuda-13.0/bin/ptxas

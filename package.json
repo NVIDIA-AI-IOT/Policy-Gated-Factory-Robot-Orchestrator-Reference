@@ -1,9 +1,9 @@
 {
-  "name": "industrial-claw",
+  "name": "policy-gated-factory-robot-orchestrator-reference",
   "version": "0.1.0",
   "license": "Apache-2.0",
   "private": true,
-  "description": "Industrial Claw — factory operations orchestration with a pinned OpenClaw runtime and an Isaac Sim reference implementation.",
+  "description": "Policy-Gated Factory Robot Orchestrator Reference — factory operations orchestration with a pinned OpenClaw runtime and an Isaac Sim reference implementation.",
   "type": "module",
   "scripts": {
     "start": "bash ops/gw.sh --bind loopback",

@@ -6,7 +6,7 @@ description: >-
   Fixed layout-3 demonstration: sort each color with both Franka arms through
   one batched GR00T checkpoint, verify each tote separately, then haul both
   totes serially to the rack.
-owner: industrial-claw
+owner: policy-gated-factory-robot-orchestrator-reference
 steps:
   - tool: dispatch_parallel
     args:

@@ -4,8 +4,8 @@
 """Tests for the LLMClient Protocol and MockLLMClient."""
 from __future__ import annotations
 
-from industrial_claw.clients.llm.base import LLMResponse
-from industrial_claw.clients.llm.mock import MockLLMClient
+from policy_gated_factory_robot_orchestrator_reference.clients.llm.base import LLMResponse
+from policy_gated_factory_robot_orchestrator_reference.clients.llm.mock import MockLLMClient
 
 
 async def test_mock_returns_canned_response() -> None:

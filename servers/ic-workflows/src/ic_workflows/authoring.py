@@ -33,7 +33,7 @@ def _palette() -> str:
 
 
 WORKFLOW_RULES = (
-    "Output ONLY a JSON object for an Industrial Claw workflow, no prose, no code fence.\n"
+    "Output ONLY a JSON object for a Policy-Gated Factory Robot Orchestrator Reference workflow, no prose, no code fence.\n"
     "Schema: {name: kebab-case string, description: string, params: {name: desc} (optional),\n"
     "  steps: [{tool: one of the tools below, args: {..}, max_retries: 0-3 (optional)}],\n"
     "  done_criteria: string}.\n"
@@ -44,7 +44,7 @@ WORKFLOW_RULES = (
 )
 
 SKILL_RULES = (
-    "Output ONLY a JSON object for an Industrial Claw skill manifest, no prose, no fence.\n"
+    "Output ONLY a JSON object for a Policy-Gated Factory Robot Orchestrator Reference skill manifest, no prose, no fence.\n"
     "Schema: {name: kebab-case string, version: '0.1.0', description: string,\n"
     "  requires_tools: [tool names], allowed_actions: [subset of move|pick_and_place],\n"
     "  done_criteria: string}.\n"

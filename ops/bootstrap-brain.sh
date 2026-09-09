@@ -52,7 +52,7 @@ check_prerequisites() {
   for lock in \
     package-lock.json \
     ic-spine/uv.lock \
-    servers/industrial-claw-mcp/uv.lock \
+    servers/policy-gated-factory-robot-orchestrator-reference-mcp/uv.lock \
     ic-console/uv.lock \
     servers/ic-chat/uv.lock \
     servers/ic-workflows/uv.lock; do
@@ -103,7 +103,7 @@ render() {
 install_templates() {
   local src name tmp
   mkdir -p "$SYSTEMD_DIR" "$ENV_DIR" "$ENV_DIR/groot" \
-    "$HOME/.openclaw" "$HOME/.industrial-claw/openclaw" "$HOME/ic-journal/frames" \
+    "$HOME/.openclaw" "$HOME/.policy-gated-factory-robot-orchestrator-reference/openclaw" "$HOME/ic-journal/frames" \
     "$HOME/.local/share/ic-spine/chat-sessions" \
     "$HOME/.local/share/ic-spine/groot" \
     "$HOME/.local/share/ic-spine/gpu" \
@@ -150,7 +150,28 @@ install_templates() {
     rm -f "$tmp"
   done
 
-  [ -e "$HOME/.openclaw/secrets.env" ] || install -m 0600 /dev/null "$HOME/.openclaw/secrets.env"
+  local secrets_file="$HOME/.openclaw/secrets.env"
+  [ -e "$secrets_file" ] || install -m 0600 /dev/null "$secrets_file"
+  if ! grep -Eq '^OPENCLAW_GATEWAY_TOKEN=.+$' "$secrets_file"; then
+    local gateway_token secrets_tmp
+    gateway_token="$(python3.12 -c 'import secrets; print(secrets.token_hex(32), end="")')"
+    [ "${#gateway_token}" -eq 64 ] || fail "could not generate OpenClaw gateway token"
+    secrets_tmp="$(mktemp "$HOME/.openclaw/.secrets.env.XXXXXX")"
+    chmod 0600 "$secrets_tmp"
+    if ! {
+      cat "$secrets_file"
+      printf '\n# Shared only by the loopback OpenClaw gateway and IC Chat.\n'
+      printf 'OPENCLAW_GATEWAY_TOKEN=%s\n' "$gateway_token"
+    } >"$secrets_tmp"; then
+      rm -f "$secrets_tmp"
+      fail "could not update $secrets_file"
+    fi
+    mv "$secrets_tmp" "$secrets_file"
+    say "generated persistent OpenClaw gateway token in $secrets_file"
+  else
+    chmod 0600 "$secrets_file"
+    say "preserved existing OpenClaw gateway token in $secrets_file"
+  fi
   systemctl --user daemon-reload
 }
 
@@ -164,7 +185,7 @@ case "$MODE" in
     refuse_active_install
     (cd "$REPO" && npm ci)
     sync_floor_project
-    sync_python_project servers/industrial-claw-mcp
+    sync_python_project servers/policy-gated-factory-robot-orchestrator-reference-mcp
     sync_python_project ic-console
     sync_python_project servers/ic-chat
     sync_python_project servers/ic-workflows

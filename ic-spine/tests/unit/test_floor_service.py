@@ -28,7 +28,7 @@ def _post(port: int, path: str, body: dict) -> dict:
 
 def test_service_perceive_dispatch_floor_state(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("IC_FLOOR_BACKEND", "mock")
-    from industrial_claw.floor.service import build_service
+    from policy_gated_factory_robot_orchestrator_reference.floor.service import build_service
 
     httpd = build_service(("127.0.0.1", 0))
     port = httpd.server_address[1]
@@ -57,7 +57,9 @@ class _FakeLiveEndpoint:
         self.type = kind
 
     async def execute(self, capability: str, goal_args: dict):
-        from industrial_claw.action_endpoints.base import ActionResult
+        from policy_gated_factory_robot_orchestrator_reference.action_endpoints.base import (
+            ActionResult,
+        )
 
         return ActionResult(success=True, result={"verified": True, "moved": goal_args}, reason="ok")
 
@@ -78,7 +80,7 @@ class _FakeLiveBackend:
 def test_service_live_backend_routes_through_backend(monkeypatch: pytest.MonkeyPatch) -> None:
     # The live (ROS 2) path must go through endpoints()/observe()/execute, NOT the mock
     # ops on a FloorState — so serve drives the real cell once a backend is wired.
-    from industrial_claw.floor import service as svc
+    from policy_gated_factory_robot_orchestrator_reference.floor import service as svc
 
     monkeypatch.setattr(svc, "load_backend", lambda *a, **k: _FakeLiveBackend())
     httpd = svc.build_service(("127.0.0.1", 0))
@@ -108,7 +110,7 @@ def test_parallel_route_is_atomic_and_schema_bounded(
 ) -> None:
     from fastapi.testclient import TestClient
 
-    from industrial_claw.floor import service as svc
+    from policy_gated_factory_robot_orchestrator_reference.floor import service as svc
 
     captured: list[list[dict]] = []
 
@@ -178,7 +180,7 @@ def test_scene_declared_action_args_reach_live_endpoint(
     """New device parameters cross HTTP generically but remain policy-gated."""
     from fastapi.testclient import TestClient
 
-    from industrial_claw.floor import service as svc
+    from policy_gated_factory_robot_orchestrator_reference.floor import service as svc
 
     policy = tmp_path / "policy.yaml"
     policy.write_text(
@@ -227,7 +229,7 @@ def test_v1_routes_and_health(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("IC_FLOOR_BACKEND", "mock")
     from fastapi.testclient import TestClient
 
-    from industrial_claw.floor.service import build_app
+    from policy_gated_factory_robot_orchestrator_reference.floor.service import build_app
 
     with TestClient(build_app()) as client:
         fs = client.post("/v1/floor-state", json={})
@@ -264,6 +266,37 @@ def test_v1_routes_and_health(monkeypatch: pytest.MonkeyPatch) -> None:
         assert "/v1/dispatch" in spec["paths"]
 
 
+def test_live_health_fails_closed_until_floor_state_is_fresh(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from fastapi.testclient import TestClient
+
+    from policy_gated_factory_robot_orchestrator_reference.floor import service as svc
+
+    class _HealthBackend(_FakeLiveBackend):
+        floor_state_age_s: float | None = None
+
+        def health(self) -> dict:
+            return {
+                "ros_ok": True,
+                "floor_state_age_s": self.floor_state_age_s,
+                "camera_age_s": {},
+            }
+
+    backend = _HealthBackend()
+    monkeypatch.setattr(svc, "load_backend", lambda *a, **k: backend)
+
+    with TestClient(svc.build_app()) as client:
+        missing = client.get("/v1/health")
+        assert missing.status_code == 503
+        assert missing.json()["status"] == "degraded"
+
+        backend.floor_state_age_s = 0.1
+        fresh = client.get("/v1/health")
+        assert fresh.status_code == 200
+        assert fresh.json()["status"] == "ok"
+
+
 def test_committed_openapi_spec_matches_code(monkeypatch: pytest.MonkeyPatch) -> None:
     """schemas/floor-service.openapi.json is the published contract — keep it in
     lockstep with the live app (regenerate it when this fails)."""
@@ -271,7 +304,7 @@ def test_committed_openapi_spec_matches_code(monkeypatch: pytest.MonkeyPatch) ->
     from pathlib import Path
 
     monkeypatch.setenv("IC_FLOOR_BACKEND", "mock")
-    from industrial_claw.floor.service import build_app
+    from policy_gated_factory_robot_orchestrator_reference.floor.service import build_app
 
     committed = Path(__file__).resolve().parents[3] / "schemas" / "floor-service.openapi.json"
     if not committed.exists():
@@ -284,7 +317,7 @@ def test_mission_journal_records_ops(monkeypatch: pytest.MonkeyPatch, tmp_path) 
     monkeypatch.setenv("IC_JOURNAL_DIR", str(tmp_path))
     from fastapi.testclient import TestClient
 
-    from industrial_claw.floor.service import build_app
+    from policy_gated_factory_robot_orchestrator_reference.floor.service import build_app
 
     with TestClient(build_app()) as client:
         client.post("/v1/perceive", json={"target": "table_1"},
@@ -306,7 +339,7 @@ def test_journal_disabled_when_unset(monkeypatch: pytest.MonkeyPatch, tmp_path) 
     monkeypatch.delenv("IC_JOURNAL_DIR", raising=False)
     from fastapi.testclient import TestClient
 
-    from industrial_claw.floor.service import build_app
+    from policy_gated_factory_robot_orchestrator_reference.floor.service import build_app
 
     with TestClient(build_app()) as client:
         client.post("/v1/perceive", json={"target": "table_1"})
@@ -317,7 +350,7 @@ def test_policy_gate_at_the_seam(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("IC_FLOOR_BACKEND", "mock")
     from fastapi.testclient import TestClient
 
-    from industrial_claw.floor.service import build_app
+    from policy_gated_factory_robot_orchestrator_reference.floor.service import build_app
 
     with TestClient(build_app()) as client:
         # unknown action -> refused with the allow-list in the reason
@@ -351,7 +384,7 @@ def test_operator_reset_forwards_explicit_scene_contract(
     """The existing dispatch verb can stage the six-object demo without a restart."""
     from fastapi.testclient import TestClient
 
-    from industrial_claw.floor import service as svc
+    from policy_gated_factory_robot_orchestrator_reference.floor import service as svc
 
     monkeypatch.setattr(svc, "load_backend", lambda *a, **k: _FakeLiveBackend())
     payload = {
@@ -406,7 +439,7 @@ def test_conformance_kit_certifies_this_implementation(monkeypatch: pytest.Monke
     from fastapi.testclient import TestClient
     from ic_conformance.kit import run_checks
 
-    from industrial_claw.floor.service import build_app
+    from policy_gated_factory_robot_orchestrator_reference.floor.service import build_app
 
     with TestClient(build_app()) as client:
         results = run_checks(client, region="table_1")
@@ -419,7 +452,7 @@ def test_audit_store_missions_and_detail(monkeypatch: pytest.MonkeyPatch, tmp_pa
     monkeypatch.setenv("IC_JOURNAL_DIR", str(tmp_path))
     from fastapi.testclient import TestClient
 
-    from industrial_claw.floor.service import build_app
+    from policy_gated_factory_robot_orchestrator_reference.floor.service import build_app
 
     with TestClient(build_app()) as client:
         for color, dest in (("red", "red_rack"), ("green", "green_rack")):
@@ -450,7 +483,7 @@ def test_audit_store_retention_prunes(monkeypatch: pytest.MonkeyPatch, tmp_path)
         "ts": old_ts, "request_id": "old1", "mission_id": "m-old", "op": "dispatch",
         "request": {"action": "move"}, "result": {"verified": True, "reason": "ok"},
         "duration_s": 1.0, "frame": "frames/old.jpg"}) + "\n")
-    from industrial_claw.floor.store import Store
+    from policy_gated_factory_robot_orchestrator_reference.floor.store import Store
 
     st = Store(str(tmp_path))
     st.ingest()
@@ -466,7 +499,10 @@ def test_dispatch_backend_field(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("IC_FLOOR_BACKEND", "mock")
     from fastapi.testclient import TestClient
 
-    from industrial_claw.floor.service import DispatchRequest, build_app
+    from policy_gated_factory_robot_orchestrator_reference.floor.service import (
+        DispatchRequest,
+        build_app,
+    )
 
     # model accepts groot + carries it; live path forwards non-None goal args
     req = DispatchRequest(endpoint="franka_left", action="move", color="blue", backend="groot")
@@ -491,7 +527,10 @@ def test_async_dispatch_contract(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("IC_FLOOR_BACKEND", "mock")
     from fastapi.testclient import TestClient
 
-    from industrial_claw.floor.service import DispatchRequest, build_app
+    from policy_gated_factory_robot_orchestrator_reference.floor.service import (
+        DispatchRequest,
+        build_app,
+    )
 
     assert DispatchRequest(endpoint="amr_franka_1", action="move").wait is True
     req = DispatchRequest(endpoint="amr_franka_1", action="move", wait=False)
@@ -510,7 +549,10 @@ def test_async_hardening_contract(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("IC_FLOOR_BACKEND", "mock")
     from fastapi.testclient import TestClient
 
-    from industrial_claw.floor.service import DispatchRequest, build_app
+    from policy_gated_factory_robot_orchestrator_reference.floor.service import (
+        DispatchRequest,
+        build_app,
+    )
 
     assert DispatchRequest(endpoint="amr_franka_1", action="move").queue is False
 
@@ -526,7 +568,7 @@ def test_bridge_async_semantics() -> None:
     """send_async busy-guard + poll lifecycle + TTL sweep, with a stubbed pub."""
     import time as _time
 
-    from industrial_claw.floor import ros2 as r2
+    from policy_gated_factory_robot_orchestrator_reference.floor import ros2 as r2
 
     class _Pub:
         def get_subscription_count(self):

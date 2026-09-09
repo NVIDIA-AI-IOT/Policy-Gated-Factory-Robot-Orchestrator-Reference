@@ -6,13 +6,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "industrial_claw"
+name = "policy_gated_factory_robot_orchestrator_reference"
 version = "0.1.0"
 description = "A factory brain that orchestrates verified action across heterogeneous robots and sensors."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
-authors = [{ name = "Industrial Claw" }]
+authors = [{ name = "Policy-Gated Factory Robot Orchestrator Reference" }]
 
 dependencies = [
   "pydantic>=2.7,<3",
@@ -34,10 +34,10 @@ dev = [
 ]
 
 [project.scripts]
-industrial_claw = "industrial_claw.cli:main"
+policy_gated_factory_robot_orchestrator_reference = "policy_gated_factory_robot_orchestrator_reference.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/industrial_claw"]
+packages = ["src/policy_gated_factory_robot_orchestrator_reference"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

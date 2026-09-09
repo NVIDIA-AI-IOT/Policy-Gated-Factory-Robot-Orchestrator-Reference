@@ -6,7 +6,7 @@ description: >-
   Pick the red cube, blue cylinder, and green brick from both workcells with
   the certified GR00T specialists; visually verify every placement; then haul
   both totes to rack_1 and visually verify each shelf placement.
-owner: industrial-claw
+owner: policy-gated-factory-robot-orchestrator-reference
 params: {}
 steps:
   - tool: perceive

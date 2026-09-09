@@ -15,4 +15,4 @@ action:
   default_max_attempts: 2
 mock:
   enabled: false                # true → use MockInputSource + MockActionEndpoint + Mock clients
-runs_dir: ~/.industrial_claw/runs
+runs_dir: ~/.policy_gated_factory_robot_orchestrator_reference/runs

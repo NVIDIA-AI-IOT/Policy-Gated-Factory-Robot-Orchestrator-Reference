@@ -1,7 +1,7 @@
 # Floor ROS 2 contract
 
 This document defines the ROS 2 boundary between IC Spine's
-`Ros2FloorBackend` and the Industrial Claw cell. The reference Isaac Sim cell
+`Ros2FloorBackend` and the Policy-Gated Factory Robot Orchestrator Reference cell. The reference Isaac Sim cell
 implements the same contract that a hardware adapter can implement.
 
 The protocol uses JSON in `std_msgs/String` for commands, progress, results,
@@ -110,7 +110,7 @@ different crops from one physical camera. IC Spine:
 5. returns `yes`, `no`, or `unknown` with supporting text.
 
 The reference regions and camera topics are defined in
-`ic-spine/src/industrial_claw/floor/ros2.py`. Camera freshness is exposed by
+`ic-spine/src/policy_gated_factory_robot_orchestrator_reference/floor/ros2.py`. Camera freshness is exposed by
 the IC Spine health metadata.
 
 ## Endpoint capabilities

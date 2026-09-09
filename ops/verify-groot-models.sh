@@ -4,7 +4,7 @@
 # Verify the downloaded shared GR00T checkpoint before serving it.
 set -euo pipefail
 
-MODEL_ROOT="${1:-${IC_GROOT_MODEL_ROOT:-$HOME/industrial-claw-models/order744-cont24}}"
+MODEL_ROOT="${1:-${IC_GROOT_MODEL_ROOT:-$HOME/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24}}"
 SUMS="$MODEL_ROOT/SHA256SUMS"
 
 fail() { printf 'verify-groot-models: ERROR: %s\n' "$*" >&2; exit 2; }

@@ -4,9 +4,11 @@
 """Tests for ActionAgent."""
 from __future__ import annotations
 
-from industrial_claw.action_endpoints.mock import MockActionEndpoint
-from industrial_claw.agents.action import ActionAgent
-from industrial_claw.types import Capability, Pose
+from policy_gated_factory_robot_orchestrator_reference.action_endpoints.mock import (
+    MockActionEndpoint,
+)
+from policy_gated_factory_robot_orchestrator_reference.agents.action import ActionAgent
+from policy_gated_factory_robot_orchestrator_reference.types import Capability, Pose
 
 
 def _cap(name: str = "navigate_to") -> Capability:

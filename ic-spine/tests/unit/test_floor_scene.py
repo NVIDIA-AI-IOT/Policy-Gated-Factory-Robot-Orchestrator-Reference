@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 def test_load_scene_reads_tables_and_endpoints(tmp_path: Path) -> None:
-    from industrial_claw.floor.scene import load_scene
+    from policy_gated_factory_robot_orchestrator_reference.floor.scene import load_scene
 
     p = tmp_path / "scene.yaml"
     p.write_text(
@@ -23,7 +23,7 @@ def test_load_scene_reads_tables_and_endpoints(tmp_path: Path) -> None:
 
 
 def test_default_scene_matches_the_demo() -> None:
-    from industrial_claw.floor.scene import load_scene
+    from policy_gated_factory_robot_orchestrator_reference.floor.scene import load_scene
 
     scene = load_scene(None)  # bundled default
     assert scene.tables["table_1"].count("red") == 2

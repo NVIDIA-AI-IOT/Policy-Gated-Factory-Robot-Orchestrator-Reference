@@ -372,7 +372,7 @@
   },
   "info": {
     "description": "Persistent HTTP floor service (FastAPI). Holds ONE backend for the process\nlifetime so a ROS 2 connection is established once (not per call).\n\nv1 API \u2014 versioned, request-validated, self-documenting (GET /docs, /openapi.json):\n  POST /v1/floor-state {}                       -> world state + _meta freshness\n  POST /v1/perceive    {target}                 -> symbolic+vision (or vision_only)\n  POST /v1/dispatch    {endpoint, action, ...}  -> always 200; read `dispatched`/`verified`\n  POST /v1/dispatch-parallel {moves:[left,right]} -> one atomic two-server B=1 GR00T pair\n  POST /v1/verify      {predicate, region?}     -> camera yes/no\n  GET  /v1/health                               -> liveness incl. ROS context + freshness\n                                                   (503 when degraded; never blocks)\n\nLegacy aliases are preserved verbatim for existing adapters (gateway plugin, MCP):\nPOST /floor-state /perceive /dispatch /verify \u2014 including dispatch's 400-on-unverified.\n\nAll floor operations serialize through one lock (the cell is a single FIFO queue and\nrequests mutate one shared floor); /v1/health skips the lock so a wedged floor can\nnever hide from monitoring. Every response carries an x-request-id header and an\nerror envelope {\"error\": {\"code\", \"message\", \"request_id\"}} on failure.\n",
-    "title": "Industrial Claw floor service",
+    "title": "Policy-Gated Factory Robot Orchestrator Reference floor service",
     "version": "1.0.0"
   },
   "openapi": "3.1.0",

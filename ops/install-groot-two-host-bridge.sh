@@ -107,7 +107,7 @@ done
 install -d -m 0755 \
   "$IC_USER_HOME/.config/ic-spine" \
   "$IC_USER_HOME/.config/systemd/user" \
-  "$IC_USER_HOME/.local/lib/industrial-claw" \
+  "$IC_USER_HOME/.local/lib/policy-gated-factory-robot-orchestrator-reference" \
   "$LOCAL_STATE_ROOT"
 if [[ -L $LOCAL_STATE_ROOT || ! -O $LOCAL_STATE_ROOT ]]; then
   echo "install-groot-two-host-bridge: ERROR: local state root must be a user-owned real directory" >&2
@@ -164,7 +164,7 @@ if [[ -e $CONFIG_PATH ]] && ! cmp -s -- "$TEMP_CONFIG" "$CONFIG_PATH"; then
 fi
 
 install -m 0755 "$IC_REPO/ops/groot-two-host-bridge.py" \
-  "$IC_USER_HOME/.local/lib/industrial-claw/groot-two-host-bridge.py"
+  "$IC_USER_HOME/.local/lib/policy-gated-factory-robot-orchestrator-reference/groot-two-host-bridge.py"
 install -m 0644 "$IC_REPO/ops/systemd/simulation-host/$UNIT_NAME" \
   "$IC_USER_HOME/.config/systemd/user/$UNIT_NAME"
 install -m 0600 "$TEMP_CONFIG" "$CONFIG_PATH"

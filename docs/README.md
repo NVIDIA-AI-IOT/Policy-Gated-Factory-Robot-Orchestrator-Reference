@@ -1,6 +1,6 @@
-# Industrial Claw documentation
+# Policy-Gated Factory Robot Orchestrator Reference documentation
 
-Industrial Claw is organized around two primary software components: IC Spine,
+Policy-Gated Factory Robot Orchestrator Reference is organized around two primary software components: IC Spine,
 the governed control and assurance service, and IC Console, the operator
 interface. The repository also includes an Isaac Sim reference cell and a
 fine-tuned GR00T action-execution path.
@@ -13,10 +13,11 @@ fine-tuned GR00T action-execution path.
 | Repository structure | [`../STRUCTURE.md`](../STRUCTURE.md) |
 | Architecture and execution flow | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
 | Two-host installation and demo | [`REPRODUCIBLE-DEMO.md`](REPRODUCIBLE-DEMO.md) |
+| RTX simulation-host prerequisites, launch, and remote viewing | [`../ops/ISAAC-SIM-WORKSTATION.md`](../ops/ISAAC-SIM-WORKSTATION.md) |
 | IC Spine floor service | [`../ic-spine/README.md`](../ic-spine/README.md) |
 | ROS 2 cell contract | [`floor-ros2-contract.md`](floor-ros2-contract.md) |
-| GR00T action execution | [`../reference/industrial-claw/groot/README.md`](../reference/industrial-claw/groot/README.md) |
-| GR00T N1.7 fine-tuning pipeline | [`../reference/industrial-claw/groot/groot_n1_7_ic_pipeline/README.md`](../reference/industrial-claw/groot/groot_n1_7_ic_pipeline/README.md) |
+| GR00T action execution | [`../reference/policy-gated-factory-robot-orchestrator-reference/groot/README.md`](../reference/policy-gated-factory-robot-orchestrator-reference/groot/README.md) |
+| GR00T N1.7 fine-tuning pipeline | [`../reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_ic_pipeline/README.md`](../reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_ic_pipeline/README.md) |
 | Add an action endpoint | [`ENDPOINT-INTEGRATION.md`](ENDPOINT-INTEGRATION.md) |
 | Security policy | [`../SECURITY.md`](../SECURITY.md) |
 | Contributing | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) |

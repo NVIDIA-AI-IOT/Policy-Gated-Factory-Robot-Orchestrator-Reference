@@ -1,6 +1,6 @@
 # nemo-gym — NeMo Gym integration for IC Spine
 
-Makes the Industrial Claw cell a [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym)
+Makes the Policy-Gated Factory Robot Orchestrator Reference cell a [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym)
 environment: benchmark any model/agent against the cell with physics-verified
 scoring, and export scored rollouts for RL/SFT training (NeMo RL, VeRL).
 

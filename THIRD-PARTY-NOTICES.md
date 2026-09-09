@@ -1,7 +1,7 @@
 # Third-party notices
 
 This document inventories third-party software and externally retrieved
-artifacts used by the Industrial Claw reference implementation. It is a
+artifacts used by this repository's reference implementation. It is a
 release-review aid, not a substitute for the license files shipped by each
 dependency and not a statement that NVIDIA OSRB or artifact review is
 complete.
@@ -29,17 +29,17 @@ distributions remain authoritative for complete copyright and license text.
 
 | Component | Immutable identity | Terms | Distribution role |
 |---|---|---|---|
-| [NVIDIA Isaac-GR00T](https://github.com/NVIDIA/Isaac-GR00T) | <code>e5749287857afd97b78f1147166137de29746392</code> | Apache-2.0; [repository copy](reference/industrial-claw/groot/LICENSE.NVIDIA-ISAAC-GROOT) | Upstream source patched by this repository |
-| [Industrial Claw Order744-cont24](https://huggingface.co/mmallick/industrial-claw-groot-order744-cont24) | <code>9307ac9cba3a27c9a57ed2d90393ceefb28367e1</code> | [NVIDIA Open Model License](https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/) | Fine-tuned checkpoint retrieved at runtime |
+| [NVIDIA Isaac-GR00T](https://github.com/NVIDIA/Isaac-GR00T) | <code>e5749287857afd97b78f1147166137de29746392</code> | Apache-2.0; [repository copy](reference/policy-gated-factory-robot-orchestrator-reference/groot/LICENSE.NVIDIA-ISAAC-GROOT) | Upstream source patched by this repository |
+| [Order744-cont24 checkpoint](https://huggingface.co/mmallick/industrial-claw-groot-order744-cont24) | <code>9307ac9cba3a27c9a57ed2d90393ceefb28367e1</code> | [NVIDIA Open Model License](https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/) | Fine-tuned checkpoint retrieved at runtime |
 | [NVIDIA GR00T-N1.7-DROID](https://huggingface.co/nvidia/GR00T-N1.7-DROID) | <code>05e7cc97e40dbd33b0890c35cc0214fcb0547ab5</code> | NVIDIA Open Model License | Base checkpoint lineage |
 | [NVIDIA Cosmos-Reason2-2B](https://huggingface.co/nvidia/Cosmos-Reason2-2B) | <code>9ce19a195e423419c349abfc86fd07178b230561</code> | NVIDIA Open Model License | GR00T runtime backbone retrieved at runtime |
 | [Qwen3-VL-2B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct) | Upstream identity declared by Cosmos model card | Apache-2.0 | Nested Cosmos base-model attribution |
 | [NVIDIA Nemotron Nano 12B VL NVFP4](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-12B-v2-VL-NVFP4-QAD) | <code>312eb94f6d36209f7c6a82eda896e27200d152ee</code> | NVIDIA Open Model License | VLM retrieved at runtime |
-| [Industrial Claw Order744-cont24 dataset](https://huggingface.co/datasets/mmallick/industrial-claw-groot-order744-cont24-dataset) | <code>da9b6e9a2faf5bd91bc559e7f12babd7102a5863</code> | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Native-DROID fine-tuning data; attribution is in the dataset repository |
+| [Order744-cont24 dataset](https://huggingface.co/datasets/mmallick/industrial-claw-groot-order744-cont24-dataset) | <code>da9b6e9a2faf5bd91bc559e7f12babd7102a5863</code> | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Native-DROID fine-tuning data; attribution is in the dataset repository |
 
-The GR00T bundle includes an Industrial Claw patch against the pinned
+The GR00T bundle includes a Policy-Gated Factory Robot Orchestrator Reference patch against the pinned
 Isaac-GR00T source. The patch identifies modified upstream files; the
-Industrial Claw relay, executor, scene, service, and orchestration code is
+Policy-Gated Factory Robot Orchestrator Reference relay, executor, scene, service, and orchestration code is
 separately authored integration code.
 
 ## Containers, system packages, codecs, and remote assets
@@ -473,7 +473,7 @@ a separately listed tracked file says otherwise.
 ## Python dependency inventory (209 external identities)
 
 The six editable projects are not duplicated in this table: five are
-first-party Industrial Claw packages, and editable <code>gr00t</code> is
+first-party Policy-Gated Factory Robot Orchestrator Reference packages, and editable <code>gr00t</code> is
 covered by the pinned Isaac-GR00T source notice above.
 
 | Ecosystem | Package | Version | License / terms | Source |

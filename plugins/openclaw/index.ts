@@ -11,13 +11,13 @@ import { evaluateDispatchPolicy } from "./policy.js";
 // Granular factory-floor primitives IC composes to run missions. The real
 // behaviour lives in the Python engine (PerceptionAgent / ActionAgent over a
 // persistent mock floor); this plugin is a thin bridge that shells out to the
-// `industrial_claw` CLI and relays its JSON. The floor file is the swappable
+// `policy_gated_factory_robot_orchestrator_reference` CLI and relays its JSON. The floor file is the swappable
 // "world" — replace it with a ROS 2 / Isaac Sim backend and these contracts
 // stay the same.
 //
 // Wiring (set for the gateway via `launchctl setenv`):
-//   IC_FLOOR_CLI    absolute path to the industrial_claw binary
-//                   (e.g. <repo>/ic-spine/.venv/bin/industrial_claw)
+//   IC_FLOOR_CLI    absolute path to the policy_gated_factory_robot_orchestrator_reference binary
+//                   (e.g. <repo>/ic-spine/.venv/bin/policy_gated_factory_robot_orchestrator_reference)
 //   IC_FLOOR_STATE  path to the shared floor-state JSON file the primitives read/write
 
 const execFileAsync = promisify(execFile);
@@ -34,8 +34,8 @@ async function runFloor(args: string[]): Promise<FloorResult> {
     return {
       ok: false,
       error:
-        "IC_FLOOR_CLI is not set — point it at the industrial_claw binary " +
-        "(e.g. <repo>/ic-spine/.venv/bin/industrial_claw).",
+        "IC_FLOOR_CLI is not set — point it at the policy_gated_factory_robot_orchestrator_reference binary " +
+        "(e.g. <repo>/ic-spine/.venv/bin/policy_gated_factory_robot_orchestrator_reference).",
     };
   }
   try {
@@ -137,8 +137,8 @@ async function floorOp(
 }
 
 export default definePluginEntry({
-  id: "industrial-claw-floor",
-  name: "Industrial Claw Floor",
+  id: "policy-gated-factory-robot-orchestrator-reference-floor",
+  name: "Policy-Gated Factory Robot Orchestrator Reference Floor",
   description:
     "Granular factory-floor primitives IC composes to run missions: perceive, dispatch_task, floor_state. Backed by the Python engine over a persistent mock floor until ROS 2 / Isaac Sim is wired.",
   register(api) {

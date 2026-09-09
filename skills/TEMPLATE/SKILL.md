@@ -3,7 +3,7 @@
 A skill is versioned *know-how*: it teaches any brain how to compose tool verbs
 (from certified MCP servers) into a competent, safe procedure for one class of
 goal. The reference skill is
-[`../industrial-claw-orchestrator/PLAYBOOK.md`](../industrial-claw-orchestrator/PLAYBOOK.md)
+[`../policy-gated-factory-robot-orchestrator-reference-orchestrator/PLAYBOOK.md`](../policy-gated-factory-robot-orchestrator-reference-orchestrator/PLAYBOOK.md)
 — study its shape.
 
 ## The workflow

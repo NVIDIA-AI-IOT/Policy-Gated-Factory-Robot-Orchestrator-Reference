@@ -6,7 +6,7 @@
     "list": [
       {
         "id": "main",
-        "name": "Industrial Claw",
+        "name": "Policy-Gated Factory Robot Orchestrator Reference",
         "skills": [],
         "tools": {
           "allow": [
@@ -16,7 +16,7 @@
       },
       {
         "id": "ic-console",
-        "name": "Industrial Claw Console",
+        "name": "Policy-Gated Factory Robot Orchestrator Reference Console",
         "contextInjection": "never",
         "skills": [],
         "tools": {

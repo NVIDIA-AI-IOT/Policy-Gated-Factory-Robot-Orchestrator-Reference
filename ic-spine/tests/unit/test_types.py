@@ -7,7 +7,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from industrial_claw.types import (
+from policy_gated_factory_robot_orchestrator_reference.types import (
     Capability,
     EndpointState,
     MissionResult,

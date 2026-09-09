@@ -53,13 +53,60 @@ A new host that speaks its own protocol = one new adapter in `backends.py`.
 - **Bounded**: `IC_CHAT_MAX_TURNS` caps tool iterations per user turn.
 - Loopback-bound by default; the seam's own auth gap is the standing boundary.
 
+### Opt-in shared trusted-LAN access
+
+The supported default remains loopback plus SSH forwarding. For an isolated
+shared trusted-operator LAN, the Console can instead reach Chat directly at the
+Thor IP when all three settings are applied together:
+
+```dotenv
+IC_CHAT_HOST=0.0.0.0
+IC_CHAT_CORS=http://127.0.0.1:8600,http://localhost:8600,http://YOUR_THOR_IP:8600
+IC_CHAT_TOKEN=console
+```
+
+Console must also set
+`IC_CHAT_PUBLIC_URL=http://YOUR_THOR_IP:8620`, while retaining
+`IC_CHAT_URL=http://127.0.0.1:8620` for server-side reads. Apply an inbound rule
+for `8620/tcp` with exactly the same trusted network scope as Console `8600/tcp`
+**before** changing the bind address. Keep Workflows, Seam, OpenClaw, VLM,
+GR00T policy/relay, and telemetry ports private.
+
+This is automatic shared access, not strong-token authentication. The
+`console` value is public in the static UI and acts only as the custom CSRF
+header; exact-origin CORS blocks unrelated browser origins, but any non-browser
+client with admitted LAN reach can submit the same command. HTTP also provides
+no confidentiality. Every client with network access is therefore an operator
+with actuation authority. See the canonical
+[`firewall-before-bind procedure`](../../docs/REPRODUCIBLE-DEMO.md#opt-in-shared-trusted-lan-chat-automatic-access).
+
+## Provider selection
+
+The `openai` adapter accepts any OpenAI-compatible Bearer credential, including
+public NVIDIA `nvapi-...` keys and organization-specific `sk-...` keys. It does
+not route by key prefix: `IC_CHAT_MODEL_URL`, `IC_CHAT_API_KEY`, and
+`IC_CHAT_MODEL` must describe the same provider profile. Configure the URL
+without `/v1`; IC Chat appends the versioned paths.
+
+Examples:
+
+| Profile | `IC_CHAT_MODEL_URL` | Example model |
+|---|---|---|
+| Public NVIDIA API Catalog | `https://integrate.api.nvidia.com` | `nvidia/nemotron-3-ultra-550b-a55b` |
+| Authorized NVIDIA internal | `https://inference-api.nvidia.com` | `azure/openai/gpt-5.6-sol` |
+
+The internal profile is available only to authorized NVIDIA accounts. Always
+verify the model appears in the authenticated catalog and completes a dummy
+tool-call probe before enabling robot tools.
+
 ## Config (env)
 
 `IC_CHAT_BACKEND`, `IC_CHAT_MODEL_URL`, `IC_CHAT_API_KEY`, `IC_CHAT_MODEL`,
 `IC_FLOOR_SERVICE`, `IC_CHAT_MAX_TURNS`, `IC_CHAT_CORS`, `IC_CHAT_TOKEN`,
 `IC_CHAT_HOST`/`IC_CHAT_PORT` (default `:8620`), `IC_OPENCLAW_URL` (default
 `http://127.0.0.1:18790`), `IC_OPENCLAW_CONFIG` (default
-`~/.openclaw-fox/openclaw.json`), `IC_OPENCLAW_TOKEN`, and
+`~/.openclaw-fox/openclaw.json`), `IC_OPENCLAW_TOKEN` (or OpenClaw's official
+`OPENCLAW_GATEWAY_TOKEN`), and
 `IC_OPENCLAW_WS_URL`, `IC_OPENCLAW_AGENT_ID` (default `ic-console`),
 `IC_OPENCLAW_NATIVE_GATEWAY` (default `1`), `IC_OPENCLAW_TIMEOUT_S` (default
 `900` seconds for a complete serial factory mission), and the HTTP-compatibility-only

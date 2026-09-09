@@ -7,16 +7,22 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from industrial_claw.action_endpoints.mock import MockActionEndpoint, ScriptedOutcome
-from industrial_claw.agents.action import ActionAgent
-from industrial_claw.agents.brain import BrainAgent, BrainConfig
-from industrial_claw.agents.perception import PerceptionAgent
-from industrial_claw.clients.llm.base import LLMResponse
-from industrial_claw.clients.llm.mock import MockLLMClient
-from industrial_claw.clients.vlm.base import VLMResponse
-from industrial_claw.clients.vlm.mock import MockVLMClient
-from industrial_claw.input_sources.mock import MockInputSource, MockSnapshot
-from industrial_claw.types import Capability, Pose
+from policy_gated_factory_robot_orchestrator_reference.action_endpoints.mock import (
+    MockActionEndpoint,
+    ScriptedOutcome,
+)
+from policy_gated_factory_robot_orchestrator_reference.agents.action import ActionAgent
+from policy_gated_factory_robot_orchestrator_reference.agents.brain import BrainAgent, BrainConfig
+from policy_gated_factory_robot_orchestrator_reference.agents.perception import PerceptionAgent
+from policy_gated_factory_robot_orchestrator_reference.clients.llm.base import LLMResponse
+from policy_gated_factory_robot_orchestrator_reference.clients.llm.mock import MockLLMClient
+from policy_gated_factory_robot_orchestrator_reference.clients.vlm.base import VLMResponse
+from policy_gated_factory_robot_orchestrator_reference.clients.vlm.mock import MockVLMClient
+from policy_gated_factory_robot_orchestrator_reference.input_sources.mock import (
+    MockInputSource,
+    MockSnapshot,
+)
+from policy_gated_factory_robot_orchestrator_reference.types import Capability, Pose
 
 
 def _nav_cap() -> Capability:

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-# Install the Industrial Claw GR00T runtime into an idle Isaac mount.
+# Install the Policy-Gated Factory Robot Orchestrator Reference GR00T runtime into an idle Isaac mount.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ISAAC_DEPLOYMENT="$REPO/reference/industrial-claw/isaac-cell/deployment"
-CAPTURE_CONTEXT="$REPO/reference/industrial-claw/groot/capture_context"
-RUNTIME="$REPO/reference/industrial-claw/groot/runtime"
-BATCH_RELAY="$REPO/reference/industrial-claw/groot/relay/native_droid_relay_batch2.py"
+ISAAC_DEPLOYMENT="$REPO/reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/deployment"
+CAPTURE_CONTEXT="$REPO/reference/policy-gated-factory-robot-orchestrator-reference/groot/capture_context"
+RUNTIME="$REPO/reference/policy-gated-factory-robot-orchestrator-reference/groot/runtime"
+BATCH_RELAY="$REPO/reference/policy-gated-factory-robot-orchestrator-reference/groot/relay/native_droid_relay_batch2.py"
 RENDERER="$REPO/ops/render-groot-cont24-contracts.py"
 MOUNT=""
 CHECKPOINT_PATH=""
@@ -18,7 +18,6 @@ LEFT_POLICY_PORT="5592"
 RIGHT_POLICY_PORT="5593"
 LEFT_RELAY_PORT="5641"
 RIGHT_RELAY_PORT="5642"
-CONTAINER_NAME="${IC_ISAAC_CONTAINER:-isaac-sim}"
 
 fail() { printf 'install-groot-cell: ERROR: %s\n' "$*" >&2; exit 2; }
 usage() {
@@ -39,6 +38,21 @@ expected = json.load(open(sys.argv[1], encoding="utf-8"))[0]["fl_joints"]
 installed = json.load(open(sys.argv[2], encoding="utf-8"))[0]["fl_joints"]
 raise SystemExit(0 if installed == expected else 1)
 ' "$1" "$2"
+}
+assert_mount_idle() {
+  local container_id name source target_mount
+  command -v docker >/dev/null 2>&1 || return
+  target_mount="$(realpath -m "$MOUNT")"
+  while IFS= read -r container_id; do
+    [ -n "$container_id" ] || continue
+    source="$(docker container inspect --format \
+      '{{range .Mounts}}{{if eq .Destination "/scripts"}}{{.Source}}{{end}}{{end}}' \
+      "$container_id")"
+    if [ -n "$source" ] && [ "$(realpath -m "$source")" = "$target_mount" ]; then
+      name="$(docker container inspect --format '{{.Name}}' "$container_id")"
+      fail "${name#/} is active; this installer never replaces live files beneath its scripts mount"
+    fi
+  done < <(docker ps -q)
 }
 
 while [ "$#" -gt 0 ]; do
@@ -61,10 +75,7 @@ done
 [ -n "$LEFT_SERVICE_STATE" ] || usage
 [ -n "$RIGHT_SERVICE_STATE" ] || usage
 [ -d "$MOUNT" ] || fail "Isaac scripts mount does not exist: $MOUNT"
-if command -v docker >/dev/null 2>&1 && \
-   docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$CONTAINER_NAME"; then
-  fail "$CONTAINER_NAME is active; this installer never replaces files beneath a running simulation"
-fi
+assert_mount_idle
 
 for source in \
   "$RUNTIME/cell/reset_two_arm.py" \

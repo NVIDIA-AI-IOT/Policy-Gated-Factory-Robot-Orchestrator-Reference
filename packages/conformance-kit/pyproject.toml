@@ -5,7 +5,7 @@
 name = "ic-conformance"
 version = "0.1.0"
 license = { text = "Apache-2.0" }
-description = "Industrial Claw conformance kit — the certification bar for floor-seam implementations"
+description = "Policy-Gated Factory Robot Orchestrator Reference conformance kit — the certification bar for floor-seam implementations"
 requires-python = ">=3.10"
 dependencies = ["httpx>=0.27,<1", "pyyaml>=6.0,<7"]
 

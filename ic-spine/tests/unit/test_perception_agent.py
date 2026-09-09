@@ -4,10 +4,13 @@
 """Tests for PerceptionAgent."""
 from __future__ import annotations
 
-from industrial_claw.agents.perception import PerceptionAgent
-from industrial_claw.clients.vlm.base import VLMResponse
-from industrial_claw.clients.vlm.mock import MockVLMClient
-from industrial_claw.input_sources.mock import MockInputSource, MockSnapshot
+from policy_gated_factory_robot_orchestrator_reference.agents.perception import PerceptionAgent
+from policy_gated_factory_robot_orchestrator_reference.clients.vlm.base import VLMResponse
+from policy_gated_factory_robot_orchestrator_reference.clients.vlm.mock import MockVLMClient
+from policy_gated_factory_robot_orchestrator_reference.input_sources.mock import (
+    MockInputSource,
+    MockSnapshot,
+)
 
 
 async def test_list_input_sources_returns_metadata() -> None:

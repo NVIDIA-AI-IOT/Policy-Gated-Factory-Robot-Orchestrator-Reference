@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-# Start only the Industrial Claw OpenClaw gateway.
+# Start only the Policy-Gated Factory Robot Orchestrator Reference OpenClaw gateway.
 #
 # The Seam is a separately supervised service. This launcher deliberately
 # refuses to create or replace it: one process owns each port, and one service
@@ -16,7 +16,7 @@ export IC_FLOOR_SERVICE="${IC_FLOOR_SERVICE:-http://127.0.0.1:8766}"
 
 if ! curl --fail --silent --show-error --max-time 5 \
   "$IC_FLOOR_SERVICE/v1/health" >/dev/null; then
-  echo "Industrial Claw Seam is unavailable at $IC_FLOOR_SERVICE." >&2
+  echo "Policy-Gated Factory Robot Orchestrator Reference Seam is unavailable at $IC_FLOOR_SERVICE." >&2
   echo "Start the canonical ic-seam.service, then retry; this launcher will not spawn a duplicate." >&2
   exit 3
 fi
@@ -44,12 +44,12 @@ mkdir -p "$IC_JOURNAL_DIR/frames"
 # sessions fully separate from any classic deployment's ~/.openclaw. First
 # start seeds a minimal config that connects OpenClaw to the governed floor MCP
 # server. The MCP process is owned by OpenClaw and proxies only to the Seam.
-export OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-$HOME/.industrial-claw/openclaw}"
+export OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-$HOME/.policy-gated-factory-robot-orchestrator-reference/openclaw}"
 export OPENCLAW_CONFIG_PATH="${OPENCLAW_CONFIG_PATH:-$OPENCLAW_STATE_DIR/openclaw.json}"
-IC_MCP_BIN="${IC_MCP_BIN:-$IC_REPO/servers/industrial-claw-mcp/.venv/bin/ic-mcp}"
+IC_MCP_BIN="${IC_MCP_BIN:-$IC_REPO/servers/policy-gated-factory-robot-orchestrator-reference-mcp/.venv/bin/ic-mcp}"
 mkdir -p "$OPENCLAW_STATE_DIR"
 if [ ! -x "$IC_MCP_BIN" ]; then
-  echo "IC MCP server not installed — run: (cd $IC_REPO/servers/industrial-claw-mcp && python3 -m venv .venv && .venv/bin/pip install -e .)" >&2
+  echo "IC MCP server not installed — run: (cd $IC_REPO/servers/policy-gated-factory-robot-orchestrator-reference-mcp && python3 -m venv .venv && .venv/bin/pip install -e .)" >&2
   exit 2
 fi
 if [ ! -f "$OPENCLAW_CONFIG_PATH" ]; then

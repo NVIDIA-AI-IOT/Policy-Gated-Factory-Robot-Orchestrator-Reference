@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""NeMo Gym resources server for the Industrial Claw cell.
+"""NeMo Gym resources server for the Policy-Gated Factory Robot Orchestrator Reference cell.
 
 Exposes the IC Spine floor seam (FastAPI v1) as a NeMo Gym environment:
 

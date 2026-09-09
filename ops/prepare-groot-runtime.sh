@@ -9,8 +9,8 @@ DEST="${IC_GROOT_SOURCE_ROOT:-$HOME/groot_shadow/Isaac-GR00T}"
 MODE="${1:---source-only}"
 UPSTREAM="https://github.com/NVIDIA/Isaac-GR00T"
 REVISION="e5749287857afd97b78f1147166137de29746392"
-PATCH="$REPO/reference/industrial-claw/groot/patches/isaac-groot-e574-industrial-claw.patch"
-THOR="$REPO/reference/industrial-claw/groot/thor"
+PATCH="$REPO/reference/policy-gated-factory-robot-orchestrator-reference/groot/patches/isaac-groot-e574-policy-gated-factory-robot-orchestrator-reference.patch"
+THOR="$REPO/reference/policy-gated-factory-robot-orchestrator-reference/groot/thor"
 PATCH_SHA256="51ca0f19912b264a1e5091e94e45ea8bb0d719a0fefacb9fb1e7b44bef1e98f5"
 
 fail() { printf 'prepare-groot-runtime: ERROR: %s\n' "$*" >&2; exit 2; }

@@ -39,7 +39,9 @@ class _Handler(BaseHTTPRequestHandler):
 
 
 def test_cosmos_vlm_client_builds_request_and_parses_response() -> None:
-    from industrial_claw.clients.vlm.cosmos_client import CosmosVLMClient
+    from policy_gated_factory_robot_orchestrator_reference.clients.vlm.cosmos_client import (
+        CosmosVLMClient,
+    )
 
     httpd = HTTPServer(("127.0.0.1", 0), _Handler)
     port = httpd.server_address[1]
@@ -69,8 +71,10 @@ def test_cosmos_vlm_client_builds_request_and_parses_response() -> None:
 
 
 def test_vlm_from_env_selects_cosmos_when_configured(monkeypatch: pytest.MonkeyPatch) -> None:
-    from industrial_claw.clients.vlm import vlm_from_env
-    from industrial_claw.clients.vlm.cosmos_client import CosmosVLMClient
+    from policy_gated_factory_robot_orchestrator_reference.clients.vlm import vlm_from_env
+    from policy_gated_factory_robot_orchestrator_reference.clients.vlm.cosmos_client import (
+        CosmosVLMClient,
+    )
 
     monkeypatch.delenv("IC_VLM_URL", raising=False)
     assert vlm_from_env() is None  # unconfigured -> caller falls back to ground truth
@@ -85,10 +89,13 @@ def test_live_verify_checks_predicate_over_cameras() -> None:
     # and the VLM answers yes/no — all without ROS (mock source + mock VLM).
     import asyncio
 
-    from industrial_claw.clients.vlm.base import VLMResponse
-    from industrial_claw.clients.vlm.mock import MockVLMClient
-    from industrial_claw.floor import ros2
-    from industrial_claw.input_sources.mock import MockInputSource, MockSnapshot
+    from policy_gated_factory_robot_orchestrator_reference.clients.vlm.base import VLMResponse
+    from policy_gated_factory_robot_orchestrator_reference.clients.vlm.mock import MockVLMClient
+    from policy_gated_factory_robot_orchestrator_reference.floor import ros2
+    from policy_gated_factory_robot_orchestrator_reference.input_sources.mock import (
+        MockInputSource,
+        MockSnapshot,
+    )
 
     cam = MockInputSource(
         "rack_cam", modality="image", coverage_region="rack_1",
@@ -109,7 +116,7 @@ def test_live_verify_checks_predicate_over_cameras() -> None:
 def test_live_verify_no_vlm_returns_unknown(monkeypatch: pytest.MonkeyPatch) -> None:
     import asyncio
 
-    from industrial_claw.floor import ros2
+    from policy_gated_factory_robot_orchestrator_reference.floor import ros2
 
     monkeypatch.delenv("IC_VLM_URL", raising=False)
 
@@ -123,7 +130,10 @@ def test_live_verify_no_vlm_returns_unknown(monkeypatch: pytest.MonkeyPatch) -> 
 
 
 def _conveyor_cam():
-    from industrial_claw.input_sources.mock import MockInputSource, MockSnapshot
+    from policy_gated_factory_robot_orchestrator_reference.input_sources.mock import (
+        MockInputSource,
+        MockSnapshot,
+    )
 
     return MockInputSource(
         "table_cam", modality="image", coverage_region="conveyor_1",
@@ -134,9 +144,9 @@ def _conveyor_cam():
 def test_live_perceive_fuses_agreeing_vision() -> None:
     import asyncio
 
-    from industrial_claw.clients.vlm.base import VLMResponse
-    from industrial_claw.clients.vlm.mock import MockVLMClient
-    from industrial_claw.floor import ros2
+    from policy_gated_factory_robot_orchestrator_reference.clients.vlm.base import VLMResponse
+    from policy_gated_factory_robot_orchestrator_reference.clients.vlm.mock import MockVLMClient
+    from policy_gated_factory_robot_orchestrator_reference.floor import ros2
 
     cam = _conveyor_cam()
 
@@ -165,10 +175,13 @@ def test_live_perceive_fuses_agreeing_vision() -> None:
 def test_live_perceive_flags_discrepancy_but_keeps_ground_truth() -> None:
     import asyncio
 
-    from industrial_claw.clients.vlm.base import VLMResponse
-    from industrial_claw.clients.vlm.mock import MockVLMClient
-    from industrial_claw.floor import ros2
-    from industrial_claw.input_sources.mock import MockInputSource, MockSnapshot
+    from policy_gated_factory_robot_orchestrator_reference.clients.vlm.base import VLMResponse
+    from policy_gated_factory_robot_orchestrator_reference.clients.vlm.mock import MockVLMClient
+    from policy_gated_factory_robot_orchestrator_reference.floor import ros2
+    from policy_gated_factory_robot_orchestrator_reference.input_sources.mock import (
+        MockInputSource,
+        MockSnapshot,
+    )
 
     cam = MockInputSource(
         "rack_cam", modality="image", coverage_region="rack_1",
@@ -199,9 +212,9 @@ def test_live_perceive_flags_discrepancy_but_keeps_ground_truth() -> None:
 def test_live_perceive_ignores_tote_on_rack_from_non_rack_camera() -> None:
     import asyncio
 
-    from industrial_claw.clients.vlm.base import VLMResponse
-    from industrial_claw.clients.vlm.mock import MockVLMClient
-    from industrial_claw.floor import ros2
+    from policy_gated_factory_robot_orchestrator_reference.clients.vlm.base import VLMResponse
+    from policy_gated_factory_robot_orchestrator_reference.clients.vlm.mock import MockVLMClient
+    from policy_gated_factory_robot_orchestrator_reference.floor import ros2
 
     cam = _conveyor_cam()
 
@@ -226,7 +239,7 @@ def test_live_perceive_ignores_tote_on_rack_from_non_rack_camera() -> None:
 def test_live_perceive_no_vlm_is_symbolic_only(monkeypatch: pytest.MonkeyPatch) -> None:
     import asyncio
 
-    from industrial_claw.floor import ros2
+    from policy_gated_factory_robot_orchestrator_reference.floor import ros2
 
     monkeypatch.delenv("IC_VLM_URL", raising=False)
 

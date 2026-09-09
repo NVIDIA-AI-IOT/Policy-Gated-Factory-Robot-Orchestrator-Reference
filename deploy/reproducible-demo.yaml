@@ -37,9 +37,9 @@ groot_serving:
   serving_owner: thor_host
   authoritative_state_owner: thor_host
   source_revision: e5749287857afd97b78f1147166137de29746392
-  artifact_manifest: reference/industrial-claw/groot/models/manifest.yaml
+  artifact_manifest: reference/policy-gated-factory-robot-orchestrator-reference/groot/models/manifest.yaml
   checkpoint:
-    name: Industrial Claw Order744-cont24
+    name: Policy-Gated Factory Robot Orchestrator Reference Order744-cont24
     repository_id: mmallick/industrial-claw-groot-order744-cont24
     revision: 9307ac9cba3a27c9a57ed2d90393ceefb28367e1
     fingerprint: bef1f16e82d87962b6d9659c25ed5cc8e7ec75bf2a7c7bfc5afcfa1af9ca5178
@@ -53,7 +53,7 @@ groot_serving:
       relay_port: 5642
   thor_shared_profiles:
     installer: ops/install-groot-thor-shared-profiles.sh
-    model_root: ~/industrial-claw-models/order744-cont24
+    model_root: ~/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24
     authoritative_state_root: ~/.local/share/ic-spine/groot
     target: ic-groot-shared-stack.target
     installed_files:
@@ -74,8 +74,8 @@ groot_serving:
       franka_right:
         policy_port: 5793
         relay_port: 5742
-  relay: reference/industrial-claw/groot/relay/native_droid_relay_batch2.py
-  executor: reference/industrial-claw/groot/runtime/native_droid_work/ic_groot_certified_deployment_v36.py
+  relay: reference/policy-gated-factory-robot-orchestrator-reference/groot/relay/native_droid_relay_batch2.py
+  executor: reference/policy-gated-factory-robot-orchestrator-reference/groot/runtime/native_droid_work/ic_groot_certified_deployment_v36.py
 
 ports:
   seam: 8766
@@ -89,7 +89,7 @@ ports:
 dependency_locks:
   node: package-lock.json
   floor: ic-spine/uv.lock
-  mcp: servers/industrial-claw-mcp/uv.lock
+  mcp: servers/policy-gated-factory-robot-orchestrator-reference-mcp/uv.lock
   console: ic-console/uv.lock
   chat: servers/ic-chat/uv.lock
   workflows: servers/ic-workflows/uv.lock

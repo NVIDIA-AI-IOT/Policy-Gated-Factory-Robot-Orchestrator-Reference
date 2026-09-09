@@ -6,7 +6,7 @@ from __future__ import annotations
 
 
 def test_capabilities_include_the_core_set_with_schema() -> None:
-    from industrial_claw.floor.contracts import CAPABILITIES
+    from policy_gated_factory_robot_orchestrator_reference.floor.contracts import CAPABILITIES
 
     assert set(CAPABILITIES) >= {"move", "navigate_to", "pick_and_place", "inspect"}
     move = CAPABILITIES["move"]
@@ -14,7 +14,7 @@ def test_capabilities_include_the_core_set_with_schema() -> None:
 
 
 def test_observation_round_trips_the_perceive_shape() -> None:
-    from industrial_claw.floor.contracts import Observation
+    from policy_gated_factory_robot_orchestrator_reference.floor.contracts import Observation
 
     obs = Observation(
         target="table_1",
@@ -29,7 +29,7 @@ def test_observation_round_trips_the_perceive_shape() -> None:
 
 
 def test_tote_verification_uses_a_separate_high_resolution_camera() -> None:
-    from industrial_claw.floor.ros2 import _CAMERA_FOR_REGION
+    from policy_gated_factory_robot_orchestrator_reference.floor.ros2 import _CAMERA_FOR_REGION
 
     assert _CAMERA_FOR_REGION["conveyor_1"] == "inspect_cam"
     assert _CAMERA_FOR_REGION["tote"] == "inspect_vlm_cam"

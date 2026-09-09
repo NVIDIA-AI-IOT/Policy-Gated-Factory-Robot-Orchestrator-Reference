@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Industrial Claw are documented here. The Python engine and the TypeScript Operator
+All notable changes to Policy-Gated Factory Robot Orchestrator Reference are documented here. The Python engine and the TypeScript Operator
 Gateway evolve together but ship independent version numbers; releases combining both will use calendar
 versioning (`YYYY.MM.DD`).
 
@@ -8,7 +8,7 @@ versioning (`YYYY.MM.DD`).
 
 ### Added
 
-- Initial commit — Industrial Claw bootstrap.
+- Initial project bootstrap.
 - OpenClaw operator gateway integration through a pinned package dependency;
   OpenClaw source is not vendored in this repository.
 - Python orchestration engine (`ic-spine/`) — `BrainAgent`, `PerceptionAgent`, `ActionAgent`, pluggable input
@@ -21,7 +21,7 @@ versioning (`YYYY.MM.DD`).
 
 - Brain orchestration loop with three-tier retry/replan/escalate ladder.
 - Run recorder writing `plan.json`, `events.jsonl`, and consulted-frame snapshots per mission.
-- Python CLI entry point (`industrial_claw "<goal>"`).
+- Python CLI entry point (`policy_gated_factory_robot_orchestrator_reference "<goal>"`).
 - Integration test suite covering happy path + retry + replan + escalate.
 - TypeScript ↔ Python bridge skill so operator messages from the Gateway reach the Python engine.
 

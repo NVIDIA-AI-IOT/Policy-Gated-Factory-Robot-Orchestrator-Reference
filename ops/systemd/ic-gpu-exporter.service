@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [Unit]
-Description=Industrial Claw GPU telemetry exporter
+Description=Policy-Gated Factory Robot Orchestrator Reference GPU telemetry exporter
 Wants=network-online.target
 After=network-online.target
 

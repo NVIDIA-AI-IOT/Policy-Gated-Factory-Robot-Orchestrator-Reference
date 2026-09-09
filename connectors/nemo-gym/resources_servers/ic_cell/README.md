@@ -1,4 +1,4 @@
-# ic_cell — NeMo Gym resources server for the Industrial Claw cell
+# ic_cell — NeMo Gym resources server for the Policy-Gated Factory Robot Orchestrator Reference cell
 
 Wraps the IC Spine floor seam as a [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym)
 environment: any Gym agent harness/model can drive the warehouse cell through
@@ -21,11 +21,11 @@ models as `check_predicate`.
 
 ```bash
 # 1. seam (mock backend needs no sim/ROS; use the live cell by just having it up)
-IC_FLOOR_BACKEND=mock industrial_claw serve --port 8766
+IC_FLOOR_BACKEND=mock policy_gated_factory_robot_orchestrator_reference serve --port 8766
 
 # 2. from a NeMo Gym checkout/install, with this connector on the search path:
 gym env start "+config_paths=[resources_servers/ic_cell/configs/ic_cell.yaml,responses_api_models/openai_model/configs/openai_model.yaml]" \
-  --search-dir /path/to/industrial-claw/connectors/nemo-gym
+  --search-dir /path/to/Policy-Gated-Factory-Robot-Orchestrator-Reference/connectors/nemo-gym
 
 # 3. collect scored rollouts
 gym eval run --no-serve +agent_name=ic_cell_simple_agent \

@@ -1,13 +1,13 @@
 # Repository structure
 
-This repository contains the two primary Industrial Claw software components,
+This repository contains the two primary Policy-Gated Factory Robot Orchestrator Reference software components,
 IC Spine and IC Console, plus harness integrations and a complete Isaac Sim /
 GR00T reference implementation. OpenClaw is consumed as the pinned dependency
 in `package.json`; its runtime source is not vendored here.
 
 ## Runtime relationship
 
-The working example under `reference/industrial-claw/` composes the
+The working example under `reference/policy-gated-factory-robot-orchestrator-reference/` composes the
 top-level software components with the Isaac Sim cell and GR00T:
 
 ```
@@ -18,10 +18,10 @@ top-level software components with the Isaac Sim cell and GR00T:
                   IC Spine floor service      ic-spine/
                             │
                             ▼
-                  Isaac Sim reference cell    reference/industrial-claw/isaac-cell/
+                  Isaac Sim reference cell    reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/
                             │
                             ▼
-                  GR00T action execution      reference/industrial-claw/groot/
+                  GR00T action execution      reference/policy-gated-factory-robot-orchestrator-reference/groot/
                             │
                             ▼
                   Two Franka arms + AMR
@@ -33,7 +33,7 @@ top-level software components with the Isaac Sim cell and GR00T:
 .
 ├── ic-spine/                 IC Spine orchestration and floor service
 ├── ic-console/               IC Console operator interface
-├── reference/industrial-claw/
+├── reference/policy-gated-factory-robot-orchestrator-reference/
 │   ├── README.md             working-example overview
 │   ├── isaac-cell/           Isaac Sim baseline and deployment assets
 │   │   └── deployment/      current two-arm, three-block cell deployment
@@ -45,7 +45,7 @@ top-level software components with the Isaac Sim cell and GR00T:
 │       ├── training/                   fine-tuning entry points
 │       └── models/                     artifact metadata
 ├── servers/
-│   ├── industrial-claw-mcp/  MCP adapter over IC Spine
+│   ├── policy-gated-factory-robot-orchestrator-reference-mcp/  MCP adapter over IC Spine
 │   ├── ic-chat/              swappable chat/harness gateway
 │   └── ic-workflows/         workflow authoring and execution
 ├── plugins/fox-openclaw/     OpenClaw integration
@@ -69,15 +69,15 @@ python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 .venv/bin/pytest
 
 export IC_FLOOR_STATE=/tmp/ic-floor.json
-.venv/bin/industrial_claw floor-state
-.venv/bin/industrial_claw dispatch --endpoint amr_franka_1 --action move \
+.venv/bin/policy_gated_factory_robot_orchestrator_reference floor-state
+.venv/bin/policy_gated_factory_robot_orchestrator_reference dispatch --endpoint amr_franka_1 --action move \
     --color red --from table_1 --destination red_rack
 ```
 
 For the two-host live system, follow
 [`docs/REPRODUCIBLE-DEMO.md`](docs/REPRODUCIBLE-DEMO.md). The exact proven
 one-model lineage is documented under
-[`reference/industrial-claw/groot/groot_n1_7_ic_pipeline/`](reference/industrial-claw/groot/groot_n1_7_ic_pipeline/).
+[`reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_ic_pipeline/`](reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_ic_pipeline/).
 
 Historical diagnostics under `docs/baseline-*` and `docs/hardening-*` are
 retained as evidence. They are not alternate launch paths.

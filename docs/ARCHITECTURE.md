@@ -1,7 +1,7 @@
-# Industrial Claw architecture
+# Policy-Gated Factory Robot Orchestrator Reference architecture
 
-Industrial Claw is a reference architecture and implementation for governed,
-closed-loop orchestration of a factory cell. IC Spine separates agent reasoning
+This repository implements governed, closed-loop orchestration of a factory cell.
+IC Spine separates agent reasoning
 from floor execution so the agent harness, perception model, and robot action
 backend can be changed without bypassing policy, verification, or audit.
 
@@ -32,7 +32,7 @@ and journal identities used by IC Spine; it is not a second control plane.
 
 OpenClaw, Codex, Claude Code, Hermes, IC Chat, and other compatible harnesses
 connect through the same MCP server. The MCP handshake distributes the
-Industrial Claw operating playbook and exposes nine governed tools:
+Policy-Gated Factory Robot Orchestrator Reference operating playbook and exposes nine governed tools:
 
 1. `floor_state`
 2. `perceive`
@@ -139,14 +139,14 @@ See [`floor-ros2-contract.md`](floor-ros2-contract.md) for the message contract.
 | Concern | Location |
 |---|---|
 | IC Spine service and floor backends | [`../ic-spine/`](../ic-spine/) |
-| MCP tool surface | [`../servers/industrial-claw-mcp/`](../servers/industrial-claw-mcp/) |
+| MCP tool surface | [`../servers/policy-gated-factory-robot-orchestrator-reference-mcp/`](../servers/policy-gated-factory-robot-orchestrator-reference-mcp/) |
 | IC Chat | [`../servers/ic-chat/`](../servers/ic-chat/) |
 | IC Console | [`../ic-console/`](../ic-console/) |
 | OpenClaw integration | [`../plugins/openclaw/`](../plugins/openclaw/) |
-| Isaac Sim reference cell | [`../reference/industrial-claw/isaac-cell/`](../reference/industrial-claw/isaac-cell/) |
-| GR00T action execution | [`../reference/industrial-claw/groot/`](../reference/industrial-claw/groot/) |
+| Isaac Sim reference cell | [`../reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/`](../reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/) |
+| GR00T action execution | [`../reference/policy-gated-factory-robot-orchestrator-reference/groot/`](../reference/policy-gated-factory-robot-orchestrator-reference/groot/) |
 | Deployment manifest | [`../deploy/reproducible-demo.yaml`](../deploy/reproducible-demo.yaml) |
-| Agent playbook | [`../skills/industrial-claw-orchestrator/`](../skills/industrial-claw-orchestrator/) |
+| Agent playbook | [`../skills/policy-gated-factory-robot-orchestrator-reference-orchestrator/`](../skills/policy-gated-factory-robot-orchestrator-reference-orchestrator/) |
 
 ## Failure behavior
 

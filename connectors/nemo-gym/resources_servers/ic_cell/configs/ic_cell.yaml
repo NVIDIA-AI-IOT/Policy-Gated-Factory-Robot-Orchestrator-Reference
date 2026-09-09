@@ -7,7 +7,7 @@ ic_cell:
       entrypoint: app.py
       domain: agent
       verified: false
-      description: Industrial Claw warehouse cell — physics-verified pick/place/haul via the IC Spine floor seam
+      description: Policy-Gated Factory Robot Orchestrator Reference warehouse cell — physics-verified pick/place/haul via the IC Spine floor seam
       seam_base_url: ${oc.env:IC_FLOOR_SERVICE,http://127.0.0.1:8766}
       reset_between_episodes: true
       reset_endpoint: ${oc.env:IC_RESET_ENDPOINT,franka_left}

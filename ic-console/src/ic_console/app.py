@@ -53,9 +53,14 @@ def build_app(aggregator: Aggregator | None = None) -> FastAPI:
         resp = await call_next(request)
         wf = os.environ.get("IC_WORKFLOWS_URL", "http://127.0.0.1:8610")
         chat = os.environ.get("IC_CHAT_URL", "http://127.0.0.1:8620")
+        # The aggregator can keep using a loopback Chat URL while browsers use
+        # an explicitly exposed trusted-LAN endpoint. Keeping these settings
+        # separate avoids routing server-to-server health polling over the LAN.
+        chat_public = os.environ.get("IC_CHAT_PUBLIC_URL") or chat
         resp.headers["Content-Security-Policy"] = (
             "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-            f"connect-src 'self' {wf} {chat}; img-src 'self' data: {chat}; "
+            f"connect-src 'self' {wf} {chat_public}; "
+            f"img-src 'self' data: {chat_public}; "
             "frame-ancestors 'none'"
         )
         resp.headers["X-Frame-Options"] = "DENY"

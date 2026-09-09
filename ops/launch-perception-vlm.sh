@@ -13,7 +13,16 @@ PORT="${IC_VLM_PORT:-8001}"
 CONTAINER="${IC_VLM_CONTAINER:-ic-perception-vlm}"
 CACHE="${IC_VLM_CACHE:-$HOME/.cache/huggingface}"
 READY_TIMEOUT="${IC_VLM_READY_TIMEOUT_S:-900}"
-IMAGE_REF="$IMAGE@$DIGEST"
+
+# Docker accepts TAG@DIGEST while pulling, but Docker 29 stores and resolves the
+# immutable local reference as REPOSITORY@DIGEST. Keep the tag for readable
+# release metadata while removing it from the reference used by inspect/run.
+IMAGE_REPOSITORY="$IMAGE"
+IMAGE_BASENAME="${IMAGE_REPOSITORY##*/}"
+if [[ "$IMAGE_BASENAME" == *:* ]]; then
+  IMAGE_REPOSITORY="${IMAGE_REPOSITORY%:*}"
+fi
+IMAGE_REF="$IMAGE_REPOSITORY@$DIGEST"
 
 fail() { printf 'launch-perception-vlm: ERROR: %s\n' "$*" >&2; exit 2; }
 verify_image() {
@@ -51,6 +60,10 @@ case "$MODE" in
         echo "IC_PERCEPTION_VLM_READY model=$MODEL revision=$REVISION port=$PORT"
         exit 0
       fi
+      if [ "$attempt" -ge 2 ] \
+        && ! docker ps -a --format '{{.Names}}' | grep -qx "$CONTAINER"; then
+        fail "VLM container exited before readiness: $CONTAINER"
+      fi
       sleep 2
     done
     fail "VLM did not become ready within ${READY_TIMEOUT}s"
@@ -62,7 +75,7 @@ case "$MODE" in
     fi
     mkdir -p "$CACHE"
     exec docker run --rm --name "$CONTAINER" --pull never \
-      --gpus all --ipc=host --network=host \
+      --runtime=nvidia --gpus all --ipc=host --network=host \
       -e HF_HOME=/root/.cache/huggingface \
       -v "$CACHE:/root/.cache/huggingface" \
       "$IMAGE_REF" "$MODEL" \

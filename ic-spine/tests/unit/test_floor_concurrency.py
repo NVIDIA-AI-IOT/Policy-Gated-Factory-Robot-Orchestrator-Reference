@@ -4,7 +4,7 @@
 """Concurrent dispatch must not corrupt the floor file or lose writes.
 
 Reproduces the live bug: IC fired several dispatch_task calls in one turn, the
-parallel `industrial_claw dispatch` processes raced the shared JSON file, and it
+parallel `policy_gated_factory_robot_orchestrator_reference dispatch` processes raced the shared JSON file, and it
 ended corrupted with a lost increment. With locking + atomic writes, N concurrent
 moves all land and the file stays valid JSON.
 """
@@ -16,9 +16,9 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from industrial_claw.floor import Block, Endpoint, FloorState
+from policy_gated_factory_robot_orchestrator_reference.floor import Block, Endpoint, FloorState
 
-_CLI = Path(sys.executable).parent / "industrial_claw"
+_CLI = Path(sys.executable).parent / "policy_gated_factory_robot_orchestrator_reference"
 _N = 8
 
 

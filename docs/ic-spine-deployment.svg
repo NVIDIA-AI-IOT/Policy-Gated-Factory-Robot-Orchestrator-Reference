@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="820" viewBox="0 0 1440 820" role="img" aria-labelledby="title desc">
-  <title id="title">Industrial Claw reference deployment</title>
+  <title id="title">Policy-Gated Factory Robot Orchestrator Reference deployment</title>
   <desc id="desc">IC Console and agent harnesses connect through MCP to IC Spine on the brain host. IC Spine uses a perception VLM and ROS 2 to control an Isaac Sim cell. Two GR00T serving processes load the same checkpoint and connect to the two arm executor through a validated bridge.</desc>
   <defs>
     <style>
@@ -9,7 +9,7 @@
     <marker id="arrow2" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6d786f"/></marker>
   </defs>
   <rect class="bg" width="1440" height="820"/>
-  <text class="title" x="48" y="55">Industrial Claw reference deployment</text>
+  <text class="title" x="48" y="55">Policy-Gated Factory Robot Orchestrator Reference deployment</text>
   <text class="small" x="48" y="82">Two-host learned-motion configuration with a shared policy checkpoint</text>
 
   <rect class="host" x="40" y="120" width="650" height="620" rx="20"/>

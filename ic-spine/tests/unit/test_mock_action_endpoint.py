@@ -6,9 +6,12 @@ from __future__ import annotations
 
 import pytest
 
-from industrial_claw.action_endpoints.base import ActionEndpoint
-from industrial_claw.action_endpoints.mock import MockActionEndpoint, ScriptedOutcome
-from industrial_claw.types import Capability, Pose
+from policy_gated_factory_robot_orchestrator_reference.action_endpoints.base import ActionEndpoint
+from policy_gated_factory_robot_orchestrator_reference.action_endpoints.mock import (
+    MockActionEndpoint,
+    ScriptedOutcome,
+)
+from policy_gated_factory_robot_orchestrator_reference.types import Capability, Pose
 
 
 def test_abstract_cannot_instantiate() -> None:

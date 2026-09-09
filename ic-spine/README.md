@@ -1,12 +1,12 @@
 # IC Spine
 
-IC Spine is Industrial Claw's policy-gated control and assurance service. It
+IC Spine is Policy-Gated Factory Robot Orchestrator Reference's policy-gated control and assurance service. It
 sits between agent harnesses and floor systems, exposing a stable API for
 perception, action dispatch, verification, task status, mission history, and
 evidence.
 
 The same service runs with a hardware-free mock backend for development or the
-ROS 2 backend used by the Industrial Claw Isaac Sim reference cell.
+ROS 2 backend used by the Policy-Gated Factory Robot Orchestrator Reference Isaac Sim reference cell.
 
 ## Responsibilities
 
@@ -41,8 +41,8 @@ ROS 2 deployments normally create the environment with
 
 ```bash
 export IC_FLOOR_STATE=/tmp/ic-floor.json
-.venv/bin/industrial_claw floor-state
-.venv/bin/industrial_claw dispatch \
+.venv/bin/policy_gated_factory_robot_orchestrator_reference floor-state
+.venv/bin/policy_gated_factory_robot_orchestrator_reference dispatch \
   --endpoint amr_franka_1 \
   --action move \
   --color red \
@@ -60,7 +60,7 @@ export IC_PERCEIVE_MODE=vision_only
 export IC_VLM_URL=http://127.0.0.1:8001
 export IC_VLM_MODEL=nvidia/NVIDIA-Nemotron-Nano-12B-v2-VL-NVFP4-QAD
 export IC_JOURNAL_DIR=~/ic-journal
-.venv/bin/industrial_claw serve --host 127.0.0.1 --port 8766
+.venv/bin/policy_gated_factory_robot_orchestrator_reference serve --host 127.0.0.1 --port 8766
 ```
 
 The service publishes its OpenAPI documentation at `/docs` and health state
@@ -74,9 +74,9 @@ at `/v1/health`. Deployment templates live under
 - [`configs/policy.example.yaml`](configs/policy.example.yaml) adds or
   overrides reviewed action-policy entries.
 - [`configs/scene.our_demo.yaml`](configs/scene.our_demo.yaml) describes the
-  Industrial Claw reference cell.
+  the repository's Isaac Sim reference cell.
 
 See the [repository architecture](../docs/ARCHITECTURE.md), the
 [endpoint integration guide](../docs/ENDPOINT-INTEGRATION.md), and the
-[reference implementation](../reference/industrial-claw/) for the complete
+[reference implementation](../reference/policy-gated-factory-robot-orchestrator-reference/) for the complete
 system.
