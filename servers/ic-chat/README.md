@@ -105,7 +105,8 @@ tool-call probe before enabling robot tools.
 `IC_FLOOR_SERVICE`, `IC_CHAT_MAX_TURNS`, `IC_CHAT_CORS`, `IC_CHAT_TOKEN`,
 `IC_CHAT_HOST`/`IC_CHAT_PORT` (default `:8620`), `IC_OPENCLAW_URL` (default
 `http://127.0.0.1:18790`), `IC_OPENCLAW_CONFIG` (default
-`~/.openclaw-fox/openclaw.json`), `IC_OPENCLAW_TOKEN` (or OpenClaw's official
+`~/.policy-gated-factory-robot-orchestrator-reference/openclaw/openclaw.json`),
+`IC_OPENCLAW_TOKEN` (or OpenClaw's official
 `OPENCLAW_GATEWAY_TOKEN`), and
 `IC_OPENCLAW_WS_URL`, `IC_OPENCLAW_AGENT_ID` (default `ic-console`),
 `IC_OPENCLAW_NATIVE_GATEWAY` (default `1`), `IC_OPENCLAW_TIMEOUT_S` (default

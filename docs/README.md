@@ -13,6 +13,7 @@ fine-tuned GR00T action-execution path.
 | Repository structure | [`../STRUCTURE.md`](../STRUCTURE.md) |
 | Architecture and execution flow | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
 | Two-host installation and demo | [`REPRODUCIBLE-DEMO.md`](REPRODUCIBLE-DEMO.md) |
+| Upgrade from the former full-form product names | [`FULL-FORM-RENAME-UPGRADE.md`](FULL-FORM-RENAME-UPGRADE.md) |
 | RTX simulation-host prerequisites, launch, and remote viewing | [`../ops/ISAAC-SIM-WORKSTATION.md`](../ops/ISAAC-SIM-WORKSTATION.md) |
 | IC Spine floor service | [`../ic-spine/README.md`](../ic-spine/README.md) |
 | ROS 2 cell contract | [`floor-ros2-contract.md`](floor-ros2-contract.md) |
@@ -25,10 +26,11 @@ fine-tuned GR00T action-execution path.
 
 ## Visual references
 
+- [`ic-spine-deployment.svg`](ic-spine-deployment.svg) is the current
+  architecture and two-host reference-deployment view.
 - [`ic-spine-reference-architecture.png`](ic-spine-reference-architecture.png)
-  presents the harness-independent IC Spine architecture.
-- [`ic-spine-deployment.svg`](ic-spine-deployment.svg) shows the two-host
-  reference deployment.
+  is retained as a provenance-tracked legacy artifact. Its visible title
+  predates the full-form rename, so it is not embedded as the current view.
 - [`IC_Demo.mp4`](IC_Demo.mp4) shows the reference mission in Isaac Sim.
 
 Exact runtime versions, model revisions, ports, and service ownership are kept

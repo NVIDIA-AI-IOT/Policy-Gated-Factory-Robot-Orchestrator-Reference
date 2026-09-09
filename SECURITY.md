@@ -8,15 +8,24 @@ vulnerability, exploit path, credential, or security-sensitive proof of concept.
 ## Trust model (current state)
 
 Policy-Gated Factory Robot Orchestrator Reference is **local-first agent infrastructure for trusted factory operators**. It is not
-designed today as a shared multi-tenant boundary between adversarial users on one gateway. Hardening
-for production deployment — NVIDIA NemoClaw sandboxing, OpenShell policy enforcement, NIM-routed
-inference, audit logs, RBAC for operator accounts — lands in a later plan and will come with an
-updated, more detailed security policy.
+designed today as a shared multi-tenant boundary between adversarial users on
+one gateway. Production hardening—such as sandbox and policy enforcement,
+NIM-routed inference, tamper-resistant audit records, and operator RBAC—requires
+a separate design, threat review, and acceptance record. It is not implemented
+or promised by the current reference deployment.
+
+Loopback services plus SSH forwarding are the default remote-access boundary.
+The reproduction guide also documents an explicit lab-only shared trusted-LAN
+Chat mode. That exception is not authentication or production hardening: every
+client with network reach to its Chat listener can reproduce the public CSRF
+header and obtain actuation authority, even without opening IC Console. Do not
+enable it on an untrusted or mixed-user network.
 
 ## Known boundaries (documented, deferred by design)
 
-These are accepted for the current local-first, single-operator posture and are
-the next hardening targets before anything binds beyond loopback:
+These are accepted for the current local-first, single-operator posture. They
+are hardening requirements before production remote write access; the
+documented trusted-LAN lab exception does not satisfy them:
 
 - **Floor seam has no authentication.** `POST /v1/dispatch` (which actuates the
   arm) is gated only by the policy (`x-role: operator` for operator actions) and
@@ -32,7 +41,11 @@ the next hardening targets before anything binds beyond loopback:
   by default.** The `X-IC-Workflows` / `X-IC-Chat` guard defeats browser CSRF
   (forces a preflight the origin allowlist blocks), but with `IC_WORKFLOWS_TOKEN`
   / `IC_CHAT_TOKEN` unset any local process can call them. Set those tokens (and
-  the seam token above) together when hardening for a shared host.
+  the future seam authentication) together when a reviewed authenticated
+  deployment supports secure credential delivery. The trusted-LAN profile's
+  literal `console` value is intentionally browser-visible and is not such a
+  secret. A nonempty header alone does not compensate for the unauthenticated
+  floor seam or absent TLS/per-user identity.
 - **No per-session isolation / RBAC.** Mission journals, workflow specs, and chat
   sessions are readable by id with no ownership model — consistent with the
   single-trusted-operator assumption above.

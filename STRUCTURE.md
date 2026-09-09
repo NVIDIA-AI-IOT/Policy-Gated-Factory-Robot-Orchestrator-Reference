@@ -48,7 +48,7 @@ top-level software components with the Isaac Sim cell and GR00T:
 │   ├── policy-gated-factory-robot-orchestrator-reference-mcp/  MCP adapter over IC Spine
 │   ├── ic-chat/              swappable chat/harness gateway
 │   └── ic-workflows/         workflow authoring and execution
-├── plugins/fox-openclaw/     OpenClaw integration
+├── plugins/openclaw/         OpenClaw integration
 ├── skills/                   canonical agent playbook and templates
 ├── ops/                      installers, systemd units, and health checks
 ├── deploy/                   measured deployment contract

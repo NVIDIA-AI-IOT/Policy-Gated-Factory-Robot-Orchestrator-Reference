@@ -7,7 +7,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg?style=for-the-badge" alt="Apache License 2.0"></a>
   <img src="https://img.shields.io/badge/Python-3.12%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.12+">
-  <img src="https://img.shields.io/badge/Node-22.19%2B-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node 22.19+">
+  <img src="https://img.shields.io/badge/Node-22.22.3-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node 22.22.3">
 </p>
 
 ---
@@ -36,19 +36,25 @@ The complete Isaac Sim and GR00T implementation is organized under the
 
 ## Architecture
 
-![Architecture for Policy-Gated Factory Robot Orchestrator Reference](docs/ic-spine-reference-architecture.png)
+**Architecture and reference deployment topology** (hosts, interfaces,
+packages, and protocols):
 
-**Reference deployment topology** (hosts, interfaces, packages, and protocols):
-
-![IC Spine deployment view](docs/ic-spine-deployment.svg)
+![Policy-Gated Factory Robot Orchestrator Reference deployment view](docs/ic-spine-deployment.svg)
 
 Repository map: [`STRUCTURE.md`](STRUCTURE.md).
 
 Deployment guide: [`docs/REPRODUCIBLE-DEMO.md`](docs/REPRODUCIBLE-DEMO.md) ·
 validated platforms: [`docs/SUPPORT.md`](docs/SUPPORT.md) · endpoint
-integration: [`docs/ENDPOINT-INTEGRATION.md`](docs/ENDPOINT-INTEGRATION.md).
+integration: [`docs/ENDPOINT-INTEGRATION.md`](docs/ENDPOINT-INTEGRATION.md) ·
+upgrade from the former full-form names:
+[`docs/FULL-FORM-RENAME-UPGRADE.md`](docs/FULL-FORM-RENAME-UPGRADE.md).
 Use the deployment guide, rather than isolated quick-start fragments below,
 for a clean two-host installation and operator access from another machine.
+
+Live evidence dated 2026-09-08 belongs to the pre-rename source snapshot. The
+current full-form rename has not yet completed a post-rename clean-clone and
+upgrade acceptance on both hosts; [`docs/SUPPORT.md`](docs/SUPPORT.md) records
+the exact boundary. A commit alone does not create new hardware evidence.
 
 ## The demo
 
@@ -83,35 +89,50 @@ with a defined initialization interface:
 
 For a fresh x86_64 RTX workstation, use the pinned, safety-checked
 [`Isaac Sim workstation runbook`](ops/ISAAC-SIM-WORKSTATION.md). It stages the
-complete baseline, validates the GPU/container/X11 host, launches the exact
-image digest, and waits for `IC_CELL_UP`.
+complete baseline, validates the host and NVIDIA's bundled compatibility
+checker, launches Isaac Sim 6.0.1 by immutable amd64 digest, and waits for both
+the application and streaming readiness markers. The supported default is
+NVIDIA's headless WebRTC service; local container X11 is an explicit
+compatibility profile.
 
-The validated launcher uses a real local X11 display. RealVNC may mirror that
-desktop when separately installed and secured, but it is not the NVIDIA Isaac
-Sim WebRTC Streaming Client. NVIDIA's recommended remote path is headless
-WebRTC; the current launcher does not start WebRTC or a browser viewer. The
-workstation runbook records the supported status, ports, and security
-requirements for each viewing option.
+The default WebRTC advertisement is loopback-only. To use NVIDIA's native
+Streaming Client from another trusted machine, pass a literal workstation
+interface address with `--webrtc-host` and apply the peer-scoped firewall rules
+in the runbook. The browser-viewer Compose service is not included. The live
+qualification proved the headless service and signaling listener, but did not
+connect a WebRTC client.
 
-For an existing interactive Isaac scripts mount, stage the same inputs manually:
+Do not populate an Isaac scripts mount with an unchecked recursive copy. Stage
+and verify the exact packaged baseline with the helper:
 
 ```bash
-# one-time: copy the baseline package, boot entry point, and scene
-cp -r reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/ic_cell \
-      reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/ic_boot.py \
-      reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/our_factory.usda \
-      <isaac-mount>/   # e.g. ~/docker/isaac-sim/documents/
+docker pull \
+  nvcr.io/nvidia/isaac-sim:6.0.1@sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb
+ops/isaac-sim-workstation.sh --prepare
+ops/isaac-sim-workstation.sh --check --accept-eula
+ops/isaac-sim-workstation.sh --run --accept-eula
 ```
 
-Start Isaac Sim, then in **Window → Script Editor** run once:
+Use `--root` or `--mount` only as documented in the workstation runbook. The
+helper validates the complete bundle in a sibling directory and publishes it
+with one directory rename. It refuses a partial, modified, or stale nonempty
+target; choose a fresh mount instead of merging files. Markers stream to the
+container log, including `IC_CELL_UP markers=all` after the stage, robots,
+cameras, ROS 2 publishers, and deterministic initial state are ready.
 
-```python
-exec(open("/scripts/ic_boot.py").read())
+After launch, run the live scripted-baseline gate once from an idle scene:
+
+```bash
+docker pull --platform linux/amd64 \
+  docker.io/library/ros:jazzy-ros-base-noble@sha256:2589a8fba5257307857890173c069852c2abf913a0be7970f172478baecb09e4
+ops/accept-isaac-sim-workstation.sh \
+  --container ic-isaac-sim-baseline
 ```
 
-Markers stream to the container log, ending `IC_CELL_UP`: stage, robots, cameras (hand-tuned
-poses), ROS 2 publishers, and a deterministic demo start. Re-running is safe (forces a clean
-stage reload).
+This command is scene-destructive: it resets, validates 15 fresh streams,
+issues exactly one left-Franka red-object move, verifies it, performs a final
+reset, and scans the current run's logs. It tests only the scripted baseline;
+it is not Thor or GR00T inference evidence.
 
 ### 2. The Spine — floor service (brain host, e.g. Jetson Thor)
 
@@ -219,8 +240,9 @@ evidence:
   ```
   Wait for a verified reset result; do not start the workflow while another
   task or reset is still running.
-- **Cancel a running task** — dispatch `{"action":"cancel", ...}` the same way; it preempts
-  cleanly, without queuing behind the task it stops.
+- **Cancel a running task** — the live ROS cell currently refuses `cancel`
+  because its command would queue behind the active task. Use the site's
+  separately governed operator-abort or emergency-stop control instead.
 - **Audit** — `$IC_JOURNAL_DIR/journal.jsonl` + `frames/`: every operation with its result,
   duration, mission ID, and the exact image the VLM saw.
 
@@ -236,15 +258,19 @@ boundary.
 
 ## Status
 
+The capability list describes the implemented reference surface. Statements
+about live mission evidence refer to the measured pre-rename cohort above, not
+to an unrecorded post-rename deployment.
+
 | Capability |
 |---|
 | **MCP server** ([`servers/policy-gated-factory-robot-orchestrator-reference-mcp`](servers/policy-gated-factory-robot-orchestrator-reference-mcp/)) — 9 annotated floor tools, with the playbook distributed as `instructions`; validated using the reference mission and conformance suite |
 | **Floor API** — versioned `/v1`, validated requests, request IDs, `_meta` freshness on every response, `GET /v1/health` (degraded-aware), self-documenting `/docs`, systemd-managed |
 | **Cell as a package** ([`ic_cell`](reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/)) — defined initialization interface and owned runtime state |
-| **Action protocol** — goal IDs (exact result matching), duplicate-drop, `/ic/feedback` progress stream, mid-flight `cancel` |
+| **Action protocol** — goal IDs (exact result matching), duplicate-drop, `/ic/feedback` progress stream, and fail-closed refusal of unsupported mid-flight `cancel` |
 | **Policy gate at the seam** — unknown actions refused, required params enforced, operator-only class (`x-role`) — one gate for every harness |
 | **Pinned contracts** ([`schemas/`](schemas/)) — OpenAPI (drift-guarded by test) + the cell protocol |
-| **Conformance kit** ([`packages/conformance-kit`](packages/conformance-kit/)) — `run` seam 9/9 · `mcp` server 6/6 · `skill` manifest 7/7, with all reference checks passing |
+| **Conformance kit** ([`packages/conformance-kit`](packages/conformance-kit/)) — `run` seam 9/9 · `mcp` server 11/11 · `skill` manifest 7/7, with all reference checks passing |
 | **Vision-only perception** — camera + Nemotron Nano 12B VL with a fresh-frame guarantee; dispatch stays physics-verified |
 | **One-model concurrent GR00T path** — one shared checkpoint, two per-arm serving processes, and three verified concurrent pairs |
 | **Mission journal** — every floor op + the exact VLM input frame, mission-grouped (`IC_JOURNAL_DIR`) |
