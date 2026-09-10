@@ -1,9 +1,9 @@
 # PGFR Console
 
-PGFR Console is the operator web interface for topology, inspection, mission
-history, Chat, Workflows, and GPU telemetry. Its aggregation API is read-only.
-The Chat and Workflows tabs call their corresponding services directly for
-write operations.
+PGFR Console serves the Orchestration Console, an operator web interface for
+Chat, topology, inspection, mission history, and GPU telemetry. Chat opens by
+default. Its aggregation API is read-only; the browser calls PGFR Chat directly
+for chat and reset operations.
 
 ## Install and run
 
@@ -18,11 +18,25 @@ Open [http://127.0.0.1:8600](http://127.0.0.1:8600).
 ## Behavior
 
 - The aggregation API exposes GET routes only.
-- Topology status comes from measured health endpoints. Unavailable signals
-  render as `unknown`.
-- Mission replay reads the PGFR Spine journal by mission ID.
-- The browser calls PGFR Chat and PGFR Workflows directly; Console does not proxy
-  their write requests.
+- Chat's example prompts fill the input for review; Send submits the request.
+- The Chat sidebar provides New chat, History, the agent backend selector, and
+  collapsed Session details with the assistant name and a copyable session ID.
+- Reset Scene is available from the header in every pane. It requires explicit
+  confirmation and calls PGFR Chat's `POST /api/reset-scene` endpoint for a
+  deterministic reset through PGFR Spine.
+- Topology opens with tools and cameras grouped. Enable **Show tools and cameras**
+  to inspect each one; a group retains its least healthy member's status.
+- Optional integrations appear when configured or reported. NeMo Gym has an
+  optional evaluation connector and appears only when `PGFR_GYM_URL` is set.
+- Component details identify the status source. Vision model names come from
+  the model endpoint; camera feeds come from simulator health. GR00T connection
+  status uses the floor state's passive relay observations, not inference probes.
+- Mission replay shows readable task titles and verification results; exact
+  session IDs and full results remain available in expandable details.
+- GPU opens in Live view. Selecting a historical session changes only the GPU
+  view; process memory on Thor uses its shared CPU/GPU RAM measurements.
+- The browser calls PGFR Chat directly; Console does not proxy its write
+  requests.
 - The frontend is a static ES-module application with no build-time toolchain
   or external CDN dependency.
 
@@ -32,7 +46,7 @@ Open [http://127.0.0.1:8600](http://127.0.0.1:8600).
 |---|---|---|
 | `PGFR_FLOOR_SERVICE` | `http://127.0.0.1:8766` | PGFR Spine base URL |
 | `PGFR_VLM_URL` | unset | VLM liveness check (`/v1/models`) |
-| `PGFR_GYM_URL` | unset | NeMo Gym pgfr_cell server liveness |
+| `PGFR_GYM_URL` | unset | Optional NeMo Gym resource server; omitted from the map when unset |
 | `PGFR_GPU_URL` | unset | GPU exporter on the serving host (`ops/pgfr_gpu_exporter.py` :8601) |
 | `PGFR_GPU_URL_THOR` | unset | GPU exporter on Jetson AGX Thor |
 | `PGFR_CONSOLE_HOST/PORT` | `127.0.0.1:8600` | bind address |

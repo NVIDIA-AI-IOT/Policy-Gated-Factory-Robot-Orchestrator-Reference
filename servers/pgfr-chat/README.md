@@ -17,7 +17,7 @@ PGFR_FLOOR_SERVICE=http://127.0.0.1:8766 \
 ```
 
 The service listens on `127.0.0.1:8620` by default. Open PGFR Console on port
-`8600` and select **Chat**.
+`8600`; **Chat** opens by default.
 
 ## Agent backends
 
@@ -50,13 +50,35 @@ Additional protocols are implemented as adapters in `backends.py`.
 
 ## Request and action boundary
 
-- `/api/chat` requires the `X-PGFR-Chat` header, an allowed Origin, and the
-  optional `PGFR_CHAT_TOKEN`.
+- `/api/chat` and `/api/reset-scene` require the `X-PGFR-Chat` header. When
+  `PGFR_CHAT_TOKEN` is configured, the header must match it. Browser requests
+  must use an allowed Origin.
 - `PGFR_CHAT_MAX_TURNS` limits model tool iterations for one user message.
 - Traditional and OpenClaw modes both dispatch through PGFR Spine.
 - Physical actions are not resent automatically after a timeout or unverified
   outcome. Reconciliation begins with read-only state or visual evidence.
 - All services bind to loopback by default.
+
+### Confirmed scene reset
+
+The Console's **Reset Scene** control asks for confirmation before calling
+`POST /api/reset-scene`. The endpoint performs one fixed, operator-gated
+`reset_scene` dispatch through PGFR Spine without a model call or automatic
+retry. The operator request, tool result, and summary persist in Chat history;
+PGFR Spine journals the dispatch.
+
+The JSON body accepts optional `session_id` and `backend` (`traditional` or
+`openclaw`). An existing session retains its backend. Without a session ID, the
+endpoint creates a conversation using the selected backend, without requiring
+model configuration.
+
+A completed request returns `session_id`, `mission_id`, `result`, and
+`transcript`. `result.status` is `verified`, `refused`, `uncertain`, or `failed`;
+HTTP 200 alone does not establish a successful reset. Verification requires an
+unambiguous PGFR Spine result with both `dispatched=true` and `verified=true`.
+An active chat in any session or a concurrent reset returns HTTP 409. While a
+reset is pending, new chat requests are blocked until its result is persisted.
+The health response advertises support as `actions.reset_scene=true`.
 
 ### Opt-in shared trusted-LAN access
 

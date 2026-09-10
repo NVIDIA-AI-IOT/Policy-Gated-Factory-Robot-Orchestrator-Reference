@@ -5,20 +5,22 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from policy_gated_factory_robot_orchestrator_reference.action_endpoints.base import ActionResult
 from policy_gated_factory_robot_orchestrator_reference.floor import ros2
 
 
 class _Bridge:
-    def __init__(self, cubes: list[dict], **state: object) -> None:
+    def __init__(self, cubes: list[dict[str, Any]], **state: object) -> None:
         self._cubes = cubes
         self._state = state
-        self.commands: list[tuple[dict, float]] = []
+        self.commands: list[tuple[dict[str, Any], float]] = []
 
-    def floor_state(self) -> dict:
+    def floor_state(self) -> dict[str, Any]:
         return {"cubes": self._cubes, **self._state}
 
-    def send(self, command: dict, timeout: float) -> dict:
+    def send(self, command: dict[str, Any], timeout: float) -> dict[str, Any]:
         self.commands.append((command, timeout))
         return {
             "success": True,
@@ -42,7 +44,7 @@ class _Endpoint:
     id = "franka_right"
     type = "arm"
 
-    async def execute(self, capability: str, goal_args: dict) -> ActionResult:
+    async def execute(self, capability: str, goal_args: dict[str, Any]) -> ActionResult:
         return ActionResult(
             success=True,
             result={"verified": True, "moved": goal_args},
@@ -51,7 +53,7 @@ class _Endpoint:
 
 
 class _Backend:
-    def __init__(self, cubes: list[dict], **state: object) -> None:
+    def __init__(self, cubes: list[dict[str, Any]], **state: object) -> None:
         self._live_bridge = _Bridge(cubes, **state)
 
     def _bridge(self) -> _Bridge:

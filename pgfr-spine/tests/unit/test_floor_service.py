@@ -8,22 +8,29 @@ import json
 import threading
 import urllib.error
 import urllib.request
+from pathlib import Path
+from typing import Any
 
 import pytest
+
+from policy_gated_factory_robot_orchestrator_reference.action_endpoints.base import ActionResult
+from policy_gated_factory_robot_orchestrator_reference.input_sources.base import InputSource
 
 # No-proxy opener: avoids slow per-request system proxy detection (macOS).
 _opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
-def _post(port: int, path: str, body: dict) -> dict:
+def _post(port: int, path: str, body: dict[str, Any]) -> dict[str, Any]:
     req = urllib.request.Request(
         f"http://127.0.0.1:{port}{path}", data=json.dumps(body).encode(), method="POST"
     )
     try:
         with _opener.open(req, timeout=5) as r:
-            return json.loads(r.read())
+            result: dict[str, Any] = json.loads(r.read())
+            return result
     except urllib.error.HTTPError as e:  # dispatch failures return JSON with a 4xx
-        return json.loads(e.read())
+        failure: dict[str, Any] = json.loads(e.read())
+        return failure
 
 
 def test_service_perceive_dispatch_floor_state(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -56,7 +63,7 @@ class _FakeLiveEndpoint:
         self.id = id
         self.type = kind
 
-    async def execute(self, capability: str, goal_args: dict):
+    async def execute(self, capability: str, goal_args: dict[str, Any]) -> ActionResult:
         from policy_gated_factory_robot_orchestrator_reference.action_endpoints.base import (
             ActionResult,
         )
@@ -67,13 +74,13 @@ class _FakeLiveEndpoint:
 class _FakeLiveBackend:
     """Stands in for Ros2FloorBackend (observe() + executable endpoints) without ROS."""
 
-    def observe(self, target: str) -> dict:
+    def observe(self, target: str) -> dict[str, Any]:
         return {"target": target, "blocks_on_table": [], "counts": {}, "sorted": True}
 
-    def endpoints(self) -> list:
+    def endpoints(self) -> list[_FakeLiveEndpoint]:
         return [_FakeLiveEndpoint("mobilebot", "arm+base")]
 
-    def sources(self) -> list:
+    def sources(self) -> list[InputSource]:
         return []
 
 
@@ -110,13 +117,14 @@ def test_parallel_route_is_capability_gated_atomic_and_schema_bounded(
 ) -> None:
     from fastapi.testclient import TestClient
 
+    from policy_gated_factory_robot_orchestrator_reference.floor import ros2
     from policy_gated_factory_robot_orchestrator_reference.floor import service as svc
 
-    captured: list[list[dict]] = []
+    captured: list[list[dict[str, Any]]] = []
     state_reads = 0
-    world: dict = {"tote": {}, "tote_r": {}}
+    world: dict[str, Any] = {"tote": {}, "tote_r": {}}
 
-    def pair(left_color: str, right_color: str) -> dict:
+    def pair(left_color: str, right_color: str) -> dict[str, Any]:
         return {
             "moves": [
                 {
@@ -136,7 +144,7 @@ def test_parallel_route_is_capability_gated_atomic_and_schema_bounded(
             ]
         }
 
-    async def _parallel(_backend, moves):
+    async def _parallel(_backend: object, moves: list[dict[str, Any]]) -> dict[str, Any]:
         captured.append(moves)
         return {
             "dispatched": True,
@@ -150,14 +158,14 @@ def test_parallel_route_is_capability_gated_atomic_and_schema_bounded(
             },
         }
 
-    def _state(_backend):
+    def _state(_backend: object) -> dict[str, Any]:
         nonlocal state_reads
         state_reads += 1
         return world
 
     monkeypatch.setattr(svc, "load_backend", lambda *a, **k: _FakeLiveBackend())
-    monkeypatch.setattr(svc.ros2, "live_dispatch_parallel", _parallel)
-    monkeypatch.setattr(svc.ros2, "live_floor_state", _state)
+    monkeypatch.setattr(ros2, "live_dispatch_parallel", _parallel)
+    monkeypatch.setattr(ros2, "live_floor_state", _state)
     monkeypatch.delenv("PGFR_GROOT_PARALLEL_ENABLED", raising=False)
     monkeypatch.delenv("PGFR_GROOT_FLEXIBLE_ORDER", raising=False)
     same_color = pair("green", "green")
@@ -259,7 +267,7 @@ def test_parallel_route_is_capability_gated_atomic_and_schema_bounded(
 
 
 def test_scene_declared_action_args_reach_live_endpoint(
-    monkeypatch: pytest.MonkeyPatch, tmp_path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """New device parameters cross HTTP generically but remain policy-gated."""
     from fastapi.testclient import TestClient
@@ -360,7 +368,7 @@ def test_live_health_fails_closed_until_floor_state_is_fresh(
     class _HealthBackend(_FakeLiveBackend):
         floor_state_age_s: float | None = None
 
-        def health(self) -> dict:
+        def health(self) -> dict[str, Any]:
             return {
                 "ros_ok": True,
                 "floor_state_age_s": self.floor_state_age_s,
@@ -396,7 +404,7 @@ def test_committed_openapi_spec_matches_code(monkeypatch: pytest.MonkeyPatch) ->
     assert _json.loads(committed.read_text()) == build_app().openapi()
 
 
-def test_mission_journal_records_ops(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_mission_journal_records_ops(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("PGFR_FLOOR_BACKEND", "mock")
     monkeypatch.setenv("PGFR_JOURNAL_DIR", str(tmp_path))
     from fastapi.testclient import TestClient
@@ -418,7 +426,7 @@ def test_mission_journal_records_ops(monkeypatch: pytest.MonkeyPatch, tmp_path) 
     assert lines[0]["duration_s"] >= 0
 
 
-def test_journal_disabled_when_unset(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_journal_disabled_when_unset(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("PGFR_FLOOR_BACKEND", "mock")
     monkeypatch.delenv("PGFR_JOURNAL_DIR", raising=False)
     from fastapi.testclient import TestClient
@@ -521,7 +529,9 @@ def test_conformance_kit_certifies_this_implementation(monkeypatch: pytest.Monke
     sys.path.insert(0, str(kit_src))
     monkeypatch.setenv("PGFR_FLOOR_BACKEND", "mock")
     from fastapi.testclient import TestClient
-    from pgfr_conformance.kit import run_checks
+
+    # Optional sibling source package is added to sys.path above.
+    from pgfr_conformance.kit import run_checks  # type: ignore[import-not-found]
 
     from policy_gated_factory_robot_orchestrator_reference.floor.service import build_app
 
@@ -531,7 +541,7 @@ def test_conformance_kit_certifies_this_implementation(monkeypatch: pytest.Monke
     assert not failures, failures
 
 
-def test_audit_store_missions_and_detail(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_audit_store_missions_and_detail(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("PGFR_FLOOR_BACKEND", "mock")
     monkeypatch.setenv("PGFR_JOURNAL_DIR", str(tmp_path))
     from fastapi.testclient import TestClient
@@ -555,7 +565,7 @@ def test_audit_store_missions_and_detail(monkeypatch: pytest.MonkeyPatch, tmp_pa
         assert ops[0]["verified"] is True
 
 
-def test_audit_store_retention_prunes(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_audit_store_retention_prunes(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     import json as _json
     from datetime import UTC, datetime, timedelta
 
@@ -655,14 +665,14 @@ def test_bridge_async_semantics() -> None:
     from policy_gated_factory_robot_orchestrator_reference.floor import ros2 as r2
 
     class _Pub:
-        def get_subscription_count(self):
+        def get_subscription_count(self) -> int:
             return 1
 
-        def publish(self, m):
+        def publish(self, m: _Str) -> None:
             self.last = m
 
     class _Str:
-        def __init__(self, data=""):
+        def __init__(self, data: str = "") -> None:
             self.data = data
 
     b = object.__new__(r2._Bridge)
@@ -680,9 +690,9 @@ def test_bridge_async_semantics() -> None:
     assert "refused" in r_busy and r_busy["busy_goal"] == gid   # busy-guard
     assert "goal_id" in b.send_async({"action": "move"}, queue=True)  # explicit stacking
     b._results[gid] = {"success": True, "goal_id": gid}
-    assert b.poll_result(gid)["success"] is True           # done, non-destructive
+    completed = b.poll_result(gid)
+    assert completed is not None and completed["success"] is True  # done, non-destructive
     b._pending[gid]["ts"] = _time.time() - 7200
-    b._sweep_async_locked_test = None
     with b._lock:
         b._sweep_async()
     assert gid not in b._pending and gid not in b._results  # TTL swept

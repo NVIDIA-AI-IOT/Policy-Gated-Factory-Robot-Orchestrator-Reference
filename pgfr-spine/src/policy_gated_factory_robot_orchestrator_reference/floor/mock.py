@@ -177,7 +177,7 @@ class MockFloorBackend:
     def __init__(self, scene: Scene | None = None) -> None:
         self.state = FloorState.from_scene(scene) if scene else FloorState.seed_default()
 
-    def endpoints(self) -> list[FloorActionEndpoint]:
+    def endpoints(self) -> list[ActionEndpoint]:
         return [FloorActionEndpoint(self.state, e) for e in self.state.endpoints]
 
     def sources(self) -> list[InputSource]:

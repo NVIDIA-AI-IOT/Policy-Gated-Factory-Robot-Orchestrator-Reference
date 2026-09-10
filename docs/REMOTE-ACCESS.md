@@ -6,7 +6,7 @@ address.
 
 | Profile | Operator capability | Exposure |
 |---|---|---|
-| SSH tunnel | Full Console, Chat, and Workflow Builder access | Recommended; browser services remain on loopback |
+| SSH tunnel | Full Console and Chat access; optional Workflows API access | Recommended; services remain on loopback |
 | Direct read-only Console | Topology, Inspector, GPU, camera evidence, mission history, and the Operational Assurance API | Port `8600/tcp`, restricted to an operator address |
 | Trusted-LAN Console and Chat | Console plus write-capable Chat orchestration | Ports `8600/tcp` and `8620/tcp`; no application login or TLS |
 
@@ -21,20 +21,23 @@ OpenClaw port `18790` is a headless Gateway API, not a second dashboard.
 
 ## SSH tunnel
 
-For the complete UI, forward all three browser-facing ports from the operator
+For the complete UI, forward the Console and Chat ports from the operator
 machine:
 
 ```bash
 THOR_SSH=YOUR_THOR_USER@YOUR_THOR_IP
 ssh -N -o ExitOnForwardFailure=yes \
   -L 127.0.0.1:8600:127.0.0.1:8600 \
-  -L 127.0.0.1:8610:127.0.0.1:8610 \
   -L 127.0.0.1:8620:127.0.0.1:8620 \
   "$THOR_SSH"
 ```
 
-Open `http://127.0.0.1:8600` and keep the SSH process running while using the
-UI.
+Open `http://127.0.0.1:8600`; Chat opens by default. Keep the SSH process running
+while using the UI.
+
+For remote [Workflows API](../servers/pgfr-workflows/README.md) access, also add
+`-L 127.0.0.1:8610:127.0.0.1:8610` to the SSH command. Workflows are managed
+through that API; Console has no workflow editor.
 
 ## Direct read-only Console
 
@@ -84,8 +87,7 @@ curl --fail "http://$THOR_IP:8600/api/health"
 
 This profile exposes only Console's read-only views. Keep `8610`, `8620`,
 `8766`, `18790`, `8001`, GR00T policy and relay ports, and the GPU exporter
-private. Chat and Workflow Builder remain available through the SSH-tunnel
-profile.
+private. Use the SSH-tunnel profile for Chat and optional Workflows API access.
 
 ## Trusted-LAN Console and Chat
 
@@ -152,13 +154,13 @@ ss -ltn | grep -E ':(8600|8620) '
 THOR_IP=YOUR_THOR_IP
 curl --fail "http://$THOR_IP:8600/api/health"
 curl --fail "http://$THOR_IP:8620/api/health"
-# Browser: http://YOUR_THOR_IP:8600, then select Chat.
+# Browser: http://YOUR_THOR_IP:8600 (Chat opens by default).
 ```
 
-Chat submits its policy-gated tool calls to PGFR Spine, so direct Workflow Builder
-access is not required. Keep `8610`, `8766`, `18790`, `8001`,
-GR00T policy and relay ports, and the GPU exporter private. Use the SSH-tunnel
-profile when Workflow Builder create, edit, run, or schedule access is needed.
+Chat submits its policy-gated tool calls to PGFR Spine. Keep `8610`, `8766`,
+`18790`, `8001`, GR00T policy and relay ports, and the GPU exporter private.
+Use the optional Workflows API SSH forwarding above when remote workflow
+creation, execution, or scheduling is needed.
 
 ## View Isaac Sim
 

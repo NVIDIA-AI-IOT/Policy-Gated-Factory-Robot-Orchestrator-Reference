@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 
 from .backends import ChatBackend, OpenClawBackend, make_backend
 from .sessions import SessionStore
-from .toolloop import TOOLS, ToolLoop, ToolLoopSettings
+from .toolloop import TOOLS, ToolLoop, ToolLoopSettings, reset_verified
 
 _SESSION_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 _LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
@@ -39,6 +39,56 @@ class ChatRequest(BaseModel):
     session_id: str = Field(default="")
     message: str = Field(min_length=1, max_length=8000)
     backend: Optional[str] = Field(default=None, max_length=32)
+
+
+class ResetSceneRequest(BaseModel):
+    session_id: str = Field(default="", max_length=64)
+    backend: Optional[str] = Field(default=None, max_length=32)
+
+    model_config = {"extra": "forbid"}
+
+
+def _reset_transcript(raw: Dict[str, Any]) -> List[Dict[str, Any]]:
+    result = dict(raw)
+    # Spine's dispatched flag mirrors endpoint success, so False can follow
+    # an attempted reset. Only an explicit status proves a refusal.
+    if reset_verified(result):
+        status = "verified"
+        summary = "Isaac Sim scene reset verified."
+    elif result.get("delivery_uncertain") or (
+        result.get("transport_error") and result.get("delivery_uncertain") is not False
+    ):
+        status = "uncertain"
+        summary = (
+            "The scene reset outcome is uncertain. Inspect Isaac Sim before "
+            "requesting another reset. No retry was sent."
+        )
+    elif result.get("status") == "refused":
+        status = "refused"
+        summary = "Scene reset was refused. Review the policy-gate result before trying again."
+    elif result.get("transport_error") and result.get("delivery_uncertain") is False:
+        status = "failed"
+        summary = "Scene reset could not reach the floor service. No retry was sent."
+    elif result.get("dispatched") is True or result.get("verified") is False:
+        status = "failed"
+        summary = (
+            "Scene reset was not verified. Inspect Isaac Sim before requesting "
+            "another reset. No retry was sent."
+        )
+    else:
+        status = "uncertain"
+        summary = (
+            "The floor service did not confirm the scene reset. Inspect Isaac Sim "
+            "before requesting another reset. No retry was sent."
+        )
+    result["status"] = status
+    result["verified"] = status == "verified"
+    if status == "uncertain":
+        result["delivery_uncertain"] = True
+    return [
+        {"role": "tool", "name": "reset_scene", "args": {}, "result": result},
+        {"role": "assistant", "content": summary},
+    ]
 
 
 def _csrf_guard(
@@ -75,6 +125,13 @@ def build_app(
         max_sessions=max_sessions, max_history=max_history,
     )
     active_missions: set[str] = set()
+    reset_mission: Optional[str] = None
+
+    def require_chat_idle(state: Dict[str, Any]) -> None:
+        if reset_mission is not None:
+            raise HTTPException(409, "scene reset is in progress; wait for its result")
+        if state["mission_id"] in active_missions:
+            raise HTTPException(409, "this chat session already has a running turn")
 
     async def backend_events(
         selected_backend: ChatBackend,
@@ -107,7 +164,9 @@ def build_app(
         )
         return {"transcript": transcript, "final": final}
 
-    def session_backend(state: Dict[str, Any], requested: Optional[str]) -> ChatBackend:
+    def session_backend(
+        state: Dict[str, Any], requested: Optional[str], *, require_configured: bool = True,
+    ) -> ChatBackend:
         selected = requested or state.get("backend") or "traditional"
         if selected not in backends:
             raise HTTPException(422, f"unknown chat backend: {selected!r}")
@@ -118,7 +177,8 @@ def build_app(
                 "a conversation stays on one backend; start a new chat to switch",
             )
         chosen = backends[selected]
-        if selected == "openclaw" and not getattr(chosen, "configured", True):
+        if (require_configured and selected == "openclaw"
+                and not getattr(chosen, "configured", True)):
             raise HTTPException(
                 503,
                 "OpenClaw Gateway is not configured; use traditional or configure "
@@ -147,11 +207,12 @@ def build_app(
             # Retain the original fields for older console builds.
             "backend": traditional_backend.name,
             "tools": [t["name"] for t in TOOLS],
+            "actions": {"reset_scene": True},
             "default_backend": "traditional",
             "backends": {
                 "traditional": {
                     "available": traditional_available,
-                    "label": f"Traditional PGFR Chat ({traditional_backend.name})",
+                    "label": f"Default Chat ({traditional_backend.name})",
                 },
                 "openclaw": {
                     "available": bool(getattr(openclaw_backend, "configured", True)),
@@ -196,7 +257,10 @@ def build_app(
         _csrf_guard(request, x_pgfr_chat, allowed_origins, csrf_token)
         if body.session_id and not _SESSION_RE.match(body.session_id):
             raise HTTPException(422, "bad session_id")
+        if reset_mission is not None:
+            raise HTTPException(409, "scene reset is in progress; wait for its result")
         state = store.get_or_create(body.session_id)
+        require_chat_idle(state)
         selected_backend = session_backend(state, body.backend)
         state["history"].append({"role": "user", "content": body.message})
         # Send only the recent window to the model (token bound); the model
@@ -205,10 +269,13 @@ def build_app(
         context = [
             m for m in state["history"] if m.get("role") in ("user", "assistant")
         ][-context_window:]
+        active_missions.add(state["mission_id"])
         try:
             out = await run_backend(selected_backend, context, state["mission_id"])
         except Exception as exc:
             raise HTTPException(502, f"backend error: {type(exc).__name__}: {exc}")
+        finally:
+            active_missions.discard(state["mission_id"])
         for entry in out["transcript"]:
             if entry["role"] == "assistant" and entry.get("content"):
                 state["history"].append({"role": "assistant", "content": entry["content"]})
@@ -262,19 +329,27 @@ def build_app(
         _csrf_guard(request, x_pgfr_chat, allowed_origins, csrf_token)
         if body.session_id and not _SESSION_RE.match(body.session_id):
             raise HTTPException(422, "bad session_id")
+        if reset_mission is not None:
+            raise HTTPException(409, "scene reset is in progress; wait for its result")
         state = store.get_or_create(body.session_id)
+        require_chat_idle(state)
         selected_backend = session_backend(state, body.backend)
         state["history"].append({"role": "user", "content": body.message})
         context = [
             m for m in state["history"] if m.get("role") in ("user", "assistant")
         ][-context_window:]
 
+        # Reserve before returning the response so a reset cannot slip in
+        # before the streaming generator begins. All write handlers run on
+        # this single event loop and do not await between check and reserve.
+        active_missions.add(state["mission_id"])
+
         async def events():
-            active_missions.add(state["mission_id"])
-            yield "data: " + _json.dumps({
-                "role": "meta", "session_id": state["id"], "mission_id": state["mission_id"]
-            }) + "\n\n"
             try:
+                yield "data: " + _json.dumps({
+                    "role": "meta", "session_id": state["id"],
+                    "mission_id": state["mission_id"]
+                }) + "\n\n"
                 async for ev in backend_events(
                     selected_backend, context, state["mission_id"]
                 ):
@@ -311,6 +386,55 @@ def build_app(
                                  headers={"cache-control": "no-store",
                                           "x-accel-buffering": "no"})
 
+    @app.post("/api/reset-scene")
+    async def reset_scene(
+        body: ResetSceneRequest, request: Request,
+        x_pgfr_chat: Optional[str] = Header(default=None),
+    ) -> dict:
+        """Execute one explicit operator reset through the existing policy gate."""
+        nonlocal reset_mission
+        _csrf_guard(request, x_pgfr_chat, allowed_origins, csrf_token)
+        if body.session_id and not _SESSION_RE.fullmatch(body.session_id):
+            raise HTTPException(422, "bad session_id")
+        if reset_mission is not None:
+            raise HTTPException(409, "scene reset is already in progress")
+        if active_missions:
+            raise HTTPException(409, "a chat turn is running; wait for it to finish before resetting")
+        state = store.get_or_create(body.session_id)
+        # The reset is deterministic and remains available without an LLM.
+        # Preserve the selected backend for subsequent turns in this session.
+        session_backend(state, body.backend, require_configured=False)
+        state["history"].append({"role": "user", "content": "Reset the Isaac Sim scene."})
+        store.save(state)
+        reset_mission = state["mission_id"]
+        transcript = _reset_transcript({
+            "delivery_uncertain": True,
+            "error": "reset request interrupted before its result was recorded",
+        })
+        try:
+            try:
+                result = await loop.execute_tool("reset_scene", {}, state["mission_id"])
+            except Exception as exc:
+                # An exception can follow delivery. Never turn it into success
+                # or replay a physical reset automatically.
+                result = {
+                    "delivery_uncertain": True,
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+            transcript = _reset_transcript(result)
+        finally:
+            try:
+                state["history"].extend(transcript)
+                store.save(state)
+            finally:
+                reset_mission = None
+        return {
+            "session_id": state["id"],
+            "mission_id": state["mission_id"],
+            "result": transcript[0]["result"],
+            "transcript": transcript,
+        }
+
     @app.post("/api/sessions/{session_id}/stop")
     async def stop_session(
         session_id: str, request: Request, x_pgfr_chat: Optional[str] = Header(default=None)
@@ -342,6 +466,10 @@ def build_app(
         _csrf_guard(request, x_pgfr_chat, allowed_origins, csrf_token)
         if not _SESSION_RE.match(session_id):
             raise HTTPException(422, "bad session_id")
+        state = store.get(session_id)
+        if state and (state["mission_id"] in active_missions
+                      or state["mission_id"] == reset_mission):
+            raise HTTPException(409, "cannot delete a session while an action is running")
         return {"deleted": store.delete(session_id), "id": session_id}
 
     @app.get("/api/frame/{request_id}")

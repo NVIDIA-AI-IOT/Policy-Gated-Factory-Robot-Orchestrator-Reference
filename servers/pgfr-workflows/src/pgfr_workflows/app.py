@@ -3,8 +3,7 @@
 
 """pgfr-workflows API — CRUD for workflow specs, dry-run/run, publish-as-skill.
 
-This is the write-path sibling of pgfr-console: the console page's Workflows tab
-talks to this service directly from the browser. Specs live as YAML files in
+Clients manage workflows through this HTTP API. Specs live as YAML files in
 a git-versioned directory; runs execute through the seam's policy gate under
 a per-run mission id.
 """

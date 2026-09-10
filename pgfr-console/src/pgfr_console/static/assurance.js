@@ -18,8 +18,8 @@ function aesc(v) {
 const assuranceMain = document.getElementById("assurance");
 const tabAssurance = document.getElementById("tab-assurance");
 // this file loads last, so it hides every other view and every other tab hides it
-const assuranceTabIds = ["tab-topo", "tab-wf", "tab-chat", "tab-inspect"];
-const assuranceMainIds = ["topo", "builder", "chat", "inspect"];
+const assuranceTabIds = ["tab-topo", "tab-chat", "tab-inspect"];
+const assuranceMainIds = ["topo", "chat", "inspect"];
 const assuranceTabs = assuranceTabIds.map((id) => document.getElementById(id));
 const assuranceMains = assuranceMainIds.map((id) => document.getElementById(id));
 

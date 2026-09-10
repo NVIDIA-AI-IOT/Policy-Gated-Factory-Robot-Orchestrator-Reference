@@ -4,6 +4,8 @@
 // Chat tab — talks to the pgfr-chat gateway (write path). All untrusted values
 // (model text, tool args/results) are esc()'d before innerHTML.
 
+import { rememberSessions, sessionTitle, sessionDate } from "./display.js?v=console-cleanup4";
+
 const CHAT_API = window.PGFR_CHAT_URL || `${location.protocol}//${location.hostname}:8620`;
 const CHAT_TOKEN = window.PGFR_CHAT_TOKEN || "console";
 
@@ -14,16 +16,53 @@ function cesc(v) {
 }
 
 const chatMain = document.getElementById("chat");
-const topoMain2 = document.getElementById("topo");
-const builderMain2 = document.getElementById("builder");
+const topoMain = document.getElementById("topo");
 const logEl = document.getElementById("chatlog");
 const inputEl = document.getElementById("chatinput");
 const sendEl = document.getElementById("chatsend");
 const metaEl = document.getElementById("chatmeta");
+const connectionEl = document.getElementById("chat-connection");
+const copyEl = document.getElementById("copy-session-id");
+const copyStatus = document.getElementById("copy-status");
+let chatConnected = false;
+const backendName = (backend) => backend === "openclaw" ? "OpenClaw" : "Default Chat";
+function renderConnection() {
+  connectionEl.textContent = chatConnected ? "Chat connected" : "Chat unavailable";
+  connectionEl.dataset.state = chatConnected ? "connected" : "unavailable";
+  metaEl.textContent = chatConnected ? `Assistant: ${backendName(selectedBackend)}` : "Check the Chat service on the control host.";
+}
+function renderSessionId() {
+  document.getElementById("chatsession").textContent = sessionId || "New conversation";
+  copyEl.disabled = !sessionId;
+  copyStatus.textContent = "";
+}
+copyEl.onclick = async () => {
+  if (!sessionId) return;
+  try {
+    if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(sessionId);
+    else {
+      // The workstation dashboard is also served over plain HTTP on the LAN.
+      const field = document.createElement("textarea");
+      field.value = sessionId;
+      field.style.cssText = "position:fixed;opacity:0;pointer-events:none";
+      document.body.append(field);
+      field.select();
+      try { if (!document.execCommand("copy")) throw new Error("Copy unavailable"); }
+      finally { field.remove(); copyEl.focus(); }
+    }
+    copyStatus.textContent = "Copied";
+  } catch { copyStatus.textContent = "Select the session ID to copy it."; }
+};
 const backendEl = document.getElementById("chatbackend");
 const tabChat = document.getElementById("tab-chat");
-const tabTopo2 = document.getElementById("tab-topo");
-const tabWf2 = document.getElementById("tab-wf");
+const tabTopo = document.getElementById("tab-topo");
+const resetEl = document.getElementById("reset-scene");
+const resetDialog = document.getElementById("reset-dialog");
+const resetStatus = document.getElementById("reset-status");
+const newChatEl = document.getElementById("chatnew");
+const emptyChatTemplate = document.getElementById("chatempty").outerHTML;
+let resetAvailable = false;
+let resetRunning = false;
 
 let sessionId = localStorage.getItem("pgfr_chat_session") || "";
 let chatRunning = false;
@@ -34,6 +73,7 @@ let stopRequestPending = false;
 // after the stream completes), making the chat appear to vanish.
 let renderedSessionId = "";
 let sessionLoadGeneration = 0;
+let sessionLoading = false;
 let selectedBackend = localStorage.getItem("pgfr_chat_backend") || "traditional";
 if (!["traditional", "openclaw"].includes(selectedBackend)) selectedBackend = "traditional";
 backendEl.value = selectedBackend;
@@ -42,32 +82,43 @@ function setBackend(value) {
   selectedBackend = value === "openclaw" ? "openclaw" : "traditional";
   backendEl.value = selectedBackend;
   localStorage.setItem("pgfr_chat_backend", selectedBackend);
+  renderConnection();
 }
 
 function setChatRunning(running) {
   chatRunning = running;
-  sendEl.disabled = false;
+  sendEl.disabled = resetRunning || sessionLoading;
   sendEl.textContent = running ? "Stop" : "Send";
   sendEl.classList.toggle("stop", running);
-  inputEl.disabled = running;
-  backendEl.disabled = running || Boolean(sessionId);
+  inputEl.disabled = running || resetRunning || sessionLoading;
+  backendEl.disabled = running || resetRunning || sessionLoading || Boolean(sessionId);
+  newChatEl.disabled = running || resetRunning;
+  const needsRestore = sessionLoading || Boolean(sessionId && renderedSessionId !== sessionId);
+  resetEl.disabled = running || resetRunning || needsRestore || !resetAvailable;
+  resetEl.setAttribute("aria-busy", String(resetRunning));
+  resetEl.innerHTML = resetRunning
+    ? '<span aria-hidden="true">↻</span> Resetting…'
+    : '<span aria-hidden="true">↻</span> Reset Scene';
+  resetEl.title = running ? "Wait for the current Chat action to finish"
+    : resetRunning ? "Waiting for the reset result"
+    : needsRestore ? "Load the saved conversation or start a new chat before resetting"
+    : resetAvailable ? "Return Isaac Sim to its starting layout" : "Scene reset is unavailable";
 }
 
 tabChat.onclick = () => {
-  topoMain2.style.display = "none";
-  builderMain2.style.display = "none";
+  topoMain.style.display = "none";
   chatMain.style.display = "grid";
-  for (const b of [tabTopo2, tabWf2]) b.classList.remove("active");
+  for (const b of [tabTopo]) b.classList.remove("active");
   tabChat.classList.add("active");
   loadMeta();
   loadSessions();
   // A hidden pane does not stop the stream. Keep its transcript attached and
   // only restore from the server when this browser has not rendered it yet.
-  if (!chatRunning && sessionId && renderedSessionId !== sessionId)
+  if (!chatRunning && !resetRunning && sessionId && renderedSessionId !== sessionId)
     openSession(sessionId);
 };
 // when the other tabs are clicked, hide chat too
-for (const b of [tabTopo2, tabWf2]) {
+for (const b of [tabTopo]) {
   const prev = b.onclick;
   b.onclick = (e) => { chatMain.style.display = "none"; tabChat.classList.remove("active"); if (prev) prev(e); };
 }
@@ -75,7 +126,10 @@ for (const b of [tabTopo2, tabWf2]) {
 async function loadMeta() {
   try {
     const r = await fetch(CHAT_API + "/api/health");
+    if (!r.ok) throw new Error("Chat gateway unavailable");
     const b = await r.json();
+    resetAvailable = b.actions?.reset_scene === true;
+    setChatRunning(chatRunning);
     const options = b.backends || {};
     const openclaw = backendEl.querySelector('option[value="openclaw"]');
     if (openclaw) {
@@ -84,11 +138,13 @@ async function loadMeta() {
       openclaw.textContent = ready ? "OpenClaw" : "OpenClaw (not configured)";
       if (!ready && selectedBackend === "openclaw" && !sessionId) setBackend("traditional");
     }
-    metaEl.textContent =
-      `selected: ${selectedBackend} · traditional model: ${b.backend} · ` +
-      `tools: ${(b.tools || []).join(", ")}`;
+    chatConnected = true;
+    renderConnection();
   } catch {
-    metaEl.innerHTML = `<span style="color:var(--red)">chat gateway unreachable at ${cesc(CHAT_API)} — start it: pgfr-chat</span>`;
+    resetAvailable = false;
+    setChatRunning(chatRunning);
+    chatConnected = false;
+    renderConnection();
   }
 }
 
@@ -96,30 +152,34 @@ const sessionsEl = document.getElementById("chatsessions");
 async function loadSessions() {
   try {
     const list = (await (await fetch(CHAT_API + "/api/sessions")).json()).sessions || [];
-    if (!list.length) { sessionsEl.textContent = "no conversations yet"; return; }
+    rememberSessions(list);
+    if (!list.length) { sessionsEl.textContent = "No conversations yet"; return; }
     sessionsEl.innerHTML = list.map((s) =>
       `<div class="sess ${s.id === sessionId ? "active" : ""}" data-sid="${cesc(s.id)}">
-         <span class="st" title="${cesc(s.title)}">${cesc(s.title)}
-           <span class="sid">${cesc(s.backend || "traditional")} · ${cesc(s.mission_id || `chat-${s.id}`)}</span></span>
-         <button class="sd" data-del="${cesc(s.id)}" title="delete">✕</button></div>`).join("");
+         <span class="st" title="${cesc(sessionTitle(s))}">${cesc(sessionTitle(s))}
+           <span class="sid">${cesc(sessionDate(s))}${s.backend === "openclaw" ? " · OpenClaw" : ""}</span></span>
+         <button class="sd" data-del="${cesc(s.id)}" title="Delete conversation" aria-label="Delete conversation">✕</button></div>`).join("");
     for (const el of sessionsEl.querySelectorAll(".sess"))
       el.onclick = (e) => { if (!e.target.classList.contains("sd")) openSession(el.dataset.sid); };
     for (const b of sessionsEl.querySelectorAll(".sd"))
       b.onclick = (e) => { e.stopPropagation(); delSession(b.dataset.del); };
-  } catch { sessionsEl.textContent = "gateway unreachable"; }
+  } catch { sessionsEl.textContent = "Chat history is unavailable"; }
 }
 
 async function openSession(sid) {
   // Never replace a live transcript or let the operator switch/delete its
   // backing session while tool results are still arriving.
-  if (chatRunning) return;
+  if (chatRunning || resetRunning) return;
   const loadGeneration = ++sessionLoadGeneration;
+  sessionLoading = true;
+  setChatRunning(chatRunning);
+  resetStatus.hidden = true;
   try {
     const r = await fetch(CHAT_API + `/api/sessions/${encodeURIComponent(sid)}`);
-    if (chatRunning || loadGeneration !== sessionLoadGeneration) return;
+    if (chatRunning || resetRunning || loadGeneration !== sessionLoadGeneration) return;
     if (!r.ok) { newChat(); return; }
     const s = await r.json();
-    if (chatRunning || loadGeneration !== sessionLoadGeneration) return;
+    if (chatRunning || resetRunning || loadGeneration !== sessionLoadGeneration) return;
     sessionId = s.id;
     renderedSessionId = sessionId;
     setBackend(s.backend || "traditional");
@@ -131,34 +191,47 @@ async function openSession(sid) {
     else addMsg(m.role === "user" ? "you" : "brain", m.content);
   }
     if (!(s.history || []).length) newChat();
-    const se = document.getElementById("chatsession");
-    if (se) se.textContent = `session: ${s.mission_id}`;
+    renderSessionId();
     backendEl.disabled = true;
     loadSessions();
-  } catch { /* leave as-is */ }
+  } catch { /* leave as-is */ } finally {
+    if (loadGeneration === sessionLoadGeneration) {
+      sessionLoading = false;
+      setChatRunning(chatRunning);
+    }
+  }
 }
 
 function newChat() {
-  if (chatRunning) return;
+  if (chatRunning || resetRunning) return;
   sessionLoadGeneration += 1;
   sessionId = "";
   renderedSessionId = "";
+  sessionLoading = false;
+  resetStatus.hidden = true;
   localStorage.removeItem("pgfr_chat_session");
   if (window.PGFRSession) window.PGFRSession.set("");
   logEl.innerHTML = "";
   clearEmptyRestore();
   backendEl.disabled = false;
+  renderSessionId();
+  setChatRunning(chatRunning);
   loadSessions();
 }
 function clearEmptyRestore() {
-  logEl.innerHTML = `<div id="chatempty">
-    <div style="font-size:34px;line-height:1;margin-bottom:10px">🦾</div>
-    <div style="font-size:15px;font-weight:700;margin-bottom:6px">Talk to the cell</div>
-    <div class="muted">Ask the brain to run the floor. Every tool call goes through the policy gate, is journaled, and shows the frame the VLM saw.</div></div>`;
+  logEl.innerHTML = emptyChatTemplate;
 }
 
+// Suggestions prepare a message; only Send can submit it.
+logEl.addEventListener("click", (event) => {
+  const example = event.target.closest("[data-prompt]");
+  if (!example || chatRunning || resetRunning) return;
+  inputEl.value = example.dataset.prompt;
+  inputEl.focus();
+});
+
 async function delSession(sid) {
-  if (chatRunning) return;
+  if (chatRunning || resetRunning) return;
   try {
     await fetch(CHAT_API + `/api/sessions/${encodeURIComponent(sid)}`,
       { method: "DELETE", headers: { "x-pgfr-chat": CHAT_TOKEN } });
@@ -166,7 +239,7 @@ async function delSession(sid) {
     else loadSessions();
   } catch { /* ignore */ }
 }
-document.getElementById("chatnew").onclick = newChat;
+newChatEl.onclick = newChat;
 
 function clearEmpty() {
   const e = document.getElementById("chatempty");
@@ -270,7 +343,7 @@ function addTool(entry, running) {
     : "";
   const response = running
     ? ""
-    : `<details class="tcresponse" open><summary>tool response</summary>` +
+    : `<details class="tcresponse"><summary>tool response</summary>` +
       `<pre>${cesc(JSON.stringify(r, null, 2))}</pre></details>`;
   div.innerHTML =
     `<div class="tchead"><span class="tool">${cesc(entry.name)}()</span>${pill}</div>` +
@@ -308,8 +381,7 @@ async function sendBatch(text, wasNew) {
   renderedSessionId = sessionId;
   localStorage.setItem("pgfr_chat_session", sessionId);
   if (window.PGFRSession) window.PGFRSession.set(body.mission_id);
-  const se = document.getElementById("chatsession");
-  if (se) se.textContent = `session: ${body.mission_id}`;
+  renderSessionId();
   if (wasNew) loadSessions();
   for (const entry of body.transcript || []) {
     if (entry.role === "assistant" && entry.content) addMsg("brain", entry.content);
@@ -318,8 +390,10 @@ async function sendBatch(text, wasNew) {
 }
 
 async function send() {
+  if (chatRunning || resetRunning || sessionLoading) return;
   const text = inputEl.value.trim();
   if (!text) return;
+  resetStatus.hidden = true;
   // Invalidate any restore fetch that started just before Send was pressed.
   sessionLoadGeneration += 1;
   inputEl.value = "";
@@ -359,8 +433,7 @@ async function send() {
           renderedSessionId = sessionId;
           localStorage.setItem("pgfr_chat_session", sessionId);
           if (window.PGFRSession) window.PGFRSession.set(ev.mission_id);
-          const se = document.getElementById("chatsession");
-          if (se) se.textContent = `session: ${ev.mission_id}`;
+          renderSessionId();
           if (wasNew) loadSessions();
           if (stopRequestPending) requestStop();
         } else if (ev.role === "assistant" && ev.content) {
@@ -414,7 +487,7 @@ async function requestStop() {
 
 sendEl.onclick = () => chatRunning ? requestStop() : send();
 backendEl.onchange = () => {
-  if (chatRunning || sessionId) {
+  if (chatRunning || resetRunning || sessionId) {
     backendEl.value = selectedBackend;
     return;
   }
@@ -422,5 +495,70 @@ backendEl.onchange = () => {
   loadMeta();
 };
 inputEl.addEventListener("keydown", (e) => {
-  if (!chatRunning && e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
+  if (!chatRunning && !resetRunning && e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
 });
+
+resetEl.onclick = () => {
+  if (chatRunning || resetRunning || sessionLoading || (sessionId && renderedSessionId !== sessionId) || !resetAvailable) return;
+  resetDialog.showModal();
+};
+document.getElementById("cancel-reset-scene").onclick = () => resetDialog.close();
+document.getElementById("confirm-reset-scene").onclick = async () => {
+  if (chatRunning || resetRunning || sessionLoading || (sessionId && renderedSessionId !== sessionId) || !resetAvailable) return;
+  resetDialog.close();
+  resetRunning = true;
+  sessionLoadGeneration += 1;
+  setChatRunning(chatRunning);
+  tabChat.click();
+  resetStatus.hidden = false;
+  resetStatus.dataset.state = "pending";
+  resetStatus.textContent = "Resetting the scene. Waiting for verification…";
+  addMsg("you", "Reset Scene");
+  try {
+    // One explicit operator request. Never retry a reset after a timeout.
+    const response = await fetch(CHAT_API + "/api/reset-scene", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-pgfr-chat": CHAT_TOKEN },
+      body: JSON.stringify({session_id: sessionId, backend: selectedBackend}),
+    });
+    const body = await response.json();
+    if (!response.ok) {
+      if (![400, 401, 403, 404, 409, 422].includes(response.status))
+        throw new Error("Reset gateway failure");
+      resetStatus.dataset.state = "refused";
+      resetStatus.textContent = typeof body.detail === "string" ? body.detail : "Scene reset was not accepted.";
+      addMsg("system", resetStatus.textContent);
+      return;
+    }
+    if (!body.session_id || !body.mission_id || !body.result) throw new Error("Incomplete reset response");
+    sessionId = body.session_id;
+    renderedSessionId = sessionId;
+    localStorage.setItem("pgfr_chat_session", sessionId);
+    if (window.PGFRSession) window.PGFRSession.set(body.mission_id);
+    renderSessionId();
+    for (const entry of body.transcript || []) {
+      if (entry.role === "tool") addTool(entry);
+      else if (entry.role === "assistant" && entry.content) addMsg("brain", entry.content);
+    }
+    const result = body.result;
+    const verified = result.status === "verified" && result.dispatched === true && result.verified === true
+      && !result.delivery_uncertain && !result.transport_error && !result.error;
+    resetStatus.dataset.state = verified ? "verified"
+      : ["refused", "failed"].includes(result.status) ? result.status : "uncertain";
+    resetStatus.textContent = verified ? "Scene reset verified. Ready for the next task."
+      : result.status === "refused" ? "Reset refused. " + (result.reason || "The scene is busy.")
+      : result.status === "failed" ? "Reset was not verified. Check the scene before continuing."
+      : "Reset outcome unknown. Check Isaac Sim before trying again.";
+  } catch {
+    resetStatus.dataset.state = "uncertain";
+    resetStatus.textContent = "Reset outcome unknown. Check Isaac Sim before trying again.";
+    addMsg("system", resetStatus.textContent);
+  } finally {
+    resetRunning = false;
+    setChatRunning(chatRunning);
+    loadSessions();
+  }
+};
+
+// Chat is the initial view; restore its history and saved session on page load.
+tabChat.click();

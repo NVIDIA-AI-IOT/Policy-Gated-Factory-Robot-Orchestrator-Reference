@@ -164,14 +164,15 @@ operator system, create an SSH tunnel to the Jetson control host:
 CONTROL_HOST=YOUR_USER@YOUR_JETSON_IP
 ssh -N -o ExitOnForwardFailure=yes \
   -L 127.0.0.1:8600:127.0.0.1:8600 \
-  -L 127.0.0.1:8610:127.0.0.1:8610 \
   -L 127.0.0.1:8620:127.0.0.1:8620 \
   "$CONTROL_HOST"
 ```
 
-Open [http://127.0.0.1:8600](http://127.0.0.1:8600). Before the first mission,
-open **Chat**, start a new conversation, and enter **Reset the scene**. Then run
-the `full-groot-dual-tote` workflow from the Workflows view.
+Open [http://127.0.0.1:8600](http://127.0.0.1:8600); **Chat** opens by default.
+Before the first mission, start a new conversation and enter **Reset the scene**.
+Wait for the verified reset result, then run the `full-groot-dual-tote` workflow
+through the API using the
+[serial reference mission procedure](docs/VALIDATION.md#run-the-serial-reference-mission).
 
 Direct-LAN Console and Chat access is available only as a trusted-lab profile.
 It has no per-user authentication or TLS. Follow the

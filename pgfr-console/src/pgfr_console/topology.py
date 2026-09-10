@@ -43,34 +43,34 @@ class Topology(BaseModel):
 
 # The declared architecture. Live status is filled in by the aggregator;
 # anything it cannot measure stays "unknown" rather than being guessed.
-# Tool verbs the MCP server exposes (each shown individually).
+# Logical tool capabilities. Their status follows Robot API health, not a separate probe.
 TOOLS = [("t_floor_state", "floor_state"), ("t_perceive", "perceive"),
          ("t_dispatch", "dispatch_task"), ("t_verify", "check_predicate")]
 # Action endpoints on the floor — the two arms and the AMR (arm+base).
-ENDPOINTS = [("franka_left", "Franka L · arm"), ("franka_right", "Franka R · arm"),
-             ("mobilebot", "AMR · arm+base")]
+ENDPOINTS = [("franka_left", "Left arm"), ("franka_right", "Right arm"),
+             ("mobilebot", "Mobile robot")]
 # Cameras in the cell that feed the VLM.
 CAMERAS = [("cam_outside", "Outside cam"), ("cam_wrist_l", "Wrist cam L"),
            ("cam_wrist_r", "Wrist cam R"), ("cam_rack", "Rack cam")]
 
 NODES: List[NodeStatus] = [
-    NodeStatus(id="brain", label="Brain · OpenClaw", kind="agent", host="thor", layer=0),
-    NodeStatus(id="vlm", label="Cosmos VLM", kind="model", host="thor", layer=1),
-    NodeStatus(id="mcp", label="MCP server", kind="service", host="thor", layer=1),
-    *[NodeStatus(id=i, label=l, kind="tool", host="thor", layer=2) for i, l in TOOLS],
-    NodeStatus(id="seam", label="Floor seam v1", kind="service", host="gpu-box", layer=3),
-    NodeStatus(id="gym", label="NeMo Gym", kind="service", host="gpu-box", layer=3),
-    NodeStatus(id="floor", label="Floor gate", kind="service", host="gpu-box", layer=4),
-    NodeStatus(id="cell", label="Isaac cell", kind="sim", host="gpu-box", layer=5),
-    NodeStatus(id="groot", label="GR00T policy stack", kind="model", host="gpu-box", layer=5),
-    *[NodeStatus(id=i, label=l, kind="endpoint", host="cell", layer=6) for i, l in ENDPOINTS],
-    *[NodeStatus(id=i, label=l, kind="camera", host="cell", layer=6) for i, l in CAMERAS],
-    NodeStatus(id="journal", label="Audit journal", kind="store", host="gpu-box", layer=6),
+    NodeStatus(id="brain", label="Chat", kind="agent", layer=0),
+    NodeStatus(id="vlm", label="Vision model", kind="model", layer=4),
+    NodeStatus(id="mcp", label="Robot tools", kind="service", layer=1),
+    *[NodeStatus(id=i, label=label, kind="tool", layer=2) for i, label in TOOLS],
+    NodeStatus(id="seam", label="Robot API", kind="service", layer=3),
+    NodeStatus(id="gym", label="NeMo Gym", kind="service", layer=3),
+    NodeStatus(id="floor", label="Policy gate", kind="service", layer=4),
+    NodeStatus(id="cell", label="Isaac Sim", kind="sim", layer=5),
+    NodeStatus(id="groot", label="GR00T connection", kind="service", layer=5),
+    *[NodeStatus(id=i, label=label, kind="endpoint", layer=6) for i, label in ENDPOINTS],
+    *[NodeStatus(id=i, label=label, kind="camera", layer=6) for i, label in CAMERAS],
+    NodeStatus(id="journal", label="Task history", kind="store", layer=6),
 ]
 
 EDGES: List[Edge] = [
     Edge(id="brain-mcp", source="brain", target="mcp", label="tool calls"),
-    Edge(id="brain-vlm", source="brain", target="vlm", label="reason"),
+    Edge(id="seam-vlm", source="seam", target="vlm", label="perception"),
     *[Edge(id=f"mcp-{i}", source="mcp", target=i) for i, _ in TOOLS],
     *[Edge(id=f"{i}-seam", source=i, target="seam") for i, _ in TOOLS],
     Edge(id="gym-seam", source="gym", target="seam", label="HTTP /v1"),
@@ -100,9 +100,11 @@ def derive_edge_status(nodes: Dict[str, NodeStatus], edge: Edge) -> Status:
 
 
 def resolve(nodes: Dict[str, NodeStatus], edges: Dict[str, Edge]) -> Dict[str, object]:
-    for edge in edges.values():
+    present_edges = [edge for edge in edges.values()
+                     if edge.source in nodes and edge.target in nodes]
+    for edge in present_edges:
         edge.status = derive_edge_status(nodes, edge)
-    return {"nodes": list(nodes.values()), "edges": list(edges.values())}
+    return {"nodes": list(nodes.values()), "edges": present_edges}
 
 
 def get_optional(detail: Dict[str, object], key: str) -> Optional[object]:

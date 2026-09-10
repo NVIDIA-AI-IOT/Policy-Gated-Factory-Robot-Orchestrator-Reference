@@ -6,6 +6,8 @@ seed_default() so an Isaac scene or a real cell is just a different YAML file.""
 from __future__ import annotations
 
 import os
+from importlib.resources import files
+from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import Literal
 
@@ -35,14 +37,21 @@ class Scene(BaseModel):
     endpoints: list[SceneEndpoint] = Field(default_factory=list)
 
 
-def _default_scene_path() -> Path:
-    # scene.py -> floor -> policy_gated_factory_robot_orchestrator_reference -> src -> python/
+def _default_scene_path() -> Traversable:
+    bundled = files(__package__).joinpath("scene.example.yaml")
+    if bundled.is_file():
+        return bundled
+    # Editable installs use the canonical config directly; wheels include the
+    # same file as a package resource through Hatch's force-include mapping.
     return Path(__file__).resolve().parents[3] / "configs" / "scene.example.yaml"
 
 
 def load_scene(path: Path | None) -> Scene:
     """Load a scene from ``path``, else $PGFR_FLOOR_SCENE, else the bundled default."""
+    source: Traversable
     if path is None:
         env = os.environ.get("PGFR_FLOOR_SCENE")
-        path = Path(env).expanduser() if env else _default_scene_path()
-    return Scene.model_validate(yaml.safe_load(Path(path).read_text()))
+        source = Path(env).expanduser() if env else _default_scene_path()
+    else:
+        source = Path(path)
+    return Scene.model_validate(yaml.safe_load(source.read_text(encoding="utf-8")))

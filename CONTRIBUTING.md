@@ -66,9 +66,32 @@ uv run --frozen --project servers/pgfr-workflows pytest -q \
 git diff --check
 ```
 
-Strict type and lint cleanup is tracked separately from the release gate. Do
-not describe the existing repository-wide mypy or Ruff baseline as passing
-unless the corresponding CI job is added and succeeds.
+The release gate also runs the configured Ruff checks for PGFR Spine and skills,
+and strict Mypy for all PGFR Spine source and tests:
+
+```bash
+uv run --frozen --project pgfr-spine ruff check pgfr-spine skills ops/validate-packages.py
+(cd pgfr-spine && uv run --frozen mypy)
+```
+
+Build and validate all seven Python distributions with:
+
+```bash
+python3 ops/validate-packages.py
+```
+
+Use Python 3.12 and the CI-pinned uv. This gate rebuilds wheels from standalone
+source archives, checks package assets and license metadata, then installs all
+seven wheels into a temporary environment outside the checkout. It checks
+imports, entry points, dependency consistency, and Console HTTP assets without
+starting host services. Templates and the Thor upstream environment are not
+release distributions.
+
+Every Hatchling build-system declaration pins its backend version. Package-local `LICENSE`,
+`NOTICE`, and `THIRD-PARTY-NOTICES.md` are regular copies so source archives can
+be rebuilt without the monorepo. After changing a canonical root legal file,
+refresh the copies with `python3 ops/validate-packages.py --sync-legal`; CI
+rejects missing or stale copies.
 
 ## Change guidelines
 

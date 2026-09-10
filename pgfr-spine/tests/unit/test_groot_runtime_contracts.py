@@ -9,7 +9,9 @@ import math
 import pickle
 import struct
 import time
+from collections.abc import Callable
 from pathlib import Path
+from typing import TypedDict, cast
 
 REFERENCE_ROOT = (
     Path(__file__).resolve().parents[3] / "reference" / "policy-gated-factory-robot-orchestrator-reference"
@@ -25,6 +27,21 @@ EXECUTOR = (
 )
 TELEMETRY = RUNTIME_ROOT / "pgfr_sync_capture_cell.py"
 ISAAC_DEPLOYMENT = REFERENCE_ROOT / "isaac-cell" / "deployment"
+
+
+type Request = dict[str, object]
+type PairValidation = Callable[[Request], tuple[dict[str, Request], dict[str, str]]]
+
+
+class RelayResponse(TypedDict):
+    _batch: dict[str, object]
+
+
+type RelayQuery = Callable[[Request], RelayResponse]
+
+
+class QueryContext(TypedDict):
+    _grquery: RelayQuery
 
 
 def _assignment_value(module: ast.Module, name: str) -> ast.expr:
@@ -73,7 +90,7 @@ def test_concurrent_executor_accepts_independent_mixed_child_colors() -> None:
         ),
         namespace,
     )
-    validate = namespace["_concurrent_validate_pair"]
+    validate = cast(PairValidation, namespace["_concurrent_validate_pair"])
     by_endpoint, colors = validate(
         {
             "moves": [
@@ -99,7 +116,7 @@ def test_concurrent_executor_accepts_independent_mixed_child_colors() -> None:
 
 def test_shared_serial_transport_supplies_and_validates_arm_identity() -> None:
     module = ast.parse(DEPLOYMENT.read_text(encoding="utf-8"))
-    functions = [
+    functions: list[ast.stmt] = [
         node
         for node in module.body
         if isinstance(node, ast.FunctionDef)
@@ -114,11 +131,17 @@ def test_shared_serial_transport_supplies_and_validates_arm_identity() -> None:
         compile(ast.Module(body=functions, type_ignores=[]), str(DEPLOYMENT), "exec"),
         namespace,
     )
-    install = namespace["_deploy_install_shared_serial_transport"]
-    exchange = namespace["_deploy_shared_serial_exchange"]
+    install = cast(
+        Callable[[dict[str, QueryContext]], None],
+        namespace["_deploy_install_shared_serial_transport"],
+    )
+    exchange = cast(
+        Callable[[str, RelayQuery, Request], RelayResponse],
+        namespace["_deploy_shared_serial_exchange"],
+    )
     requests: list[dict[str, object]] = []
 
-    def base_query(request):
+    def base_query(request: Request) -> RelayResponse:
         requests.append(dict(request))
         return {
             "_batch": {
@@ -131,7 +154,7 @@ def test_shared_serial_transport_supplies_and_validates_arm_identity() -> None:
             }
         }
 
-    contexts = {
+    contexts: dict[str, QueryContext] = {
         "franka_left": {"_grquery": base_query},
         "franka_right": {"_grquery": base_query},
     }
@@ -145,7 +168,7 @@ def test_shared_serial_transport_supplies_and_validates_arm_identity() -> None:
     assert requests == [{"inference_seed": 11, "client_id": "franka_right"}]
     assert result["_batch"]["client_id"] == "franka_right"
 
-    def wrong_identity(_request):
+    def wrong_identity(_request: Request) -> RelayResponse:
         return {
             "_batch": {
                 "schema_version": 1,
@@ -172,7 +195,7 @@ def test_shared_serial_transport_supplies_and_validates_arm_identity() -> None:
 
 def test_shared_serial_transport_uses_fresh_bounded_framing() -> None:
     module = ast.parse(DEPLOYMENT.read_text(encoding="utf-8"))
-    functions = [
+    functions: list[ast.stmt] = [
         node
         for node in module.body
         if isinstance(node, ast.FunctionDef)
@@ -189,35 +212,35 @@ def test_shared_serial_transport_uses_fresh_bounded_framing() -> None:
             self.reply = bytearray(struct.pack(">I", len(response_payload)))
             self.reply.extend(response_payload)
             self.sent = b""
-            self.timeout = None
+            self.timeout: float | None = None
 
-        def __enter__(self):
+        def __enter__(self) -> FakeConnection:
             return self
 
-        def __exit__(self, *_args) -> None:
+        def __exit__(self, *_args: object) -> None:
             return None
 
-        def settimeout(self, value) -> None:
+        def settimeout(self, value: float) -> None:
             self.timeout = value
 
-        def sendall(self, value) -> None:
+        def sendall(self, value: bytes) -> None:
             self.sent += value
 
-        def recv(self, count):
+        def recv(self, count: int) -> bytes:
             value = bytes(self.reply[:count])
             del self.reply[:count]
             return value
 
     connection = FakeConnection()
-    calls = []
+    calls: list[tuple[tuple[str, int], float]] = []
 
     class FakeSocket:
         @staticmethod
-        def create_connection(endpoint, timeout):
+        def create_connection(endpoint: tuple[str, int], timeout: float) -> FakeConnection:
             calls.append((endpoint, timeout))
             return connection
 
-    namespace = {
+    namespace: dict[str, object] = {
         "_deploy_pickle": pickle,
         "_deploy_socket": FakeSocket,
         "_deploy_struct": struct,
@@ -229,8 +252,11 @@ def test_shared_serial_transport_uses_fresh_bounded_framing() -> None:
         compile(ast.Module(body=functions, type_ignores=[]), str(DEPLOYMENT), "exec"),
         namespace,
     )
-    query = namespace["_deploy_shared_serial_query"]
-    request = {"client_id": "franka_right", "inference_seed": 0}
+    query = cast(
+        Callable[[dict[str, object], Request], dict[str, object]],
+        namespace["_deploy_shared_serial_query"],
+    )
+    request: Request = {"client_id": "franka_right", "inference_seed": 0}
     result = query(
         {"_GROOT_RELAY_HOST": "127.0.0.1", "_GROOT_RELAY_PORT": 5611},
         request,
@@ -256,7 +282,7 @@ def test_certified_deployment_starts_each_haul_with_a_fresh_manifest() -> None:
 def test_haul_cargo_gate_uses_tote_local_coordinates_and_stable_validation() -> None:
     source_path = ISAAC_DEPLOYMENT / "fix_amr_haul_joint.py"
     module = ast.parse(source_path.read_text(encoding="utf-8"))
-    selected = [
+    selected: list[ast.stmt] = [
         node
         for node in module.body
         if (
@@ -283,7 +309,17 @@ def test_haul_cargo_gate_uses_tote_local_coordinates_and_stable_validation() -> 
         compile(ast.Module(body=selected, type_ignores=[]), str(source_path), "exec"),
         namespace,
     )
-    inside = namespace["_cargo_is_inside"]
+    inside = cast(
+        Callable[
+            [
+                tuple[float, float, float],
+                tuple[float, float, float, float],
+                tuple[float, float, float],
+            ],
+            bool,
+        ],
+        namespace["_cargo_is_inside"],
+    )
 
     identity = (1.0, 0.0, 0.0, 0.0)
     assert inside((0.0, 0.0, 0.0), identity, (0.29, 0.17, 0.10))
@@ -346,6 +382,7 @@ def test_dual_sequential_blue_uses_recorded_full_six_alignment() -> None:
     }
     observed: dict[tuple[str, str, int], tuple[list[float], str]] = {}
     for key_node, case_node in zip(cases.keys, cases.values, strict=True):
+        assert key_node is not None
         key = ast.literal_eval(key_node)
         if key not in expected:
             continue
@@ -386,8 +423,11 @@ def test_capture_contract_accepts_six_core_products_plus_one_vlm_product() -> No
         compile(ast.Module(body=[function], type_ignores=[]), str(TELEMETRY), "exec"),
         namespace,
     )
-    validate = namespace["_capture_render_product_contract"]
-    core = {
+    validate = cast(
+        Callable[[dict[str, object], dict[str, object], list[str]], bool],
+        namespace["_capture_render_product_contract"],
+    )
+    core: dict[str, object] = {
         "camera_profile": "capture",
         "render_products": {
             "wrist": "rp0",
@@ -399,7 +439,7 @@ def test_capture_contract_accepts_six_core_products_plus_one_vlm_product() -> No
             "rack": "rp5",
         },
     }
-    vlm = {
+    vlm: dict[str, object] = {
         "camera_profile": "capture",
         "render_products": {"inspect_vlm": "rp6"},
         "additional_render_product_count": 1,

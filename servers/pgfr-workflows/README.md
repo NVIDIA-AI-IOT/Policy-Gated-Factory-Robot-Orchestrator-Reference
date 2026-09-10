@@ -1,8 +1,8 @@
 # PGFR Workflows
 
 PGFR Workflows stores, validates, and executes reviewable YAML workflows through
-PGFR Spine. The PGFR Console Workflows view uses this service for authoring,
-dry-runs, execution, schedules, and skill publication.
+PGFR Spine. Its HTTP API supports authoring, dry-runs, execution, schedules,
+and skill publication.
 
 ## Install and run
 
@@ -14,8 +14,10 @@ PGFR_FLOOR_SERVICE=http://127.0.0.1:8766 uv run --frozen \
   --project servers/pgfr-workflows pgfr-workflows
 ```
 
-The service listens on `127.0.0.1:8610` by default. Open PGFR Console on port
-`8600` and select **Workflows**.
+The service listens on `127.0.0.1:8610` by default. View its API documentation
+at [http://127.0.0.1:8610/docs](http://127.0.0.1:8610/docs). For a complete
+mission example, follow the
+[serial reference mission procedure](../../docs/VALIDATION.md#run-the-serial-reference-mission).
 
 ## Workflow lifecycle
 
@@ -75,7 +77,7 @@ can compose only the existing tool palette.
 | `PGFR_SKILLS_DIR` | `skills/` | Published skill directory |
 | `PGFR_WORKFLOWS_HOST` | `127.0.0.1` | Bind address |
 | `PGFR_WORKFLOWS_PORT` | `8610` | HTTP port |
-| `PGFR_WORKFLOWS_CORS` | `http://127.0.0.1:8600` | Allowed Console origins |
+| `PGFR_WORKFLOWS_CORS` | `http://127.0.0.1:8600` | Allowed browser origins |
 | `PGFR_WORKFLOWS_TOKEN` | unset | Optional write-request token |
 | `PGFR_WORKFLOWS_TIMEOUT_S` | `300` | PGFR Spine request timeout |
 | `PGFR_WORKFLOWS_SCHEDULER` | `1` | Enables the scheduler loop |
@@ -83,10 +85,9 @@ can compose only the existing tool palette.
 | `PGFR_GROOT_PARALLEL_ENABLED` | `0` | Records parallel-serving readiness |
 | `PGFR_GROOT_FLEXIBLE_ORDER` | `0` | Enables the accepted mixed-pair order |
 
-Keep the service on loopback. The direct-IP trusted-LAN profile intentionally
-does not expose Workflow Builder; use the
-[SSH-tunnel profile](../../docs/REMOTE-ACCESS.md#ssh-tunnel) for remote
-authoring and execution.
+Keep the service on loopback. The direct-IP trusted-LAN profile does not expose
+the Workflows API; use the optional Workflows port forwarding in the
+[SSH-tunnel profile](../../docs/REMOTE-ACCESS.md#ssh-tunnel) for remote API access.
 
 ## Test
 

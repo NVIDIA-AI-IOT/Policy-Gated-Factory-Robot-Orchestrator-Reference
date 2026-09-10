@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.32.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -11,7 +11,8 @@ version = "0.1.0"
 description = "A factory brain that orchestrates verified action across heterogeneous robots and sensors."
 readme = "README.md"
 requires-python = ">=3.12"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.md"]
 authors = [{ name = "Policy-Gated Factory Robot Orchestrator Reference" }]
 
 dependencies = [
@@ -38,6 +39,9 @@ policy_gated_factory_robot_orchestrator_reference = "policy_gated_factory_robot_
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/policy_gated_factory_robot_orchestrator_reference"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"configs/scene.example.yaml" = "policy_gated_factory_robot_orchestrator_reference/floor/scene.example.yaml"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

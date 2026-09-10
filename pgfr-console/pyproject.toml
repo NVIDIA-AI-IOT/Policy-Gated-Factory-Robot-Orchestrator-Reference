@@ -2,13 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.32.0"]
 build-backend = "hatchling.build"
 
 [project]
 name = "pgfr-console"
 version = "0.1.0"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.md"]
 description = "Policy-Gated Factory Robot Orchestrator Reference console — read-only live topology, mission replay, and system health over the floor seam"
 requires-python = ">=3.10"
 dependencies = [
@@ -25,8 +26,7 @@ pgfr-console = "pgfr_console.app:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pgfr_console"]
-# Ship the SPA assets inside the wheel (else an installed console 500s on /).
-force-include = { "src/pgfr_console/static" = "pgfr_console/static" }
+# Package discovery includes the static assets; force-including them duplicates wheel entries.
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

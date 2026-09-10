@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { rememberSessions, sessionTitle, sessionDate, verificationSummary } from "./display.js?v=console-cleanup4";
+
 // Inspector tab — the live audit feed that imprints how inspectable the backend
 // is. Every value is escaped before innerHTML (same escaping contract as the rest).
 
@@ -14,8 +16,8 @@ const inspectMain = document.getElementById("inspect");
 const feedEl = document.getElementById("inspectfeed");
 const statsEl = document.getElementById("inspectstats");
 const tabInspect = document.getElementById("tab-inspect");
-const iTabs = ["tab-topo", "tab-wf", "tab-chat"].map((id) => document.getElementById(id));
-const iMains = ["topo", "builder", "chat"].map((id) => document.getElementById(id));
+const iTabs = ["tab-topo", "tab-chat"].map((id) => document.getElementById(id));
+const iMains = ["topo", "chat"].map((id) => document.getElementById(id));
 
 let inspectTimer = null;
 tabInspect.onclick = () => {
@@ -90,6 +92,7 @@ function fmtFields(obj) {
 
 const missionsEl = document.getElementById("inspectmissions");
 const timelineEl = document.getElementById("inspecttimeline");
+const missionRecords = new Map();
 const openIds = new Set();          // expanded subtasks (request_id) — persist across refreshes
 let selectedMission = null;
 let missionsSig = null, timelineSig = null;
@@ -108,25 +111,42 @@ const VLM_OPS = new Set(["perceive", "verify"]);
 async function loadInspect() {
   let list;
   try {
-    list = (await (await fetch("/api/missions?limit=25")).json()).missions || [];
+    const [missionResult, chatResult] = await Promise.allSettled([
+      fetch("/api/missions?limit=25").then((r) => r.json()),
+      fetch("/api/chat-sessions").then((r) => r.json()),
+    ]);
+    if (missionResult.status === "rejected") throw missionResult.reason;
+    if (chatResult.status === "fulfilled") rememberSessions(chatResult.value.sessions || []);
+    list = missionResult.value.missions || [];
+    for (const mission of list) missionRecords.set(mission.mission_id, mission);
   } catch {
     missionsEl.textContent = "audit store unreachable";
     return;
   }
-  const sig = list.map((m) => m.mission_id + ":" + m.dispatches).join("|");
+  const sig = JSON.stringify(list.map((m) => [m, sessionTitle(m), sessionDate(m)]));
   if (sig !== missionsSig) {
     missionsSig = sig;
     missionsEl.innerHTML = list.length
       ? list.map((m) => {
           const id = m.mission_id;
           const ok = m.verified_dispatches, tot = m.dispatches;
-          return `<div class="mrow ${id === selectedMission ? "active" : ""}" data-mid="${iesc(id)}">
-            <div class="mt">${iesc(id)}</div>
-            <div class="mm">${iesc(m.ops ?? "?")} subtasks · ${iesc(ok)}/${iesc(tot)} verified</div></div>`;
+          const summary = [sessionDate(m), verificationSummary(ok, tot)].filter(Boolean).join(" · ");
+          const reason = tot === 0 && m.last_reason
+            ? `<div class="mm mission-note">${iesc(String(m.last_reason).slice(0, 160))}</div>` : "";
+          return `<div class="mrow ${id === selectedMission ? "active" : ""}" role="button" tabindex="0" data-mid="${iesc(id)}">
+            <div class="mt">${iesc(sessionTitle(m))}</div>
+            <div class="mm">${iesc(summary)}</div>${reason}</div>`;
         }).join("")
       : `<div class="muted">no tasks yet</div>`;
-    for (const r of missionsEl.querySelectorAll(".mrow"))
+    for (const r of missionsEl.querySelectorAll(".mrow")) {
       r.onclick = () => selectMission(r.dataset.mid);
+      r.onkeydown = (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          selectMission(r.dataset.mid);
+        }
+      };
+    }
   }
   if (!selectedMission && list.length) selectMission(list[0].mission_id);
   else if (selectedMission) selectMission(selectedMission, true);
@@ -139,21 +159,27 @@ async function selectMission(mid, keepScroll) {
     r.classList.toggle("active", r.dataset.mid === mid);
   let ops;
   try {
-    ops = (await (await fetch(`/api/missions/${encodeURIComponent(mid)}`)).json()).operations || [];
-  } catch { timelineEl.textContent = "task unreachable"; return; }
+    const response = await fetch(`/api/missions/${encodeURIComponent(mid)}`);
+    if (!response.ok) throw new Error("Task unavailable");
+    ops = (await response.json()).operations || [];
+  } catch {
+    if (selectedMission === mid) timelineEl.textContent = "Could not load this task. Try again.";
+    return;
+  }
 
-  const sig = mid + "#" + ops.map((o) => o.request_id || o.ts).join("|");
+  if (selectedMission !== mid) return;
+  const mission = missionRecords.get(mid) || { mission_id: mid, started_at: ops[0]?.ts };
+  const sig = JSON.stringify([mid, sessionTitle(mission), ops]);
   if (keepScroll && sig === timelineSig) return;   // no change -> don't rebuild (keeps expansion)
   timelineSig = sig;
 
   // per-task stats
-  const disp = ops.filter((o) => o.op === "dispatch" || o.action);
+  const disp = ops.filter((o) => o.op === "dispatch" || (!o.op && o.action));
   const ver = disp.filter((o) => o.verified === true).length;
   const total = ops.reduce((a, o) => a + (o.duration_s || 0), 0);
-  const span = ops.length ? `${hms(ops[0].ts)} → ${endTime(ops[ops.length - 1].ts, ops[ops.length - 1].duration_s)}` : "";
   statsEl.innerHTML =
-    stat(ops.length, "subtasks") + stat(disp.length, "actions") +
-    stat(ver, "physics-verified") + stat(total.toFixed(1) + "s", "task duration");
+    stat(ops.length, "steps") + stat(disp.length, "robot actions") +
+    stat(ver, "verified actions") + stat(total.toFixed(1) + "s", "duration");
 
   const rows = ops.map((o, i) => {
     // dispatch shows the action (move/pick_and_place); perceive/verify show the
@@ -203,9 +229,10 @@ async function selectMission(mid, keepScroll) {
       </div></div>`;
   }).join("");
   timelineEl.innerHTML =
-    `<div class="thead"><div class="tt">${iesc(mid)}</div>
-       <div class="tm">${iesc(ops.length)} subtasks · ${iesc(span)} · ${total.toFixed(1)}s total · ${ver}/${disp.length} verified</div></div>
-     <div class="tl">${rows}</div>`;
+    `<div class="thead"><div class="tt">${iesc(sessionTitle(mission))}</div>
+       <div class="tm">${iesc([sessionDate(mission), verificationSummary(ver, disp.length)].filter(Boolean).join(" · "))}</div>
+       <details class="technical-details"><summary>Session ID</summary><code>${iesc(mid)}</code></details></div>
+     <div class="tl">${rows || '<div class="muted">No steps recorded.</div>'}</div>`;
   for (const row of timelineEl.querySelectorAll(".tlrow")) {
     row.querySelector(".tlhead").onclick = () => {
       row.classList.toggle("open");

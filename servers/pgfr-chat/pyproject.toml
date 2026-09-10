@@ -2,13 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.32.0"]
 build-backend = "hatchling.build"
 
 [project]
 name = "pgfr-chat"
 version = "0.1.0"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.md"]
 description = "Policy-Gated Factory Robot Orchestrator Reference chat gateway — swappable model backends drive the cell through the seam tool loop, journaled"
 requires-python = ">=3.10"
 dependencies = [

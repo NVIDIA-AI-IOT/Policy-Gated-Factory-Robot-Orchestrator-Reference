@@ -10,14 +10,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from policy_gated_factory_robot_orchestrator_reference.cli import main
 
 
-def _json_out(capsys: pytest.CaptureFixture[str]) -> dict:
-    return json.loads(capsys.readouterr().out)
+def _json_out(capsys: pytest.CaptureFixture[str]) -> dict[str, Any]:
+    result: dict[str, Any] = json.loads(capsys.readouterr().out)
+    return result
 
 
 def test_floor_state_subcommand_emits_endpoints(

@@ -11,6 +11,7 @@ monkeypatch the aggregator's HTTP layer with canned responses.
 
 from __future__ import annotations
 
+import time
 from typing import Any, Dict, Optional
 
 import httpx
@@ -19,6 +20,7 @@ from fastapi.testclient import TestClient
 
 from pgfr_console.aggregator import Aggregator, Settings
 from pgfr_console.app import build_app
+from pgfr_console.topology import Edge, NodeStatus, resolve
 
 
 class CannedHTTP:
@@ -42,6 +44,7 @@ def make_agg(payloads: Dict[str, Optional[Dict[str, Any]]], **env: str) -> Aggre
     settings = Settings()
     settings.vlm_url = env.get("vlm_url", "")
     settings.gym_url = env.get("gym_url", "")
+    settings.chat_url = env.get("chat_url", settings.chat_url)
     agg = Aggregator(settings)
     canned = CannedHTTP(payloads)
     agg._get_json = canned  # type: ignore[method-assign]
@@ -104,7 +107,7 @@ class TestAggregator:
         snap = await agg.poll_once()
         nodes = {n.id: n for n in snap["nodes"]}
         assert nodes["cell"].status == "unknown"
-        assert "mock" in str(nodes["cell"].detail)
+        assert "mock" in str(nodes["cell"].detail).lower()
 
     async def test_stale_floor_state_degrades_cell(self) -> None:
         stale = dict(HEALTHY, floor_state_age_s=42.0)
@@ -146,6 +149,168 @@ class TestAggregator:
         assert kinds.get("mobilebot") == "endpoint"
         assert kinds.get("cam_outside") == "camera"
         assert kinds.get("t_dispatch") == "tool"
+
+    async def test_unconfigured_integrations_are_absent(self) -> None:
+        snapshot = await make_agg({"/v1/health": HEALTHY}).poll_once()
+        ids = {node.id for node in snapshot["nodes"]}
+        assert not ({"gym", "vlm", "groot"} & ids)
+        assert all(edge.source in ids and edge.target in ids for edge in snapshot["edges"])
+
+    @pytest.mark.parametrize("status_code", [404, 500, 503])
+    async def test_configured_gym_http_failure_remains_visible(self, status_code: int) -> None:
+        agg = make_agg({
+            "http://gym/": {"_http_status": status_code, "detail": "Unavailable"},
+            "/v1/health": HEALTHY,
+        }, gym_url="http://gym")
+        snapshot = await agg.poll_once()
+        nodes = {node.id: node for node in snapshot["nodes"]}
+        assert nodes["gym"].status == "down"
+        assert nodes["gym"].detail["url"] == "http://gym"
+        assert any(edge.source == "gym" for edge in snapshot["edges"])
+
+    async def test_configured_unreachable_models_remain_visible(self) -> None:
+        agg = make_agg({"/v1/health": HEALTHY}, vlm_url="http://vision")
+        snapshot = await agg.poll_once()
+        nodes = {node.id: node for node in snapshot["nodes"]}
+        assert nodes["vlm"].status == "down"
+        assert nodes["vlm"].label == "Vision model"
+        assert all(edge.source in nodes and edge.target in nodes for edge in snapshot["edges"])
+
+    async def test_model_labels_are_generic_and_metadata_is_measured(self) -> None:
+        model = "nvidia/NVIDIA-Nemotron-Nano-12B-v2-VL-NVFP4-QAD"
+        agg = make_agg({
+            "/v1/health": HEALTHY,
+            "http://chat/api/health": {
+                "_http_status": 200, "status": "ok", "backend": "openai",
+                "backends": {"traditional": {"available": True}},
+                "tools": ["floor_state", "perceive"],
+            },
+            "http://vision/v1/models": {"_http_status": 200, "data": [{"id": model}]},
+        }, chat_url="http://chat", vlm_url="http://vision")
+        nodes = {node.id: node for node in (await agg.poll_once())["nodes"]}
+        assert nodes["brain"].label == "Chat"
+        assert nodes["brain"].status == "ok"
+        assert nodes["brain"].detail["backend"] == "openai"
+        assert nodes["brain"].detail["status_basis"]
+        assert nodes["vlm"].label == "Vision model"
+        assert nodes["vlm"].status == "ok"
+        assert nodes["vlm"].detail["model_ids"] == [model]
+        assert not any("Cosmos" in node.label or "OpenClaw" in node.label for node in nodes.values())
+
+    async def test_reported_cameras_have_individual_freshness(self) -> None:
+        ages = {"inspect_vlm_cam": 0.2, "outside_right_cam": 12.0, "inspect_cam": 45.0}
+        agg = make_agg({"/v1/health": dict(HEALTHY, camera_age_s=ages)})
+        snapshot = await agg.poll_once()
+        nodes = {node.id: node for node in snapshot["nodes"]}
+        cameras = {node.id: node for node in nodes.values() if node.kind == "camera"}
+        assert set(cameras) == set(ages)
+        assert nodes["cell"].status == "ok"
+        assert cameras["inspect_vlm_cam"].status == "ok"
+        assert cameras["outside_right_cam"].status == "degraded"
+        assert cameras["inspect_cam"].status == "down"
+        assert cameras["outside_right_cam"].detail["camera_id"] == "outside_right_cam"
+        assert cameras["outside_right_cam"].detail["camera_age_s"] == 12.0
+        assert all(edge.source in nodes and edge.target in nodes for edge in snapshot["edges"])
+
+    @pytest.mark.parametrize("age", [None, float("nan"), float("inf"), -1.0, True, "0.2"])
+    async def test_invalid_camera_age_is_unknown(self, age: Any) -> None:
+        agg = make_agg({"/v1/health": dict(HEALTHY, camera_age_s={"rack_cam": age})})
+        nodes = {node.id: node for node in (await agg.poll_once())["nodes"]}
+        assert nodes["cell"].status == "ok"
+        assert nodes["rack_cam"].status == "unknown"
+        assert nodes["rack_cam"].detail.get("camera_age_s") is None
+
+    async def test_discovered_cameras_survive_missing_readings_and_outage(self) -> None:
+        payloads = {"/v1/health": dict(HEALTHY, camera_age_s={"inspect_cam": 0.2, "rack_cam": 0.1})}
+        agg = make_agg(payloads)
+        await agg.poll_once()
+        payloads["/v1/health"] = dict(HEALTHY, camera_age_s={"inspect_cam": 0.2})
+        nodes = {node.id: node for node in (await agg.poll_once())["nodes"]}
+        assert nodes["inspect_cam"].status == "ok"
+        assert nodes["rack_cam"].status == "unknown"
+        payloads.clear()
+        nodes = {node.id: node for node in (await agg.poll_once())["nodes"]}
+        cameras = {node.id: node for node in nodes.values() if node.kind == "camera"}
+        assert set(cameras) == {"inspect_cam", "rack_cam"}
+        assert all(camera.status == "unknown" for camera in cameras.values())
+
+    async def test_legacy_missing_camera_age_does_not_inherit_healthy_cell(self) -> None:
+        health = {key: value for key, value in HEALTHY.items() if key != "camera_age_s"}
+        nodes = {node.id: node for node in (await make_agg({"/v1/health": health}).poll_once())["nodes"]}
+        assert nodes["cell"].status == "ok"
+        cameras = [node for node in nodes.values() if node.kind == "camera"]
+        assert cameras and all(camera.status == "unknown" for camera in cameras)
+
+    @pytest.mark.parametrize("age, status", [(0, "ok"), (90, "degraded"), (240, "unknown"), (None, "unknown")])
+    async def test_groot_status_uses_fresh_passive_transport_evidence(
+        self, age: Optional[int], status: str
+    ) -> None:
+        report = {
+            "ports_open": 2, "ports_total": 2, "degraded": False,
+            "services": {
+                "franka_left": {"port": 5741, "listening": True},
+                "franka_right": {"port": 5742, "listening": True},
+            },
+            "observed_at_epoch_s": time.time() - age if age is not None else None,
+        }
+        agg = make_agg({
+            "/v1/health": HEALTHY,
+            "/v1/floor-state": {"_http_status": 200, "groot_serving": report},
+        })
+        nodes = {node.id: node for node in (await agg.poll_once())["nodes"]}
+        assert nodes["groot"].status == status
+        assert "transport" in nodes["groot"].detail["status_basis"].lower()
+        assert "inference" in nodes["groot"].detail["status_basis"].lower()
+        assert nodes["groot"].detail["services"] == report["services"]
+        canned = agg._get_json
+        assert isinstance(canned, CannedHTTP)
+        assert not any(":5741" in url or ":5742" in url for url in canned.calls)
+
+    async def test_groot_failed_transport_is_visible_and_outage_is_unknown(self) -> None:
+        payloads = {
+            "/v1/health": HEALTHY,
+            "/v1/floor-state": {
+                "_http_status": 200,
+                "groot_serving": {
+                    "ports_open": 1, "ports_total": 2, "degraded": True,
+                    "services": {
+                        "franka_left": {"port": 5741, "listening": True},
+                        "franka_right": {"port": 5742, "listening": False},
+                    },
+                    "observed_at_epoch_s": time.time(),
+                },
+            },
+        }
+        agg = make_agg(payloads)
+        nodes = {node.id: node for node in (await agg.poll_once())["nodes"]}
+        assert nodes["groot"].status == "degraded"
+        payloads.clear()
+        snapshot = await agg.poll_once()
+        nodes = {node.id: node for node in snapshot["nodes"]}
+        assert nodes["groot"].status == "unknown"
+        assert all(edge.source in nodes and edge.target in nodes for edge in snapshot["edges"])
+
+    async def test_endpoint_details_never_cross_between_arms(self) -> None:
+        agg = make_agg({
+            "/v1/health": HEALTHY,
+            "/v1/floor-state": {"_http_status": 200, "endpoints": [
+                {"id": "franka_left", "status": "idle", "location": "left station"},
+            ]},
+        })
+        nodes = {node.id: node for node in (await agg.poll_once())["nodes"]}
+        assert nodes["franka_left"].detail["location"] == "left station"
+        assert nodes["franka_right"].detail.get("location") != "left station"
+        assert nodes["franka_right"].detail.get("status") != "idle"
+
+    def test_resolve_omits_edges_to_absent_components(self) -> None:
+        cell = NodeStatus(id="cell", label="Isaac Sim", kind="sim", status="ok")
+        journal = NodeStatus(id="journal", label="History", kind="store", status="down")
+        output = resolve({"cell": cell, "journal": journal}, {
+            "record": Edge(id="record", source="cell", target="journal"),
+            "optional": Edge(id="optional", source="cell", target="absent"),
+        })
+        assert [edge.id for edge in output["edges"]] == ["record"]
+        assert output["edges"][0].status == "down"
 
     async def test_missions_proxy_degrades_loudly(self) -> None:
         agg = make_agg({})
@@ -322,10 +487,37 @@ class TestAPI:
         with TestClient(app) as client:
             resp = client.get("/")
             assert resp.status_code == 200
-            assert "CONSOLE" in resp.text
+            assert "<title>Orchestration Console</title>" in resp.text
+            header = resp.text.split("<header>", 1)[1].split("</header>", 1)[0]
+            assert "<h1>Orchestration Console</h1>" in header
+            assert 'id="stamp"' not in header
+            assert 'id="active-session"' not in header
+            assert header.index('id="reset-scene"') > header.index("</nav>")
+            chat = resp.text.split('<main id="chat">', 1)[1].split("</main>", 1)[0]
+            sidebar = chat.split("<aside>", 1)[1].split("</aside>", 1)[0]
+            details = sidebar.split('<details id="session-details">', 1)[1]
+            details = details.split("</details>", 1)[0]
+            assert "<summary>Session details</summary>" in details
+            assert 'id="chatsession"' in details
+            assert 'id="copy-session-id"' in details
+            assert "What would you like the cell to do?" in chat
+            assert chat.count('data-prompt="') == 2
+            dialog = resp.text.split('<dialog id="reset-dialog"', 1)[1]
+            dialog = dialog.split("</dialog>", 1)[0]
+            assert "Current scene progress will be cleared." in dialog
+            assert 'id="cancel-reset-scene"' in dialog
+            assert 'id="confirm-reset-scene"' in dialog
             assert 'id="tab-assurance"' not in resp.text
             assert 'id="assurance"' not in resp.text
             assert "/static/assurance.js" not in resp.text
+            assert 'id="tab-wf"' not in resp.text
+            assert 'id="builder"' not in resp.text
+            assert "/static/builder.js" not in resp.text
+            assert client.get("/static/builder.js").status_code == 404
+            assert '<button id="tab-chat" class="active">' in resp.text
+            assert '<button id="tab-topo" class="active">' not in resp.text
+            assert '#topo { display: none;' in resp.text
+            assert '#chat { display: grid;' in resp.text
 
     def test_public_chat_url_only_changes_the_browser_csp(
         self, monkeypatch: pytest.MonkeyPatch
@@ -350,7 +542,7 @@ class TestAPI:
         import pathlib
 
         static = pathlib.Path(__file__).parent.parent / "src" / "pgfr_console" / "static"
-        for name in ("app.js", "builder.js", "chat.js", "inspect.js", "assurance.js"):
+        for name in ("app.js", "chat.js", "inspect.js", "assurance.js"):
             src = (static / name).read_text()
             assert any(f"function {p}esc(" in src for p in ("", "c", "i", "s", "a")), name
             # the raw mission fields must never be interpolated without esc()
@@ -374,7 +566,7 @@ class TestAPI:
         static = pathlib.Path(__file__).parent.parent / "src" / "pgfr_console" / "static"
         app = (static / "app.js").read_text()
         assert '"pgfr_active_mission"' in app
-        for name in ("chat.js", "inspect.js", "gpu.js"):
+        for name in ("chat.js", "inspect.js"):
             assert "window.PGFRSession" in (static / name).read_text()
 
     def test_gpu_pane_promotes_thor_and_shows_live_memory_contract(self) -> None:
@@ -389,8 +581,8 @@ class TestAPI:
         assert '"groot-specialists"' in src
         assert "ram_used_mib ?? sample.mem_used_mib" in src
         assert "telemetry_basis: body.telemetry_basis" in src
-        assert 'fetch("/api/chat-sessions")' in src
-        assert "per-process SM unavailable on Thor" in src
+        assert 'read("/api/chat-sessions")' in src
+        assert 'smAvailable ? "<th>Compute use</th>" : ""' in src
         assert "}, 5000);" in src
 
     def test_active_chat_survives_pane_switch(self) -> None:
@@ -400,8 +592,9 @@ class TestAPI:
         static = pathlib.Path(__file__).parent.parent / "src" / "pgfr_console" / "static"
         src = (static / "chat.js").read_text()
         assert "renderedSessionId" in src
-        assert "if (!chatRunning && sessionId && renderedSessionId !== sessionId)" in src
-        assert "if (chatRunning) return;" in src
+        assert "if (!chatRunning && !resetRunning && sessionId" in src
+        assert "renderedSessionId !== sessionId)" in src
+        assert "if (chatRunning || resetRunning) return;" in src
         assert "sessionLoadGeneration += 1;" in src
 
     def test_chat_backend_selector_is_session_bound(self) -> None:
@@ -415,7 +608,7 @@ class TestAPI:
         assert 'value="openclaw"' in html
         assert "backend: selectedBackend" in src
         assert 'setBackend(s.backend || "traditional")' in src
-        assert "backendEl.disabled = running || Boolean(sessionId)" in src
+        assert "backendEl.disabled = running || resetRunning || sessionLoading || Boolean(sessionId)" in src
 
     def test_inspector_frame_fallback_is_csp_compatible(self) -> None:
         import pathlib

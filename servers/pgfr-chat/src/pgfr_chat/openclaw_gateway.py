@@ -199,7 +199,7 @@ class OpenClawGatewayClient:
                 "maxProtocol": OPENCLAW_PROTOCOL_VERSION,
                 "client": {
                     "id": "gateway-client",
-                    "displayName": "policy-gated-factory-robot-orchestrator-reference-pgfr-chat",
+                    "displayName": "PGFR Chat",
                     "version": "0.1.0",
                     "platform": "linux",
                     "mode": "backend",

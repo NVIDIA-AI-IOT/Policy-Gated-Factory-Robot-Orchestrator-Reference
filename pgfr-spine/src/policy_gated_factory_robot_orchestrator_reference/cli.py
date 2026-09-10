@@ -15,6 +15,7 @@ import fcntl
 import json
 import os
 import sys
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -242,7 +243,7 @@ def _resolve_floor_state_path(explicit: Path | None) -> Path:
 
 
 @contextmanager
-def _floor_lock(state_path: Path):
+def _floor_lock(state_path: Path) -> Iterator[None]:
     """Cross-process exclusive lock so concurrent dispatch read-modify-writes serialize
     (otherwise parallel dispatches race the shared floor file → lost writes / corruption)."""
     lock_path = state_path.with_suffix(state_path.suffix + ".lock")

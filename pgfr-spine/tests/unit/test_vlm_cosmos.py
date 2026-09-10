@@ -8,12 +8,16 @@ import asyncio
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Any
 
 import pytest
 
+from policy_gated_factory_robot_orchestrator_reference.input_sources.base import InputSource
+from policy_gated_factory_robot_orchestrator_reference.input_sources.mock import MockInputSource
+
 
 class _Handler(BaseHTTPRequestHandler):
-    last_request: dict = {}
+    last_request: dict[str, Any] = {}
 
     def log_message(self, *_a: object) -> None:
         return
@@ -103,7 +107,7 @@ def test_live_verify_checks_predicate_over_cameras() -> None:
     )
 
     class _Backend:
-        def sources(self):
+        def sources(self) -> list[InputSource]:
             return [cam]
 
     vlm = MockVLMClient(responses=[VLMResponse(answer="yes - the tote is on the rack")])
@@ -121,7 +125,7 @@ def test_live_verify_no_vlm_returns_unknown(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.delenv("PGFR_VLM_URL", raising=False)
 
     class _Backend:
-        def sources(self):
+        def sources(self) -> list[InputSource]:
             return []
 
     out = asyncio.run(ros2.live_verify(_Backend(), "anything?", vlm=None))
@@ -129,7 +133,7 @@ def test_live_verify_no_vlm_returns_unknown(monkeypatch: pytest.MonkeyPatch) -> 
     assert "PGFR_VLM_URL" in out["evidence"]
 
 
-def _conveyor_cam():
+def _conveyor_cam() -> MockInputSource:
     from policy_gated_factory_robot_orchestrator_reference.input_sources.mock import (
         MockInputSource,
         MockSnapshot,
@@ -151,7 +155,7 @@ def test_live_perceive_fuses_agreeing_vision() -> None:
     cam = _conveyor_cam()
 
     class _Backend:
-        def observe(self, target):
+        def observe(self, target: str) -> dict[str, Any]:
             return {
                 "target": target,
                 "blocks_on_table": [{"item": "block", "color": "red"}, {"item": "block", "color": "blue"}],
@@ -159,7 +163,7 @@ def test_live_perceive_fuses_agreeing_vision() -> None:
                 "sorted": False,
             }
 
-        def sources(self):
+        def sources(self) -> list[InputSource]:
             return [cam]
 
     vlm = MockVLMClient(responses=[VLMResponse(
@@ -189,11 +193,11 @@ def test_live_perceive_flags_discrepancy_but_keeps_ground_truth() -> None:
     )
 
     class _Backend:
-        def observe(self, target):
+        def observe(self, target: str) -> dict[str, Any]:
             return {"target": target, "tote": {}, "tote_on_rack": False,
                     "racks": {"tote_red": 0, "tote_blue": 0, "tote_green": 0, "rack_1": 0}}
 
-        def sources(self):
+        def sources(self) -> list[InputSource]:
             return [cam]
 
     # VLM (wrongly) says the tote is on the rack; ground truth says it is not.
@@ -219,11 +223,11 @@ def test_live_perceive_ignores_tote_on_rack_from_non_rack_camera() -> None:
     cam = _conveyor_cam()
 
     class _Backend:
-        def observe(self, target):
+        def observe(self, target: str) -> dict[str, Any]:
             return {"target": target, "blocks_on_table": [], "counts": {}, "sorted": True,
                     "racks": {"tote_red": 0, "tote_blue": 0, "tote_green": 0, "rack_1": 1}}
 
-        def sources(self):
+        def sources(self) -> list[InputSource]:
             return [cam]
 
     # table_cam (conveyor_1) cannot see the rack; even if Cosmos asserts tote_on_rack it must
@@ -244,10 +248,10 @@ def test_live_perceive_no_vlm_is_symbolic_only(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.delenv("PGFR_VLM_URL", raising=False)
 
     class _Backend:
-        def observe(self, target):
+        def observe(self, target: str) -> dict[str, Any]:
             return {"target": target, "blocks_on_table": [], "sorted": True}
 
-        def sources(self):
+        def sources(self) -> list[InputSource]:
             return []
 
     out = asyncio.run(ros2.live_perceive(_Backend(), "conveyor_1", vlm=None))

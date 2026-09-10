@@ -147,20 +147,19 @@ requires the deterministic
 ## Open PGFR Console
 
 The default deployment keeps the browser-facing services on Thor loopback.
-From the operator machine, open one SSH session that forwards Console, Workflow
-Builder, and Chat:
+From the operator machine, open one SSH session that forwards Console and Chat:
 
 ```bash
 THOR_SSH=YOUR_THOR_USER@YOUR_THOR_IP
 ssh -N -o ExitOnForwardFailure=yes \
   -L 127.0.0.1:8600:127.0.0.1:8600 \
-  -L 127.0.0.1:8610:127.0.0.1:8610 \
   -L 127.0.0.1:8620:127.0.0.1:8620 \
   "$THOR_SSH"
 ```
 
-Keep the SSH session open and browse to <http://127.0.0.1:8600>. Port `18790`
-is the headless OpenClaw Gateway API, not an operator dashboard.
+Keep the SSH session open and browse to <http://127.0.0.1:8600>; **Chat** opens
+by default. Port `18790` is the headless OpenClaw Gateway API, not an operator
+dashboard.
 
 Direct-IP Console and shared trusted-LAN Chat require explicit network policy
 and different service bindings. Follow
@@ -168,9 +167,9 @@ and different service bindings. Follow
 before exposing either service. The shared LAN mode has no per-user
 authentication or TLS; network reachability is its actuation boundary.
 
-Before the first mission, open **Chat**, start a new conversation, and enter
-**`Reset the scene`**. Wait for the verified reset result before starting the
-workflow.
+Before the first mission, start a new Chat conversation and enter
+**`Reset the scene`**. Wait for the verified reset result before running the
+[workflow through its API](docs/VALIDATION.md#run-the-serial-reference-mission).
 
 ## Next steps
 

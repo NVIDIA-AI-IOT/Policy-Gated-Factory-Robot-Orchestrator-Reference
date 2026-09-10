@@ -8,6 +8,8 @@
 // (validated: adjacent-pair CVD ΔE ≥ 8, normal ≥ 15; three low-contrast
 // slots are relieved by the legend, tooltip, and the Now table).
 
+import { rememberSessions, sessionTitle, sessionDate } from "./display.js?v=console-cleanup4";
+
 function gesc(v) {
   return String(v ?? "").replace(/[&<>"']/g, (c) => (
     { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
@@ -16,8 +18,8 @@ function gesc(v) {
 
 const gpuMain = document.getElementById("gpu");
 const tabGpu = document.getElementById("tab-gpu");
-const gTabIds = ["tab-topo", "tab-wf", "tab-chat", "tab-inspect"];
-const gMainIds = ["topo", "builder", "chat", "inspect"];
+const gTabIds = ["tab-topo", "tab-chat", "tab-inspect"];
+const gMainIds = ["topo", "chat", "inspect"];
 const gTabs = gTabIds.map((id) => document.getElementById(id));
 const gMains = gMainIds.map((id) => document.getElementById(id));
 
@@ -27,8 +29,6 @@ tabGpu.onclick = () => {
   gpuMain.style.display = "grid";
   for (const b of gTabs) b.classList.remove("active");
   tabGpu.classList.add("active");
-  const active = window.PGFRSession ? window.PGFRSession.get() : "";
-  if (active) sessionId = active;
   loadGpu();
   if (gpuTimer) clearInterval(gpuTimer);
   gpuTimer = setInterval(() => {
@@ -56,7 +56,7 @@ const WS_SERIES = [
   { key: "groot-red-right", label: "GR00T red · R", color: "#e87ba4" },
   { key: "groot-blue-right", label: "GR00T blue · R", color: "#008300" },
   { key: "groot-green-right", label: "GR00T green · R", color: "#4a3aa7" },
-  { key: "other", label: "Other (training / router / cert)", color: "#e34948" },
+  { key: "other", label: "Other", color: "#e34948" },
 ];
 const THOR_SERIES = [
   { key: "cosmos-reason-vlm", label: "Cosmos Reason VLM", color: "#76b900" },
@@ -64,7 +64,7 @@ const THOR_SERIES = [
   { key: "nemotron-vlm", label: "Nemotron VLM", color: "#e87ba4" },
   { key: "vllm-server", label: "Other vLLM server", color: "#8c6bb1" },
   { key: "legacy-vlm", label: "Legacy VLM (mixed)", color: "#8090a0" },
-  { key: "openclaw-gateway", label: "OpenClaw gateway (brain)", color: "#2a78d6" },
+  { key: "openclaw-gateway", label: "OpenClaw", color: "#2a78d6" },
   { key: "groot-shared-left", label: "GR00T shared · left", color: "#eb6834" },
   { key: "groot-shared-right", label: "GR00T shared · right", color: "#1baf7a" },
   { key: "groot-specialists", label: "GR00T specialist policies", color: "#4a3aa7" },
@@ -99,12 +99,11 @@ rangeEl.innerHTML =
   RANGES.map(
     (r) => `<button data-min="${r.minutes}" class="${r.minutes === rangeMin ? "active" : ""}">${r.label}</button>`,
   ).join("") +
-  `<select id="gpusession" style="margin-left:auto;font:inherit;font-size:11px;border:1px solid var(--line);border-radius:14px;padding:3px 10px;background:#fff;color:var(--muted)">
-     <option value="">live view — pick a session…</option></select>`;
+  `<select id="gpusession" aria-label="GPU history">
+     <option value="">Live</option></select>`;
 for (const b of rangeEl.querySelectorAll("button")) {
   b.onclick = () => {
     sessionId = null;
-    if (window.PGFRSession) window.PGFRSession.set("");
     document.getElementById("gpusession").value = "";
     rangeMin = Number(b.dataset.min);
     for (const x of rangeEl.querySelectorAll("button")) x.classList.toggle("active", x === b);
@@ -113,7 +112,6 @@ for (const b of rangeEl.querySelectorAll("button")) {
 }
 document.getElementById("gpusession").onchange = (ev) => {
   sessionId = ev.target.value || null;
-  if (window.PGFRSession) window.PGFRSession.set(sessionId || "");
   for (const x of rangeEl.querySelectorAll("button")) x.classList.remove("active");
   if (!sessionId) {
     rangeMin = 60;
@@ -122,17 +120,25 @@ document.getElementById("gpusession").onchange = (ev) => {
   loadGpu();
 };
 
+let sessionsRequest = null;
+let sessionsLoadedAt = 0;
 async function loadSessions() {
-  try {
-    const [chatResponse, missionResponse] = await Promise.all([
-      fetch("/api/chat-sessions"),
-      fetch("/api/missions?limit=15"),
+  if (sessionsRequest) return sessionsRequest;
+  if (Date.now() - sessionsLoadedAt < 30000) return;
+  sessionsRequest = (async () => {
+    const read = async (url) => {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("History unavailable");
+      return response.json();
+    };
+    const results = await Promise.allSettled([
+      read("/api/chat-sessions"), read("/api/missions?limit=15"),
     ]);
-    const chatBody = await chatResponse.json();
-    const missionBody = await missionResponse.json();
-    const sel = document.getElementById("gpusession");
-    const current = sessionId || sel.value;
+    if (results.every((r) => r.status === "rejected")) return;
+    const chatBody = results[0].status === "fulfilled" ? results[0].value : {};
+    const missionBody = results[1].status === "fulfilled" ? results[1].value : {};
     const combined = [...(chatBody.sessions || []), ...(missionBody.missions || [])];
+    rememberSessions(combined);
     const seen = new Set();
     const missions = combined.filter((m) => {
       const id = m.mission_id || m.id || "";
@@ -140,22 +146,20 @@ async function loadSessions() {
       seen.add(id);
       return true;
     });
-    const known = new Set(missions.map((m) => m.mission_id || m.id || ""));
-    sel.innerHTML =
-      '<option value="">live view — pick a session…</option>' +
-      (sessionId && !known.has(sessionId)
-        ? `<option value="${gesc(sessionId)}">${gesc(sessionId)}</option>`
-        : "") +
-      missions
-        .map((m) => {
-          const id = m.mission_id || m.id || "";
-          return id ? `<option value="${gesc(id)}">${gesc(id)}</option>` : "";
-        })
-        .join("");
-    sel.value = current;
-  } catch {
-    /* selector just stays as-is */
-  }
+    const sel = document.getElementById("gpusession");
+    sel.innerHTML = '<option value="">Live</option>' +
+      (sessionId && !seen.has(sessionId)
+        ? `<option value="${gesc(sessionId)}">${gesc(sessionTitle(sessionId))}</option>` : "") +
+      missions.map((m) => {
+        const id = m.mission_id || m.id || "";
+        const date = sessionDate(m);
+        const label = `${sessionTitle(m)}${date ? ` · ${date}` : ""}`;
+        return `<option value="${gesc(id)}">${gesc(label)}</option>`;
+      }).join("");
+    sel.value = sessionId || "";
+    sessionsLoadedAt = Date.now();
+  })().finally(() => { sessionsRequest = null; });
+  return sessionsRequest;
 }
 
 const memEl = document.getElementById("gpumemchart");
@@ -167,6 +171,21 @@ const scopeEl = document.getElementById("gpuscope");
 const liveEl = document.getElementById("gpulive");
 
 let lastSamples = [];
+let gpuRequest = null;
+let gpuRequestScope = "";
+let gpuGeneration = 0;
+let displayedScope = "";
+const memoryNote = document.getElementById("gpu-memory-note");
+const sessionDetails = document.getElementById("gpu-session-details");
+const sessionIdEl = document.getElementById("gpu-session-id");
+
+function updateSessionDetails() {
+  if (sessionDetails) {
+    sessionDetails.hidden = !sessionId;
+    if (sessionIdEl && sessionIdEl.textContent !== (sessionId || "")) sessionDetails.open = false;
+  }
+  if (sessionIdEl) sessionIdEl.textContent = sessionId || "";
+}
 
 function seriesMem(sample) {
   const out = {};
@@ -198,12 +217,15 @@ function renderLive(sample) {
     ? "—"
     : `${(Number(sample.gpu_power_mw) / 1000).toFixed(1)} W`;
   const age = Math.max(0, Math.round((Date.now() - Date.parse(sample.ts)) / 1000));
+  const freshness = !Number.isFinite(age) ? "Unknown"
+    : age < 60 ? `${age}s ago` : age < 3600 ? `${Math.floor(age / 60)}m ago`
+      : `${Math.floor(age / 3600)}h ago`;
   liveEl.innerHTML = [
     ["GPU utilization", `${Number(sample.gpu_util_pct) || 0}%`],
     [unified ? "GPU memory" : "GPU memory used", gpuMem],
     ["System RAM", `${(ramUsed / 1024).toFixed(1)} / ${(ramTotal / 1024).toFixed(1)} GiB · ${pct(ramUsed, ramTotal)}%`],
     ["GPU power", power],
-    ["Freshness", `${age}s ago`],
+    [sessionId ? "Sample time" : "Updated", sessionId ? fmtDateTime(sample.ts) : freshness],
   ].map(([label, value]) =>
     `<div class="gpu-metric"><span>${gesc(label)}</span><strong>${gesc(value)}</strong></div>`
   ).join("");
@@ -219,7 +241,22 @@ function xScale(samples) {
 
 function fmtTime(ts) {
   const d = new Date(ts);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function fmtDateTime(ts) {
+  const d = new Date(ts);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString([], {
+    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+}
+
+function fmtWindow(window) {
+  if (!window.from || !window.to) return "";
+  const from = new Date(window.from), to = new Date(window.to);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return "";
+  const end = from.toDateString() === to.toDateString() ? fmtTime(window.to) : fmtDateTime(window.to);
+  return `${fmtDateTime(window.from)} – ${end}`;
 }
 
 function renderMem(samples) {
@@ -329,9 +366,8 @@ function renderThor(body) {
   const samples = body.samples || [];
   thorCard.style.display = "block";
   const thorTitle = document.getElementById("gputhortitle");
-  const thorHost = samples.length ? samples[samples.length - 1].host : null;
   if (thorTitle) {
-    thorTitle.textContent = `${thorHost || "Thor"} · Jetson brain — GPU power (W), unified RAM`;
+    thorTitle.textContent = "Thor GPU power";
   }
   if (!samples.length) {
     thorChartEl.innerHTML = `<div class="muted">${gesc(body.error || "no samples")}</div>`;
@@ -365,49 +401,90 @@ function renderThor(body) {
     })
     .join("");
   thorTableEl.innerHTML =
-    `<table class="gpu-table"><tr><th>workload</th><th>PID(s)</th><th>memory (unified)</th></tr>${procRows}</table>`
-    + `<div class="muted" style="margin-top:6px;font-size:11px">sampled ${gesc(fmtTime(s.ts))}`
-    + ` · GPU ${((Number(s.gpu_power_mw) || 0) / 1000).toFixed(1)} W · util ${gesc(s.gpu_util_pct)}%`
-    + ` · unified RAM ${(s.mem_used_mib / 1024).toFixed(0)}/${(s.mem_total_mib / 1024).toFixed(0)} GiB</div>`;
+    `<details><summary>Process details</summary><table class="gpu-table"><tr><th>Workload</th><th>PID(s)</th><th>RAM</th></tr>${procRows}</table></details>`;
 }
 
-function renderLegend() {
-  legendEl.innerHTML = SERIES.map(
+function renderLegend(samples) {
+  const active = new Set(samples.flatMap((sample) => Object.entries(seriesMem(sample)).filter(([, value]) => value > 0).map(([key]) => key)));
+  legendEl.innerHTML = SERIES.filter((series) => active.has(series.key)).map(
     (s) => `<span class="chip"><span class="sw" style="background:${s.color}"></span>${gesc(s.label)}</span>`,
   ).join("");
 }
 
 function renderTable(samples) {
-  if (!samples.length) { tableEl.innerHTML = '<div class="muted">no samples</div>'; return; }
+  if (!samples.length) { tableEl.innerHTML = '<div class="muted">No samples</div>'; return; }
   const s = samples[samples.length - 1];
   const mem = seriesMem(s);
+  const smAvailable = Boolean(s.per_process_sm_available ?? !s.unified);
   const rows = SERIES.filter((sr) => mem[sr.key] > 0).map((sr) => {
     const raw = s.procs?.[sr.key];
-    const smAvailable = Boolean(s.per_process_sm_available ?? !s.unified);
-    const sm = raw && smAvailable && raw.sm_pct != null ? `${gesc(raw.sm_pct)}%` : "—";
+    const sm = raw && raw.sm_pct != null ? `${gesc(raw.sm_pct)}%` : "—";
     return `<tr><td class="name"><span class="sw" style="background:${sr.color};width:9px;height:9px;display:inline-block;border-radius:2px;margin-right:6px"></span>${gesc(sr.label)}</td>`
-      + `<td>${(mem[sr.key] / 1024).toFixed(2)} GiB</td><td>${sm}</td></tr>`;
+      + `<td>${(mem[sr.key] / 1024).toFixed(2)} GiB</td>${smAvailable ? `<td>${sm}</td>` : ""}</tr>`;
   }).join("");
-  tableEl.innerHTML = `<table class="gpu-table"><tr><th>process</th><th>memory</th><th>SM</th></tr>${rows}</table>`
-    + `<div class="muted" style="margin-top:6px;font-size:11px">sampled ${gesc(fmtTime(s.ts))} · whole GPU ${(s.mem_used_mib / 1024).toFixed(1)}/${(s.mem_total_mib / 1024).toFixed(0)} GiB · util ${gesc(s.gpu_util_pct)}%${s.unified ? " · per-process SM unavailable on Thor; process memory is RSS attribution" : ""}</div>`;
+  tableEl.innerHTML = `<table class="gpu-table"><tr><th>Process</th><th>${s.unified ? "RAM" : "GPU memory"}</th>${smAvailable ? "<th>Compute use</th>" : ""}</tr>${rows}</table>`;
 }
 
 async function loadGpu() {
+  const scope = sessionId || `live-${rangeMin}`;
+  if (gpuRequest && gpuRequestScope === scope) return;
+  const generation = ++gpuGeneration;
+  if (gpuRequest) gpuRequest.abort();
+  const controller = new AbortController();
+  gpuRequest = controller;
+  gpuRequestScope = scope;
+  updateSessionDetails();
+  if (scope !== displayedScope) {
+    displayedScope = scope;
+    memEl.innerHTML = '<div class="muted">Loading GPU activity…</div>';
+    utilEl.innerHTML = "";
+    legendEl.innerHTML = "";
+    tableEl.innerHTML = "";
+    renderLive(null);
+    renderThor(null);
+    if (memoryNote) memoryNote.hidden = true;
+  }
+  if (scopeEl) scopeEl.textContent = sessionId ? `History · ${sessionTitle(sessionId)}` : `Live · Last ${rangeMin} minutes`;
   let body;
   try {
     const url = sessionId
       ? `/api/gpu?mission_id=${encodeURIComponent(sessionId)}`
       : `/api/gpu?minutes=${rangeMin}`;
-    const r = await fetch(url);
+    const [r] = await Promise.all([fetch(url, { signal: controller.signal }), loadSessions()]);
+    if (!r.ok) throw new Error("GPU telemetry unavailable");
     body = await r.json();
-  } catch {
-    memEl.innerHTML = '<div class="muted">console API unreachable</div>';
+    if (generation !== gpuGeneration) return;
+  } catch (error) {
+    if (generation !== gpuGeneration || error.name === "AbortError") return;
+    memEl.innerHTML = '<div class="muted">GPU telemetry is unavailable. Check the connection.</div>';
+    utilEl.innerHTML = "";
+    legendEl.innerHTML = "";
+    tableEl.innerHTML = "";
     renderLive(null);
+    renderThor(null);
+    if (memoryNote) memoryNote.hidden = true;
     return;
+  } finally {
+    if (generation === gpuGeneration) gpuRequest = null;
+  }
+  let latestReceived = null;
+  if (!sessionId) {
+    // Exporters may cap sample count instead of applying the requested time
+    // range. Bound both measured streams before choosing the primary charts.
+    const from = Date.now() - rangeMin * 60000;
+    const recent = (samples) => (samples || []).filter((sample) => {
+      const ts = Date.parse(sample.ts);
+      if (Number.isFinite(ts) && (latestReceived === null || ts > latestReceived)) latestReceived = ts;
+      return Number.isFinite(ts) && ts >= from;
+    });
+    body = {
+      ...body,
+      samples: recent(body.samples),
+      ...(body.thor ? { thor: { ...body.thor, samples: recent(body.thor.samples) } } : {}),
+    };
   }
   // A Thor-only deployment configures PGFR_GPU_URL_THOR without a workstation
-  // exporter. Promote that measured stream into the main charts instead of
-  // showing an empty primary pane and hiding all live data in a sub-card.
+  // exporter. Promote its measured stream into the main charts.
   const measuredThor = body.thor;
   if (!(body.samples || []).length && (measuredThor?.samples || []).length) {
     body = {
@@ -419,50 +496,42 @@ async function loadGpu() {
     };
   }
   if (scopeEl) {
-    const w = body.window || {};
-    const from = w.from ? fmtTime(w.from) : "";
-    const to = w.to ? fmtTime(w.to) : "";
+    const windowLabel = fmtWindow(body.window || {});
     scopeEl.textContent = sessionId
-      ? `session ${sessionId}${from && to ? ` · ${from} → ${to}` : ""} · ${body.telemetry_basis === "chat-session" ? "PGFR Chat activity window" : "journaled floor-operation window"}`
-      : `live telemetry · last ${rangeMin} minutes`;
+      ? `History · ${sessionTitle(sessionId)}${windowLabel ? ` · ${windowLabel}` : ""}`
+      : `Live · Last ${rangeMin} minutes`;
   }
-  loadSessions();
   if (body.error && !(body.samples || []).length) {
-    memEl.innerHTML = `<div class="muted">${gesc(body.error)}${sessionId ? "" : " — set PGFR_GPU_URL to the exporter (ops/pgfr_gpu_exporter.py :8601 on the serving host)"}</div>`;
+    memEl.innerHTML = `<div class="muted">${gesc(body.error)}${sessionId ? "" : " — check the GPU telemetry configuration"}</div>`;
     utilEl.innerHTML = "";
-    tableEl.innerHTML = '<div class="muted">unknown</div>';
+    legendEl.innerHTML = "";
+    tableEl.innerHTML = '<div class="muted">No samples</div>';
     renderLive(null);
-    renderThor(body.thor); // Thor is measured independently; one host down must not blank the other
+    renderThor(body.thor);
+    if (memoryNote) memoryNote.hidden = true;
     return;
   }
   lastSamples = body.samples || [];
-  // Host identity and series set come from the measured samples themselves
-  // (unified=true marks the Jetson/Thor probe), never asserted.
+  // Choose memory labels from measured samples, not the machine name.
   const isThor = lastSamples.some((s) => s.unified);
   SERIES = isThor ? THOR_SERIES : WS_SERIES;
   KNOWN = new Set(SERIES.filter((s) => s.key !== "other").map((s) => s.key));
-  const host = lastSamples.length ? lastSamples[lastSamples.length - 1].host : null;
-  const hostLabel = host
-    ? `${host} · ${isThor ? "Thor (Jetson brain)" : "workstation"}`
-    : "…";
-  const memKind = isThor ? "Unified RAM by process (MiB)" : "GPU memory by model (MiB)";
   const memTitle = document.getElementById("gpumemtitle");
-  if (memTitle) {
-    memTitle.textContent = sessionId
-      ? `${memKind} — ${hostLabel} — session ${sessionId}`
-      : `${memKind} — ${hostLabel}`;
-  }
+  if (memTitle) memTitle.textContent = isThor ? "Thor memory usage" : "GPU memory usage";
   const utilTitle = document.getElementById("gputiltitle");
-  if (utilTitle) utilTitle.textContent = `GPU utilization (%) — ${hostLabel}`;
+  if (utilTitle) utilTitle.textContent = "GPU utilization";
   const nowTitle = document.getElementById("gpunowtitle");
-  if (nowTitle) nowTitle.textContent = `Now — ${hostLabel}`;
+  if (nowTitle) nowTitle.textContent = "Latest sample";
+  if (memoryNote) memoryNote.hidden = !isThor;
   renderLive(lastSamples[lastSamples.length - 1]);
   renderMem(lastSamples);
   renderUtil(lastSamples);
-  // Power card: from the secondary exporter if configured, else from the
-  // primary samples themselves when they carry the Jetson power signal.
   const primaryPower = lastSamples.some((s) => s.gpu_power_mw != null);
   renderThor(body.thor || (primaryPower ? { samples: lastSamples } : null));
-  renderLegend();
+  renderLegend(lastSamples);
   renderTable(lastSamples);
+  if (!sessionId && !lastSamples.length) {
+    const previous = latestReceived === null ? "" : ` Last sample: ${fmtDateTime(latestReceived)}.`;
+    memEl.innerHTML = `<div class="muted">No samples in the last ${rangeMin} minutes.${gesc(previous)}</div>`;
+  }
 }

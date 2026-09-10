@@ -441,7 +441,8 @@ is also required.
 ## 6. Open and validate the system
 
 Follow [`REMOTE-ACCESS.md`](REMOTE-ACCESS.md) to open Console and view Isaac
-Sim. The recommended profile tunnels Console, Chat, and Workflows over SSH.
+Sim. The recommended profile tunnels Console and Chat over SSH; the Workflows
+API can be forwarded separately when needed.
 Direct trusted-LAN Chat makes network reachability equivalent to actuation
 authority and must not be enabled on an untrusted network.
 

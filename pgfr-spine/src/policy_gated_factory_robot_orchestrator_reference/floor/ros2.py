@@ -76,8 +76,10 @@ class _ImageSnapshot:
 def _image_to_jpeg(msg: Any, crop: tuple[float, float, float, float] | None = None) -> bytes:
     """sensor_msgs/Image -> JPEG bytes (numpy + Pillow; only on the live ROS path).
     ``crop`` is a fractional (x0, y0, x1, y1) box applied before encoding."""
-    import numpy as np
-    from PIL import Image as PILImage
+    import numpy as np  # type: ignore[import-not-found]  # Live ROS image dependency.
+
+    # Pillow is supplied by the live ROS image environment.
+    from PIL import Image as PILImage  # type: ignore[import-not-found]
 
     h, w = int(msg.height), int(msg.width)
     arr = np.frombuffer(bytes(msg.data), dtype=np.uint8)
@@ -113,8 +115,8 @@ class _Bridge:
     """
 
     def __init__(self) -> None:
-        import rclpy  # lazy: ROS only needed when the backend actually runs
-        from std_msgs.msg import String
+        import rclpy  # type: ignore[import-not-found]  # Supplied by the ROS 2 runtime.
+        from std_msgs.msg import String  # type: ignore[import-not-found]  # Generated ROS message.
 
         self._rclpy = rclpy
         self._String = String
@@ -125,7 +127,7 @@ class _Bridge:
         self._lock = threading.Lock()
         self._last_result: dict[str, Any] | None = None
         self._results: dict[str, dict[str, Any]] = {}
-        self._pending: dict[str, dict] = {}
+        self._pending: dict[str, dict[str, Any]] = {}
         self._state: dict[str, Any] = {}
         self._images: dict[str, Any] = {}
         self._img_subs: dict[str, Any] = {}
@@ -157,12 +159,10 @@ class _Bridge:
 
     def health(self) -> dict[str, Any]:
         """Liveness of the ROS side: context validity + signal freshness (seconds)."""
-        import rclpy
-
         now = time.time()
         state_ts = getattr(self, "_state_ts", None)
         return {
-            "ros_ok": bool(rclpy.ok()),
+            "ros_ok": bool(self._rclpy.ok()),
             "floor_state_age_s": round(now - state_ts, 2) if state_ts else None,
             "camera_age_s": {
                 t.strip("/").split("/")[0]: round(now - ts, 2)
@@ -177,18 +177,19 @@ class _Bridge:
             time.sleep(0.05)
         return dict(self._state)
 
-    def latest_image_jpeg(self, topic: str, timeout: float = 15.0, crop: tuple | None = None) -> bytes:
+    def latest_image_jpeg(self, topic: str, timeout: float = 15.0, crop: tuple[float, float, float, float] | None = None) -> bytes:
         """Latest frame on an image topic as JPEG. Lazy-subscribes — image streams are
         heavy, so the deterministic floor path never pays for them; live/ROS only.
         The FIRST call on a topic is cold: cross-host DDS discovery + first frame can take
         ~6-8s, so the timeout must exceed that or the first verify/perceive on a camera
         errors with 'no image within Ns' (it would then warm up and work on the retry)."""
-        from sensor_msgs.msg import Image  # lazy: ROS only
+        # Generated message module is supplied by ROS 2.
+        from sensor_msgs.msg import Image  # type: ignore[import-not-found]
 
         with self._lock:
             if topic not in self._img_subs:
                 if not hasattr(self, "_image_ts"):
-                    self._image_ts = {}
+                    self._image_ts: dict[str, float] = {}
 
                 def _store(m: Any, t: str = topic) -> None:
                     self._images[t] = m
@@ -262,7 +263,7 @@ class _Bridge:
         with self._lock:
             return [g for g in self._pending if g not in self._results]
 
-    def send_async(self, cmd: dict, queue: bool = False) -> dict:
+    def send_async(self, cmd: dict[str, Any], queue: bool = False) -> dict[str, Any]:
         """Publish one command and return its goal_id immediately. Refuses when
         another async goal is still in flight unless ``queue=True`` — the cell
         executes strictly one task at a time, so silent stacking means surprise
@@ -289,7 +290,7 @@ class _Bridge:
         self._cmd_pub.publish(self._String(data=json.dumps(cmd)))
         return {"goal_id": goal_id}
 
-    def poll_result(self, goal_id: str) -> dict | None:
+    def poll_result(self, goal_id: str) -> dict[str, Any] | None:
         """Non-destructive read of an async goal's result; None while running.
         Unknown goal ids raise KeyError so a typo can't read as 'still running'."""
         with self._lock:

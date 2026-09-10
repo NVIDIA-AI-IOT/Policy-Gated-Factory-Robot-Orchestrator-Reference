@@ -89,7 +89,7 @@ class Store:
         self._maybe_prune()
         return n
 
-    def _insert(self, e: dict) -> None:
+    def _insert(self, e: dict[str, Any]) -> None:
         req = e.get("request") or {}
         res = e.get("result") or {}
         verified = res.get("verified")
@@ -126,9 +126,9 @@ class Store:
         self._db.commit()
 
     def prune(self) -> int:
-        from datetime import datetime, timedelta, timezone
+        from datetime import UTC, datetime, timedelta
 
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=self.retention_days)).isoformat()
+        cutoff = (datetime.now(UTC) - timedelta(days=self.retention_days)).isoformat()
         old = self._db.execute("SELECT frame FROM operations WHERE ts < ?", (cutoff,)).fetchall()
         for (frame,) in old:
             if frame:

@@ -22,7 +22,7 @@ guides link to that manifest rather than redefining it.
 | Document | Audience | Description |
 |---|---|---|
 | [PGFR Spine](../pgfr-spine/README.md) | Service operators and developers | Installs and runs the governed floor service with mock or ROS 2 backends. |
-| [PGFR Console](../pgfr-console/README.md) | Operators and UI developers | Runs the topology, mission, inspection, Chat, Workflow, and telemetry interface. |
+| [PGFR Console](../pgfr-console/README.md) | Operators and UI developers | Runs the Chat, topology, mission, inspection, and telemetry interface. |
 | [PGFR Chat](../servers/pgfr-chat/README.md) | Operators and backend integrators | Configures the chat gateway, model provider, CORS policy, and health checks. |
 | [PGFR Workflows](../servers/pgfr-workflows/README.md) | Workflow authors and operators | Runs deterministic workflows and documents scheduling, tokens, and request contracts. |
 | [Remote access](REMOTE-ACCESS.md) | Operators and network administrators | Configures SSH-forwarded access, read-only direct Console access, trusted-LAN Chat, and Isaac Sim viewing. |

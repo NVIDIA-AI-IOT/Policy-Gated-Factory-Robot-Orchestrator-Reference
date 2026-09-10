@@ -230,6 +230,18 @@ class ToolLoopSettings:
         self.timeout_s = float(os.environ.get("PGFR_CHAT_SEAM_TIMEOUT_S", "200"))
 
 
+def reset_verified(result: Dict[str, Any]) -> bool:
+    """Only an unambiguous, dispatched reset may release mission guards."""
+    return (
+        result.get("dispatched") is True
+        and result.get("verified") is True
+        and result.get("status") not in ("refused", "failed", "uncertain", "error", "stopped")
+        and not result.get("error")
+        and not result.get("transport_error")
+        and not result.get("delivery_uncertain")
+    )
+
+
 class ToolLoop:
     def __init__(self, settings: Optional[ToolLoopSettings] = None) -> None:
         self.settings = settings or ToolLoopSettings()
@@ -283,6 +295,18 @@ class ToolLoop:
                 )
                 body = resp.json()
                 out = body if isinstance(body, dict) else {"response": body}
+                if tool == "reset_scene" and not resp.is_success:
+                    # Error responses cannot verify a physical reset, even
+                    # if stale or contradictory JSON claims success.
+                    definite_refusal = (
+                        400 <= resp.status_code < 500
+                        and out.get("dispatched") is False
+                        and out.get("status") == "refused"
+                    )
+                    out["verified"] = False
+                    out["delivery_uncertain"] = not definite_refusal
+                    out["http_status"] = resp.status_code
+                    out.setdefault("error", f"floor service returned HTTP {resp.status_code}")
                 # Tie this op to the evidence frame the VLM saw (served by the
                 # seam at /v1/frames/<request_id>); the frontend renders it.
                 rid = resp.headers.get("x-request-id")
@@ -428,7 +452,7 @@ class ToolLoop:
                     },
                 }
         result = await self._seam(name, args, mission_id)
-        if name == "reset_scene" and result.get("verified") is True:
+        if name == "reset_scene" and reset_verified(result):
             self._visual_proof_pending.pop(mission_id, None)
             self._mission_failure.pop(mission_id, None)
             self._dispatch_attempts.pop(mission_id, None)
@@ -998,8 +1022,6 @@ def _dumps(obj: Any) -> str:
 def _short(result: Dict[str, Any]) -> str:
     # Keep the tool result valid JSON for the model: cap object size by dropping
     # verbose fields rather than truncating mid-string.
-    import json
-
     text = _dumps(result)
     if len(text) <= 2000:
         return text

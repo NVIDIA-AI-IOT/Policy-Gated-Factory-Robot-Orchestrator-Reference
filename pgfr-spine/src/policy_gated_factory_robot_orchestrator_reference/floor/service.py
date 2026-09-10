@@ -31,15 +31,20 @@ import pathlib
 import re
 import time
 import uuid
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
+from starlette.middleware.base import RequestResponseEndpoint
 
 from policy_gated_factory_robot_orchestrator_reference.floor import ops, ros2
 from policy_gated_factory_robot_orchestrator_reference.floor.backend import load_backend
+from policy_gated_factory_robot_orchestrator_reference.floor.mock import FloorState
 from policy_gated_factory_robot_orchestrator_reference.floor.policy import ActionPolicy
+
+if TYPE_CHECKING:
+    from policy_gated_factory_robot_orchestrator_reference.floor.store import Store
 
 log = logging.getLogger("policy_gated_factory_robot_orchestrator_reference.serve")
 
@@ -68,7 +73,7 @@ class _Journal:
                 log.exception("journal: cannot init %s — disabled", root)
                 self._root = None
 
-    def record(self, op: str, rid: str, request: dict, result: dict,
+    def record(self, op: str, rid: str, request: dict[str, Any], result: dict[str, Any],
                duration_s: float, mission_id: str | None, frame: bytes | None) -> None:
         if self._root is None:
             return
@@ -303,7 +308,7 @@ def build_app() -> FastAPI:
     journal = _Journal(os.environ.get("PGFR_JOURNAL_DIR"))
     policy = ActionPolicy.load()
 
-    def _policy_refusal(req: DispatchRequest, request_obj: Request) -> dict | None:
+    def _policy_refusal(req: DispatchRequest, request_obj: Request) -> dict[str, Any] | None:
         params = {
             **req.args,
             **req.model_dump(exclude_none=True, exclude={"args"}),
@@ -318,7 +323,7 @@ def build_app() -> FastAPI:
 
     def _parallel_policy_refusal(
         req: ParallelDispatchRequest, request_obj: Request
-    ) -> dict | None:
+    ) -> dict[str, Any] | None:
         if os.environ.get("PGFR_GROOT_PARALLEL_ENABLED", "0") != "1":
             return {
                 "dispatched": False,
@@ -379,7 +384,7 @@ def build_app() -> FastAPI:
                 }
         return None
 
-    def _record(op: str, request_obj: Request, req_payload: dict, result: dict, t0: float) -> None:
+    def _record(op: str, request_obj: Request, req_payload: dict[str, Any], result: dict[str, Any], t0: float) -> None:
         frame = None
         if op in ("perceive", "verify"):
             take = getattr(ros2, "take_last_frame", None)
@@ -395,7 +400,7 @@ def build_app() -> FastAPI:
     )
 
     @app.middleware("http")
-    async def _meta(request: Request, call_next: Any) -> Any:
+    async def _meta(request: Request, call_next: RequestResponseEndpoint) -> Response:
         rid = uuid.uuid4().hex[:12]
         request.state.rid = rid
         t0 = time.time()
@@ -413,19 +418,21 @@ def build_app() -> FastAPI:
                  request.method, request.url.path, resp.status_code, time.time() - t0, rid)
         return resp
 
-    async def _floor_state() -> dict:
+    async def _floor_state() -> dict[str, Any]:
         if live:
             payload = ros2.live_floor_state(backend)
         else:
+            assert isinstance(state, FloorState)
             payload = ops.floor_state(state)
         return payload
 
-    async def _perceive(req: PerceiveRequest) -> dict:
+    async def _perceive(req: PerceiveRequest) -> dict[str, Any]:
         if live:
             return await ros2.live_perceive(backend, req.target)
+        assert isinstance(state, FloorState)
         return ops.perceive(state, req.target)
 
-    async def _watch_async_goal(goal_id: str, req_payload: dict) -> None:
+    async def _watch_async_goal(goal_id: str, req_payload: dict[str, Any]) -> None:
         """Guarantee the journal gets a terminal record for every async goal,
         whether or not the agent ever polls (audit-trail closure)."""
         try:
@@ -438,7 +445,7 @@ def build_app() -> FastAPI:
             except Exception:
                 log.exception("watcher fallback journaling also failed for %s", goal_id)
 
-    async def _watch_async_goal_inner(goal_id: str, req_payload: dict) -> None:
+    async def _watch_async_goal_inner(goal_id: str, req_payload: dict[str, Any]) -> None:
         deadline = time.time() + 420.0
         while time.time() < deadline:
             await asyncio.sleep(2.0)
@@ -453,7 +460,7 @@ def build_app() -> FastAPI:
         journal.record("task_result", "-", {"goal_id": goal_id, **req_payload},
                        {"goal_id": goal_id, "status": "watch_timeout"}, 0.0, None, None)
 
-    async def _dispatch(req: DispatchRequest) -> dict:
+    async def _dispatch(req: DispatchRequest) -> dict[str, Any]:
         if live:
             if req.action == "cancel":
                 # Honest refusal: the cell consumes its queue one task at a time, so
@@ -488,12 +495,13 @@ def build_app() -> FastAPI:
                     asyncio.create_task(_watch_async_goal(r["goal_id"], {"action": req.action, "endpoint": req.endpoint}))
                 return r
             return await ros2.live_dispatch(backend, req.endpoint, req.action, goal_args)
+        assert isinstance(state, FloorState)
         return await ops.dispatch(
             state, endpoint=req.endpoint, action=req.action,
             color=req.color, source=req.source, destination=req.destination,
         )
 
-    async def _dispatch_parallel(req: ParallelDispatchRequest) -> dict:
+    async def _dispatch_parallel(req: ParallelDispatchRequest) -> dict[str, Any]:
         if not live:
             return {
                 "dispatched": False,
@@ -507,21 +515,21 @@ def build_app() -> FastAPI:
             [move.model_dump() for move in req.moves],
         )
 
-    async def _verify(req: VerifyRequest) -> dict:
+    async def _verify(req: VerifyRequest) -> dict[str, Any]:
         if live:
             return await ros2.live_verify(backend, req.predicate, req.region)
         return {"answer": "unknown", "evidence": "verify needs the ros2 backend + a VLM", "source_used": ""}
 
     # ---- v1: versioned, validated, always-200 results with _meta -------------
     @app.post("/v1/floor-state")
-    async def v1_floor_state() -> dict:
+    async def v1_floor_state() -> dict[str, Any]:
         async with lock:
             payload = await _floor_state()
         payload["_meta"] = _freshness()
         return payload
 
     @app.post("/v1/perceive")
-    async def v1_perceive(req: PerceiveRequest, request: Request) -> dict:
+    async def v1_perceive(req: PerceiveRequest, request: Request) -> dict[str, Any]:
         t0 = time.time()
         async with lock:
             payload = await _perceive(req)
@@ -533,7 +541,7 @@ def build_app() -> FastAPI:
         return payload
 
     @app.post("/v1/dispatch")
-    async def v1_dispatch(req: DispatchRequest, request: Request) -> dict:
+    async def v1_dispatch(req: DispatchRequest, request: Request) -> dict[str, Any]:
         t0 = time.time()
         refusal = _policy_refusal(req, request)
         if refusal is not None:
@@ -553,7 +561,7 @@ def build_app() -> FastAPI:
     @app.post("/v1/dispatch-parallel")
     async def v1_dispatch_parallel(
         req: ParallelDispatchRequest, request: Request
-    ) -> dict:
+    ) -> dict[str, Any]:
         t0 = time.time()
         refusal = _parallel_policy_refusal(req, request)
         if refusal is not None:
@@ -584,7 +592,7 @@ def build_app() -> FastAPI:
         return payload
 
     @app.post("/v1/verify")
-    async def v1_verify(req: VerifyRequest, request: Request) -> dict:
+    async def v1_verify(req: VerifyRequest, request: Request) -> dict[str, Any]:
         t0 = time.time()
         async with lock:
             payload = await _verify(req)
@@ -593,7 +601,7 @@ def build_app() -> FastAPI:
         _record("verify", request, req.model_dump(exclude_none=True), payload, t0)
         return payload
 
-    def _freshness() -> dict:
+    def _freshness() -> dict[str, Any]:
         meta: dict[str, Any] = {"api": "v1", "uptime_s": round(time.time() - started, 1)}
         health_fn = getattr(backend, "health", None)
         if callable(health_fn):
@@ -630,7 +638,7 @@ def build_app() -> FastAPI:
         return started - ended
 
     @app.get("/v1/tasks/{goal_id}")
-    async def v1_task_status(goal_id: str, request: Request) -> dict:
+    async def v1_task_status(goal_id: str, request: Request) -> dict[str, Any]:
         t0 = time.time()
         if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", goal_id):
             return {"goal_id": "", "status": "unknown", "reason": "malformed goal_id",
@@ -672,9 +680,9 @@ def build_app() -> FastAPI:
         return JSONResponse(status_code=200 if body["status"] == "ok" else 503, content=body)
 
     # ---- audit store queries (read-only; store derives from the journal) -----
-    _store = None
+    _store: Store | None = None
 
-    def _get_store():
+    def _get_store() -> Store | None:
         nonlocal _store
         root = os.environ.get("PGFR_JOURNAL_DIR")
         if root and _store is None:
@@ -684,14 +692,14 @@ def build_app() -> FastAPI:
         return _store
 
     @app.get("/v1/missions")
-    async def v1_missions(limit: int = 20) -> dict:
+    async def v1_missions(limit: int = 20) -> dict[str, Any]:
         st = _get_store()
         if st is None:
             return {"missions": [], "note": "journal disabled (PGFR_JOURNAL_DIR unset)"}
         return {"missions": st.missions(limit=max(1, min(limit, 200)))}
 
     @app.get("/v1/missions/{mission_id}")
-    async def v1_mission_detail(mission_id: str, limit: int = 100) -> dict:
+    async def v1_mission_detail(mission_id: str, limit: int = 100) -> dict[str, Any]:
         st = _get_store()
         if st is None:
             return {"operations": [], "note": "journal disabled (PGFR_JOURNAL_DIR unset)"}
@@ -699,12 +707,10 @@ def build_app() -> FastAPI:
                 "operations": st.operations(mission_id=mission_id, limit=max(1, min(limit, 500)))}
 
     @app.get("/v1/frames/{request_id}")
-    async def v1_frame(request_id: str):
+    async def v1_frame(request_id: str) -> Response:
         # Serve the exact camera frame the VLM saw for one operation, by its
         # request id. Read-only evidence; validated to stay inside frames/.
         import re as _re
-
-        from fastapi.responses import FileResponse, Response
 
         root = os.environ.get("PGFR_JOURNAL_DIR")
         if not root or not _re.fullmatch(r"[A-Za-z0-9_-]{1,64}", request_id):
@@ -717,19 +723,20 @@ def build_app() -> FastAPI:
     # ---- legacy aliases: exact pre-v1 semantics (plugin + MCP compatibility).
     # Parsed from the raw body: pre-v1 clients post JSON without a Content-Type
     # header, which strict body models would 422.
-    async def _legacy_params(request: Request) -> dict:
+    async def _legacy_params(request: Request) -> dict[str, Any]:
         import json as _json
 
         body = await request.body()
-        return _json.loads(body or b"{}")
+        params: dict[str, Any] = _json.loads(body or b"{}")
+        return params
 
     @app.post("/floor-state")
-    async def legacy_floor_state(request: Request) -> dict:
+    async def legacy_floor_state(request: Request) -> dict[str, Any]:
         async with lock:
             return await _floor_state()
 
     @app.post("/perceive")
-    async def legacy_perceive(request: Request) -> dict:
+    async def legacy_perceive(request: Request) -> dict[str, Any]:
         req = PerceiveRequest.model_validate(await _legacy_params(request))
         t0 = time.time()
         async with lock:
@@ -766,7 +773,15 @@ def build_app() -> FastAPI:
     return app
 
 
-def build_service(addr: tuple[str, int]):
+class _Service(Protocol):
+    server_address: tuple[str, int]
+
+    def serve_forever(self) -> None: ...
+
+    def shutdown(self) -> None: ...
+
+
+def build_service(addr: tuple[str, int]) -> _Service:
     """Compatibility constructor: a uvicorn server presenting the stdlib-ish surface
     (.server_address, .serve_forever(), .shutdown()) the CLI and older callers use."""
     import socket
@@ -778,7 +793,7 @@ def build_service(addr: tuple[str, int]):
     server = uvicorn.Server(config)
 
     class _Compat:
-        server_address = sock.getsockname()
+        server_address: tuple[str, int] = sock.getsockname()
 
         def serve_forever(self) -> None:
             server.run(sockets=[sock])

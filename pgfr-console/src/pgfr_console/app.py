@@ -43,15 +43,14 @@ def build_app(aggregator: Aggregator | None = None) -> FastAPI:
         finally:
             task.cancel()
 
-    app = FastAPI(title="PGFR Console", lifespan=lifespan)
+    app = FastAPI(title="Orchestration Console", lifespan=lifespan)
     app.state.aggregator = agg
 
     @app.middleware("http")
     async def security_headers(request, call_next):
         # Defense-in-depth behind the escaping: no inline eval, connect only to
-        # self + the workflows service, deny framing.
+        # self + the chat service, deny framing.
         resp = await call_next(request)
-        wf = os.environ.get("PGFR_WORKFLOWS_URL", "http://127.0.0.1:8610")
         chat = os.environ.get("PGFR_CHAT_URL", "http://127.0.0.1:8620")
         # The aggregator can keep using a loopback Chat URL while browsers use
         # an explicitly exposed trusted-LAN endpoint. Keeping these settings
@@ -59,7 +58,7 @@ def build_app(aggregator: Aggregator | None = None) -> FastAPI:
         chat_public = os.environ.get("PGFR_CHAT_PUBLIC_URL") or chat
         resp.headers["Content-Security-Policy"] = (
             "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-            f"connect-src 'self' {wf} {chat_public}; "
+            f"connect-src 'self' {chat_public}; "
             f"img-src 'self' data: {chat_public}; "
             "frame-ancestors 'none'"
         )

@@ -9,21 +9,23 @@ Sources (all existing endpoints — the console adds zero instrumentation):
 - seam ``POST /v1/floor-state`` -> current endpoints and world state
 - seam ``GET /v1/missions`` -> recent mission summaries
 - VLM ``GET /v1/models``    -> model endpoint liveness
-- optional TCP port checks  -> local extras (policy router/servers), off by default
+- Chat ``GET /api/health`` -> process liveness and configured assistants/tools
+- floor-state ``groot_serving`` -> existing passive relay-listener observations
 """
 
 from __future__ import annotations
 
 import asyncio
+import math
 import os
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 import httpx
 
-from .topology import Edge, NodeStatus, Status, blank_topology, resolve
+from .topology import Edge, NodeStatus, blank_topology, resolve
 
 
 class Settings:
@@ -44,6 +46,33 @@ class Settings:
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _finite_age(value: Any) -> Optional[float]:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value) if math.isfinite(value) and value >= 0 else None
+
+
+def _public_detail(body: Dict[str, Any]) -> Dict[str, Any]:
+    """Keep reported diagnostics JSON-safe, including unknown numeric readings."""
+    def clean(value: Any) -> Any:
+        if isinstance(value, float) and not math.isfinite(value):
+            return None
+        if isinstance(value, dict):
+            return {key: clean(item) for key, item in value.items() if not key.startswith("_")}
+        if isinstance(value, list):
+            return [clean(item) for item in value]
+        return value
+
+    return {key: clean(value) for key, value in body.items() if not key.startswith("_")}
+
+
+def _configured_host(url: str) -> str:
+    try:
+        return urlsplit(url).hostname or ""
+    except ValueError:
+        return ""
 
 
 # Assurance claims. Each carries an honest `basis`:
@@ -82,14 +111,19 @@ class Aggregator:
         self.settings = settings or Settings()
         self._snapshot: Dict[str, Any] = {"nodes": [], "edges": [], "generated_at": _now()}
         self._lock = asyncio.Lock()
+        # Discovery persists across a transient outage; missing measurements
+        # become unknown instead of removing previously reported equipment.
+        self._reported_cameras: Optional[set[str]] = None
+        self._groot_seen = False
 
     # ------------------------------------------------------------- polling
     async def _get_json(self, client: httpx.AsyncClient, url: str) -> Optional[Dict[str, Any]]:
         try:
             resp = await client.get(url)
             body = resp.json() if resp.content else {}
-            if isinstance(body, dict):
-                body["_http_status"] = resp.status_code
+            if not isinstance(body, dict):
+                return None
+            body["_http_status"] = resp.status_code
             return body
         except Exception:
             return None
@@ -98,8 +132,9 @@ class Aggregator:
         try:
             resp = await client.post(url, json={})
             body = resp.json() if resp.content else {}
-            if isinstance(body, dict):
-                body["_http_status"] = resp.status_code
+            if not isinstance(body, dict):
+                return None
+            body["_http_status"] = resp.status_code
             return body
         except Exception:
             return None
@@ -109,97 +144,177 @@ class Aggregator:
         nodes: Dict[str, NodeStatus] = topo["nodes"]  # type: ignore[assignment]
         edges: Dict[str, Edge] = topo["edges"]  # type: ignore[assignment]
         s = self.settings
+        for nid, url in (("brain", s.chat_url), ("seam", s.seam_url),
+                         ("vlm", s.vlm_url), ("gym", s.gym_url)):
+            nodes[nid].host = _configured_host(url)
+        if not s.vlm_url:
+            nodes.pop("vlm")
+        if not s.gym_url:
+            nodes.pop("gym")
 
         async with httpx.AsyncClient(timeout=s.timeout_s) as client:
-            health = await self._get_json(client, f"{s.seam_url}/v1/health")
-            vlm = (
-                await self._get_json(client, f"{s.vlm_url}/v1/models") if s.vlm_url else None
-            )
-            gym = await self._get_json(client, s.gym_url + "/") if s.gym_url else None
+            async def optional(url: str) -> Optional[Dict[str, Any]]:
+                return await self._get_json(client, url) if url else None
 
-        # Seam + everything it reports on.
+            health, vlm, gym, chat = await asyncio.gather(
+                optional(f"{s.seam_url}/v1/health"),
+                optional(f"{s.vlm_url}/v1/models" if s.vlm_url else ""),
+                optional(f"{s.gym_url}/" if s.gym_url else ""),
+                optional(f"{s.chat_url}/api/health" if s.chat_url else ""),
+            )
+
+        # Robot API health reports on the policy gate and attached simulator.
         if health is None:
             nodes["seam"].status = "down"
             nodes["seam"].detail = {"error": "unreachable", "url": s.seam_url}
         else:
-            code = int(health.get("_http_status", 0))
+            code = health.get("_http_status")
             nodes["seam"].status = "ok" if code == 200 else "degraded" if code == 503 else "down"
-            nodes["seam"].detail = {k: v for k, v in health.items() if not k.startswith("_")}
-
+            nodes["seam"].detail = _public_detail(health)
+            nodes["seam"].detail["status_basis"] = "Robot API health"
             backend = str(health.get("backend", ""))
             ros_ok = health.get("ros_ok")
             nodes["floor"].status = nodes["seam"].status
-            nodes["floor"].detail = {"backend": backend}
-
+            nodes["floor"].detail = {"backend": backend, "status_basis": "Robot API health"}
             if backend == "mock":
-                nodes["cell"].status = "unknown"
-                nodes["cell"].detail = {"note": "mock backend — no sim attached"}
-            elif ros_ok is not None:
-                age = health.get("floor_state_age_s")
-                stale = isinstance(age, (int, float)) and age > 10
+                nodes["cell"].detail = {"note": "Mock backend; no simulator attached"}
+            elif code in (200, 503) and isinstance(ros_ok, bool):
+                age = _finite_age(health.get("floor_state_age_s"))
                 nodes["cell"].status = (
-                    "ok" if (ros_ok and not stale) else "degraded" if ros_ok else "down"
+                    "down" if not ros_ok else "unknown" if age is None
+                    else "degraded" if age > 10 else "ok"
                 )
                 nodes["cell"].detail = {
-                    "ros_ok": ros_ok,
-                    "floor_state_age_s": age,
-                    "camera_age_s": health.get("camera_age_s"),
+                    "ros_ok": ros_ok, "floor_state_age_s": age,
+                    "status_basis": "Robot API simulator heartbeat",
                 }
-            journal_age = health.get("floor_state_age_s")
             nodes["journal"].status = nodes["seam"].status
-            nodes["journal"].detail = {"floor_state_age_s": journal_age}
+            nodes["journal"].detail = {
+                "status_basis": "Robot API health; history storage is not probed separately",
+            }
 
+        if s.chat_url:
+            nodes["brain"].status = (
+                "ok" if chat is not None and chat.get("_http_status") == 200 else "down"
+            )
+            nodes["brain"].detail = _public_detail(chat or {})
+            nodes["brain"].detail.update({
+                "url": s.chat_url,
+                "status_basis": "Chat process health; model readiness is not checked",
+            })
         if s.vlm_url:
             nodes["vlm"].status = (
                 "ok" if vlm is not None and vlm.get("_http_status") == 200 else "down"
             )
-            nodes["vlm"].detail = {"url": s.vlm_url}
+            models = (vlm or {}).get("data")
+            nodes["vlm"].detail = {
+                "url": s.vlm_url, "status_basis": "Vision model listing endpoint",
+                "model_ids": [model["id"] for model in models
+                              if isinstance(model, dict) and isinstance(model.get("id"), str)]
+                if nodes["vlm"].status == "ok" and isinstance(models, list) else [],
+            }
         if s.gym_url:
-            nodes["gym"].status = "ok" if gym is not None else "down"
-            nodes["gym"].detail = {"url": s.gym_url}
+            nodes["gym"].status = (
+                "ok" if gym is not None and gym.get("_http_status") == 200 else "down"
+            )
+            nodes["gym"].detail = {"url": s.gym_url, "status_basis": "Configured Gym endpoint"}
 
-        # Tools follow the seam they invoke; the MCP server too.
+        # These are logical capabilities, not independently probed services.
         for tid in ("t_floor_state", "t_perceive", "t_dispatch", "t_verify", "mcp"):
-            if tid in nodes:
-                nodes[tid].status = nodes["seam"].status
+            nodes[tid].status = nodes["seam"].status
+            nodes[tid].detail = {"status_basis": "Robot API health"}
+        if chat is not None and chat.get("_http_status") == 200:
+            nodes["mcp"].detail["tools"] = chat.get("tools", [])
 
-        # Endpoints + cameras follow the cell; enrich endpoint detail from the
-        # live floor-state (status / battery / location) when reachable.
         cell_status = nodes["cell"].status
         fs = None
-        if health is not None:
+        if health is not None and health.get("_http_status") in (200, 503):
             async with httpx.AsyncClient(timeout=s.timeout_s) as client:
                 fs = await self._post_json(client, f"{s.seam_url}/v1/floor-state")
+        floor_state = fs if isinstance(fs, dict) and fs.get("_http_status") == 200 else {}
         live_eps = {}
-        for ep in (fs or {}).get("endpoints", []) if isinstance(fs, dict) else []:
-            if isinstance(ep, dict) and ep.get("id"):
-                live_eps[ep["id"]] = ep
+        if isinstance(floor_state.get("endpoints"), list):
+            for ep in floor_state["endpoints"]:
+                if isinstance(ep, dict) and isinstance(ep.get("id"), str):
+                    live_eps[ep["id"]] = ep
         for eid in ("franka_left", "franka_right", "mobilebot"):
-            if eid not in nodes:
-                continue
-            nodes[eid].status = cell_status
-            ep = live_eps.get(eid) or next(
-                (v for k, v in live_eps.items() if eid.split("_")[0] in k), None)
+            nodes[eid].status = "unknown"
+            nodes[eid].detail = {"status_basis": "Reported endpoint and simulator heartbeat"}
+            # Do not match both Franka arms to the first ID containing 'franka'.
+            ep = live_eps.get(eid)
             if ep:
-                nodes[eid].detail = {k: ep[k] for k in ("status", "battery", "location", "kind")
-                                     if k in ep}
-        # Cameras degrade LOUDLY on their own freshness — a stale feed is exactly
-        # what must not show green, since the VLM's evidence frames come from here.
-        # Only a fresh feed inherits the (already-gated) cell status.
-        cam_age = health.get("camera_age_s") if isinstance(health, dict) else None
-        for cid in ("cam_outside", "cam_wrist_l", "cam_wrist_r", "cam_rack"):
-            if cid not in nodes:
-                continue
-            if isinstance(cam_age, (int, float)):
-                nodes[cid].status = (
-                    "down" if cam_age > 30 else "degraded" if cam_age > 5 else cell_status
-                )
-                nodes[cid].detail = {"camera_age_s": cam_age}
-            else:
-                nodes[cid].status = cell_status
+                nodes[eid].status = cell_status
+                nodes[eid].detail.update({key: ep[key] for key in
+                                         ("status", "battery", "location", "kind") if key in ep})
 
-        # brain/mcp run on Thor over stdio — not directly measurable from here;
-        # they inherit "unknown" unless mission traffic proves them (see missions()).
+        cam_age = (health or {}).get("camera_age_s")
+        if isinstance(cam_age, dict) and (health or {}).get("_http_status") in (200, 503):
+            if self._reported_cameras is None:
+                self._reported_cameras = set()
+            self._reported_cameras.update(
+                cid for cid in cam_age if isinstance(cid, str) and cid
+                and (cid not in nodes or nodes[cid].kind == "camera")
+            )
+        if self._reported_cameras is not None:
+            # A per-camera report supersedes the legacy declared camera list.
+            for nid in [nid for nid, node in nodes.items() if node.kind == "camera"]:
+                nodes.pop(nid)
+            camera_labels = {
+                "inspect_vlm_cam": "Inspection view", "outside_right_cam": "Overview camera",
+                "inspect_cam": "Inspection camera", "rack_cam": "Rack camera",
+                "table_cam": "Table camera",
+            }
+            for cid in sorted(self._reported_cameras):
+                label = camera_labels.get(cid, cid.replace("_", " ").replace("-", " ").capitalize())
+                nodes[cid] = NodeStatus(id=cid, label=label, kind="camera", layer=6)
+                edges[f"cell-{cid}"] = Edge(id=f"cell-{cid}", source="cell", target=cid)
+                edges[f"{cid}-vlm"] = Edge(id=f"{cid}-vlm", source=cid, target="vlm", label="feed")
+        for cid, node in nodes.items():
+            if node.kind != "camera":
+                continue
+            raw_age = cam_age.get(cid) if isinstance(cam_age, dict) else (
+                cam_age if self._reported_cameras is None else None
+            )
+            age = _finite_age(raw_age)
+            node.status = (
+                "unknown" if age is None else "down" if age > 30
+                else "degraded" if age > 5 else cell_status
+            )
+            node.detail = {"camera_id": cid, "camera_age_s": age,
+                           "status_basis": "Reported camera freshness"}
+
+        # Use existing passive observations. Never open a GR00T relay socket:
+        # native DROID relays reserve a single long-lived simulator client.
+        serving = floor_state.get("groot_serving")
+        if isinstance(serving, dict):
+            self._groot_seen = True
+        if not self._groot_seen:
+            nodes.pop("groot")
+        else:
+            nodes["groot"].detail = {
+                "status_basis": "Relay transport only; inference health is not measured",
+                "note": "Listener availability does not verify model inference",
+            }
+            if isinstance(serving, dict):
+                nodes["groot"].detail.update(_public_detail(serving))
+                observed = _finite_age(serving.get("observed_at_epoch_s"))
+                age = _finite_age(datetime.now(timezone.utc).timestamp() - observed) if observed else None
+                nodes["groot"].detail["observed_age_s"] = age
+                services = serving.get("services")
+                total, opened = serving.get("ports_total"), serving.get("ports_open")
+                valid_counts = (isinstance(total, int) and not isinstance(total, bool) and total > 0
+                                and isinstance(opened, int) and not isinstance(opened, bool)
+                                and 0 <= opened <= total)
+                if age is not None and age <= 180 and valid_counts and isinstance(services, dict):
+                    listeners_ok = all(isinstance(services.get(arm), dict)
+                                       and services[arm].get("listening") is True
+                                       for arm in ("franka_left", "franka_right"))
+                    ready = opened == total and serving.get("degraded") is False and listeners_ok
+                    nodes["groot"].status = (
+                        "unknown" if cell_status == "unknown" else "down" if cell_status == "down"
+                        else "degraded" if not ready or age > 60 or cell_status == "degraded" else "ok"
+                    )
+
         snapshot = resolve(nodes, edges)
         snapshot["generated_at"] = _now()
         async with self._lock:
@@ -318,7 +433,7 @@ class Aggregator:
             body = results.pop(0) if results else None
         if body is None:
             body = {"samples": [], "error": (
-                "PGFR_GPU_URL not set" if not s.gpu_url else "gpu exporter unreachable"
+                "GPU telemetry is not configured" if not s.gpu_url else "gpu exporter unreachable"
             )}
         if s.gpu_url_thor:
             thor = results.pop(0) if results else None

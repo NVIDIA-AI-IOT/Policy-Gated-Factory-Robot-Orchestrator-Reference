@@ -4,7 +4,8 @@
 [project]
 name = "pgfr-mcp"
 version = "0.1.0"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.md"]
 description = "Policy-Gated Factory Robot Orchestrator Reference MCP server — the floor Seam's governed tools over MCP"
 requires-python = ">=3.10"
 dependencies = ["mcp>=1.2,<2"]
@@ -16,7 +17,7 @@ pgfr-mcp = "pgfr_mcp.server:main"
 dev = ["pytest>=8"]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.32.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
