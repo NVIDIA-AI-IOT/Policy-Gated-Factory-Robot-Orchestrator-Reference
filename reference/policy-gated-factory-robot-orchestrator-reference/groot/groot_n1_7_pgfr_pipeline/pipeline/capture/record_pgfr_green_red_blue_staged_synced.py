@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Capture verified episodes from an evolving three-object scene.
 
-By default this preserves the certified green->red->blue capture contract: the
+By default the stage order is green->red->blue: the
 green move is verified physical context setup and the following red and blue
 moves are recorded without another reset.  ``--order`` permits a complete
 color permutation and ``--record-first`` records all three stages.  A sequence
@@ -14,6 +14,7 @@ and physical gates as the isolated capture recorder.
 import argparse
 from bisect import bisect_left
 import json
+import os
 from pathlib import Path
 import statistics
 import time
@@ -100,6 +101,8 @@ parser.add_argument("--seed-start", type=int, default=5000)
 parser.add_argument("--timeout", type=float, default=45.0)
 parser.add_argument("--max-attempts", type=int, default=None)
 args = parser.parse_args()
+if os.environ.get("PGFR_CAPTURE_ONLY") != "1" or not 1 <= int(os.environ.get("ROS_DOMAIN_ID", "0")) <= 232:
+    parser.error("capture requires PGFR_CAPTURE_ONLY=1 and the isolated simulator's nonzero ROS domain")
 order = tuple(args.order)
 if len(set(order)) != len(SHAPE_NOUN) or set(order) != set(SHAPE_NOUN):
     parser.error("--order must contain green, red, and blue exactly once")
@@ -183,30 +186,22 @@ def send(payload):
     publisher.publish(String(data=json.dumps(payload)))
 
 
-def send_until_result(payload, timeout, retry_period=0.25):
-    """Publish an idempotent command until DDS discovery delivers it.
-
-    Recorder containers are intentionally short lived.  A one-shot publish can
-    occur before Fast DDS has matched the publisher to Isaac's subscriber,
-    especially when several verified jobs run back-to-back.  Goal IDs make
-    bounded retransmission safe: Isaac executes the first delivered command
-    and rejects duplicates.
-    """
-
-    expected_goal_id = payload["goal_id"]
+def send_until_result(payload, timeout):
+    """Wait for DDS discovery, publish once, and abort on uncertain completion."""
     deadline = time.monotonic() + timeout
-    next_publish = 0.0
+    while publisher.get_subscription_count() == 0:
+        if time.monotonic() >= deadline:
+            raise RuntimeError("no simulator subscriber discovered; command was not sent")
+        rclpy.spin_once(node, timeout_sec=0.02)
+    expected_goal_id = payload["goal_id"]
+    send(payload)
     while time.monotonic() < deadline:
-        now = time.monotonic()
-        if now >= next_publish:
-            send(payload)
-            next_publish = now + retry_period
         rclpy.spin_once(node, timeout_sec=0.02)
         result = state["result"]
         if goal_id(result) == expected_goal_id:
             state["result"] = None
             return result
-    return None
+    raise RuntimeError("command completion unknown; inspect isolated simulator before restarting capture")
 
 
 def wait_fresh_floor(timeout):

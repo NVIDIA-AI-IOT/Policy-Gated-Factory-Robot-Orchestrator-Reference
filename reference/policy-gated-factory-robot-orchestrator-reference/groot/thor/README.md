@@ -1,46 +1,104 @@
-# GR00T environment for Jetson AGX Thor
+# GR00T on Jetson AGX Thor
 
-This directory defines the pinned Python and system environment used to train
-or serve the prepared NVIDIA Isaac-GR00T source on Jetson AGX Thor. It covers
-the aarch64, Python 3.12, and CUDA 13 environment; dataset selection and model
-fine-tuning are documented separately.
+The reference serves GR00T policy and relay processes directly on Thor using
+the pinned aarch64, Python 3.12, and CUDA 13 environment. This directory provides
+the bare-metal installer, dependency declarations, and lock file. It does not
+provide a project GR00T container build. The existing upstream CUDA image used
+by the host GPU check remains a separate readiness tool.
 
-## Files
+Dataset capture, conversion, and fine-tuning belong to the workstation workflow
+in the [training recipe](../groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md).
+Use your own exported checkpoint; this environment does not supply trained
+project weights or a training dataset.
 
-| File | Purpose | Requirement |
-| --- | --- | --- |
-| [`install_deps.sh`](install_deps.sh) | Installs the required CUDA libraries, creates the uv environment, installs GR00T editable, and installs or builds torchcodec. | Required for bare-metal and container setup. |
-| [`pyproject.toml`](pyproject.toml) | Declares the Thor-specific Python dependencies and package indexes. | Required. |
-| [`uv.lock`](uv.lock) | Pins the complete dependency resolution consumed by `uv sync`. | Required. |
-| [`Dockerfile`](Dockerfile) | Builds the dependency-qualification environment in the pinned CUDA container. | Optional; not the accepted model-serving path. |
+## Prepare and install
 
-## Preparation flow
-
-From the Policy-Gated Factory Robot Orchestrator Reference repository root, prepare the pinned upstream source,
-apply the Policy-Gated Factory Robot Orchestrator Reference patch, and copy this Thor environment into the
-prepared checkout:
-
-```bash
-ops/prepare-groot-runtime.sh --source-only
-```
-
-To prepare the source and install its Thor environment in one operation:
+Follow the [two-host prerequisites](../../../../docs/REPRODUCIBLE-DEMO.md) first.
+On Thor, from this repository's root, with the GR00T policy and relay services
+inactive and a new destination directory:
 
 ```bash
 ops/prepare-groot-runtime.sh --install
 ```
 
-The preparation script refuses to replace an existing destination and checks
-that the known GR00T policy and relay profiles are inactive before modifying
-the prepared source tree. The dependency installer consumes this directory's
-`pyproject.toml` and `uv.lock` in place.
+This prepares the pinned NVIDIA Isaac-GR00T checkout at
+`$HOME/groot_shadow/Isaac-GR00T`, verifies and applies the project patch,
+materializes the checksum-verified TorchCodec wheel, and invokes the Thor
+installer. `PGFR_GROOT_SOURCE_ROOT` can select a different source destination;
+service templates must then use the same path. The preparation command refuses
+to replace an existing destination or prepare over active known profiles. It
+starts no policy or relay service.
 
-For the shared Order744-cont24 training commands and dataset composition, see
-[`../groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md`](../groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md).
-The Jetson control-host prerequisite installer is separate. It prepares the
-system packages and application dependencies required by PGFR Spine and PGFR
-Console; it does not replace this GR00T environment.
+To inspect the prepared source before installing dependencies, use this
+alternative sequence instead:
 
-The accepted reference deployment serves GR00T bare metal from the frozen uv
-environment. The Dockerfile qualifies the dependency set only and is not
-evidence for containerized policy serving or a complete mission.
+```bash
+ops/prepare-groot-runtime.sh --source-only
+# Review the prepared source, then install on the idle Thor host:
+"${PGFR_GROOT_SOURCE_ROOT:-$HOME/groot_shadow/Isaac-GR00T}/scripts/deployment/thor/install_deps.sh"
+```
+
+Do not run `--install` against the directory already created by `--source-only`;
+invoke its prepared installer as shown. The installer consumes the Thor
+`pyproject.toml` and `uv.lock` in place, performs a frozen sync into the source
+checkout's `.venv`, and installs GR00T editable without changing the upstream
+root dependency files. A different `UV_PROJECT_ENVIRONMENT` requires matching
+service configuration.
+
+After dependency installation, continue with checkpoint export/verification,
+profile installation, and operator-controlled service startup in the
+[two-host guide](../../../../docs/REPRODUCIBLE-DEMO.md). Source preparation and
+dependency installation alone do not qualify a checkpoint or complete mission.
+
+## FFmpeg and TorchCodec dependencies
+
+The pinned TorchCodec wheel links these six FFmpeg 6 library packages:
+
+```text
+libavfilter9 libavformat60 libavcodec60 libavutil58 libswresample4 libswscale7
+```
+
+The installer requests only those ABI-versioned packages with
+`--no-install-recommends`; it does not request the unversioned `ffmpeg` command-
+line package. Jetson repositories can select an FFmpeg 8 build for that package,
+which does not supply the FFmpeg 6 ABI required by this wheel. Some previously
+observed NVIDIA FFmpeg builds report nonfree components. Dataset conversion
+uses a separately selected executable in the workstation training workflow.
+The installer does not request the FFmpeg executable; normal package dependency
+resolution still applies, with `--no-remove` preventing package removals.
+
+The measured Ubuntu 24.04 FFmpeg 6 packages are GPL builds. The pinned OpenCV
+headless wheel also bundles separate LGPL FFmpeg libraries. Their obligations
+remain separate from the TorchCodec wheel's BSD license and the project's
+source license; see [third-party notices](../../../../THIRD-PARTY-NOTICES.md).
+Omitting the command-line package does not remove these library dependencies.
+
+You can inspect the selected package versions and origins without running a
+model or decoder:
+
+```bash
+dpkg-query -W libavfilter9 libavformat60 libavcodec60 libavutil58 libswresample4 libswscale7
+apt-cache policy libavfilter9 libavformat60 libavcodec60 libavutil58 libswresample4 libswscale7
+```
+
+The installer retains the known TorchCodec wheel and library ABI to preserve
+the bare-metal dependency contract. A smaller inference-only environment that
+omits TorchCodec/system FFmpeg requires separate cold-start and inference
+validation; it is not established by an import inventory or by this change.
+
+## Pins and limits
+
+| File | Purpose |
+| --- | --- |
+| [install_deps.sh](install_deps.sh) | Checks platform and wheel integrity, installs CUDA/runtime libraries, performs frozen sync, and installs the pinned TorchCodec wheel. |
+| [pyproject.toml](pyproject.toml) | Defines the Thor Python dependency set and package indexes. |
+| [uv.lock](uv.lock) | Freezes the Python dependency resolution. |
+
+The TorchCodec artifact is `torchcodec-0.10.0a0-cp312-cp312-linux_aarch64.whl`,
+SHA-256 `1421de7e6248cc33398c16b2d7ba5ada4bf5c2a38af7cc44a003f3b0c36eb314`.
+The installer rejects a Git LFS pointer, invalid archive, unexpected wheel
+inventory, or checksum mismatch before package installation. This identifies
+the tested artifact; it does not supply a complete reproducible source/build
+recipe for the custom wheel. The public reference's remaining artifact and
+qualification limits are recorded in the
+[release scope](../../../../docs/RELEASE-SCOPE.md).

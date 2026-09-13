@@ -67,7 +67,10 @@ git -C "$tmp" apply --check "$PATCH"
 git -C "$tmp" apply "$PATCH"
 
 mkdir -p "$tmp/scripts/deployment/thor"
-for name in Dockerfile install_deps.sh pyproject.toml uv.lock; do
+# The project supports Thor serving on the host. Remove the upstream container
+# recipe from this new staging checkout so it cannot advertise another path.
+rm -f -- "$tmp/scripts/deployment/thor/Dockerfile"
+for name in install_deps.sh pyproject.toml uv.lock; do
   install -m 0644 "$THOR/$name" "$tmp/scripts/deployment/thor/$name"
 done
 chmod 0755 "$tmp/scripts/deployment/thor/install_deps.sh"

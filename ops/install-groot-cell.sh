@@ -12,6 +12,7 @@ BATCH_RELAY="$REPO/reference/policy-gated-factory-robot-orchestrator-reference/g
 RENDERER="$REPO/ops/render-groot-cont24-contracts.py"
 MOUNT=""
 CHECKPOINT_PATH=""
+CHECKPOINT_METADATA=""
 LEFT_SERVICE_STATE=""
 RIGHT_SERVICE_STATE=""
 LEFT_POLICY_PORT="5592"
@@ -28,6 +29,7 @@ usage() {
   cat >&2 <<EOF
 usage: $0 --mount PATH --checkpoint-path PATH \\
   --left-service-state PATH --right-service-state PATH \\
+  [--checkpoint-metadata /absolute/pgfr_checkpoint.json] \\
   [--left-policy-port PORT] [--right-policy-port PORT] \\
   [--left-relay-port PORT] [--right-relay-port PORT]
 EOF
@@ -63,6 +65,7 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --mount) MOUNT="${2:-}"; shift 2 ;;
     --checkpoint-path) CHECKPOINT_PATH="${2:-}"; shift 2 ;;
+    --checkpoint-metadata) CHECKPOINT_METADATA="${2:-}"; shift 2 ;;
     --left-service-state) LEFT_SERVICE_STATE="${2:-}"; shift 2 ;;
     --right-service-state) RIGHT_SERVICE_STATE="${2:-}"; shift 2 ;;
     --left-policy-port) LEFT_POLICY_PORT="${2:-}"; shift 2 ;;
@@ -95,8 +98,12 @@ done
 
 CONTRACT_STAGE="$(mktemp -d)"
 trap 'rm -rf "$CONTRACT_STAGE"' EXIT
+CHECKPOINT_ARGS=(--checkpoint-path "$CHECKPOINT_PATH")
+if [ -n "$CHECKPOINT_METADATA" ]; then
+  CHECKPOINT_ARGS+=(--checkpoint-metadata "$CHECKPOINT_METADATA")
+fi
 python3 "$RENDERER" \
-  --checkpoint-path "$CHECKPOINT_PATH" \
+  "${CHECKPOINT_ARGS[@]}" \
   --left-service-state "$LEFT_SERVICE_STATE" \
   --right-service-state "$RIGHT_SERVICE_STATE" \
   --left-policy-port "$LEFT_POLICY_PORT" \

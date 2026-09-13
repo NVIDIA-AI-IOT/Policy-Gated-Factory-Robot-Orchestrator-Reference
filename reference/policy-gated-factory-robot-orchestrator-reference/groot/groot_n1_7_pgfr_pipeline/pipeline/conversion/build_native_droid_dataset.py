@@ -137,12 +137,10 @@ def _copy_videos(source: Path, output: Path) -> None:
 
 
 def build_dataset(source: Path, fk_path: Path, output: Path) -> None:
-    reuse_incomplete_output = output.exists()
-    if reuse_incomplete_output:
-        completed_info = output / "meta" / "info.json"
-        written_episodes = list(output.glob("data/*/episode_*.parquet"))
-        if completed_info.exists() or written_episodes:
-            raise FileExistsError(f"Refusing to overwrite existing output: {output}")
+    if output.exists():
+        raise FileExistsError(f"Refusing to overwrite existing output: {output}")
+    if source.resolve() in output.resolve().parents or output.resolve() in source.resolve().parents:
+        raise ValueError("Source and output must be non-overlapping directories")
     with fk_path.open() as stream:
         fk_result = json.load(stream)
     if fk_result.get("frame") != "panda_link8":
@@ -153,17 +151,17 @@ def build_dataset(source: Path, fk_path: Path, output: Path) -> None:
     if len(fk_episodes) != len(episode_paths):
         raise ValueError(f"Episode count mismatch: {len(fk_episodes)} FK vs {len(episode_paths)} data")
 
-    if reuse_incomplete_output:
-        expected_video_root = output / "videos" / "chunk-000"
-        if not (expected_video_root / "observation.images.exterior_1_left").is_dir():
-            raise ValueError(f"Incomplete output has unexpected video layout: {output}")
-        if not (expected_video_root / "observation.images.wrist_left").is_dir():
-            raise ValueError(f"Incomplete output has unexpected video layout: {output}")
-    else:
-        output.mkdir(parents=True)
-        (output / "data" / "chunk-000").mkdir(parents=True)
-        (output / "meta").mkdir()
-        _copy_videos(source, output)
+    # Verify every request hash before creating output; stale FK must not be paired
+    # with recaptured or edited trajectories that happen to have the same length.
+    for index, (parquet_path, fk_episode) in enumerate(zip(episode_paths, fk_episodes)):
+        if (fk_episode.get("episode_index") != index
+                or fk_episode.get("source_file") != parquet_path.name
+                or fk_episode.get("source_sha256") != _sha256(parquet_path)):
+            raise ValueError(f"FK source identity mismatch: {parquet_path}")
+    output.mkdir(parents=True)
+    (output / "data" / "chunk-000").mkdir(parents=True)
+    (output / "meta").mkdir()
+    _copy_videos(source, output)
 
     total_frames = 0
     max_joint_target_error = 0.0
@@ -177,6 +175,10 @@ def build_dataset(source: Path, fk_path: Path, output: Path) -> None:
         frame = pd.read_parquet(parquet_path)
         state8 = np.stack(frame["observation.state"].to_numpy()).astype(np.float32)
         action8 = np.stack(frame["action"].to_numpy()).astype(np.float32)
+        if state8.ndim != 2 or action8.shape != state8.shape or state8.shape[1] != 8:
+            raise ValueError(f"Expected matching 8D state/action: {parquet_path}")
+        if not np.isfinite(state8).all() or not np.isfinite(action8).all():
+            raise ValueError(f"Non-finite state/action: {parquet_path}")
         nframes = len(frame)
         state_position, state_rotation = _poses(fk_episode["state"], nframes, "state")
         action_position, action_rotation = _poses(fk_episode["action"], nframes, "action")
@@ -216,6 +218,9 @@ def build_dataset(source: Path, fk_path: Path, output: Path) -> None:
 
     shutil.copy2(source / "meta" / "episodes.jsonl", output / "meta" / "episodes.jsonl")
     shutil.copy2(source / "meta" / "tasks.jsonl", output / "meta" / "tasks.jsonl")
+    encoder_provenance = source / "meta" / "ffmpeg_provenance.json"
+    if encoder_provenance.is_file():
+        shutil.copy2(encoder_provenance, output / "meta" / encoder_provenance.name)
 
     with (source / "meta" / "info.json").open() as stream:
         source_info = json.load(stream)
@@ -268,8 +273,9 @@ def build_dataset(source: Path, fk_path: Path, output: Path) -> None:
     }
     _json_dump(output / "meta" / "info.json", info)
     _json_dump(output / "meta" / "modality.json", modality)
-    _json_dump(output / "meta" / "stats.json", {})
-    _json_dump(output / "meta" / "relative_stats.json", {})
+    # Statistics are deliberately absent until gr00t/data/stats.py computes
+    # absolute and relative values from this dataset with the training modality.
+    # Empty placeholders can otherwise look like completed training inputs.
     _json_dump(
         output / "meta" / "native_droid_provenance.json",
         {

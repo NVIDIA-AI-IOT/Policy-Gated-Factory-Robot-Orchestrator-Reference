@@ -10,7 +10,7 @@ The console is read-only by construction — it holds no dispatch capability.
 
 from __future__ import annotations
 
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Literal
 
 from pydantic import BaseModel
 
@@ -33,12 +33,6 @@ class Edge(BaseModel):
     target: str
     label: str = ""
     status: Status = "unknown"
-
-
-class Topology(BaseModel):
-    nodes: List[NodeStatus]
-    edges: List[Edge]
-    generated_at: str
 
 
 # The declared architecture. Live status is filled in by the aggregator;
@@ -105,8 +99,3 @@ def resolve(nodes: Dict[str, NodeStatus], edges: Dict[str, Edge]) -> Dict[str, o
     for edge in present_edges:
         edge.status = derive_edge_status(nodes, edge)
     return {"nodes": list(nodes.values()), "edges": present_edges}
-
-
-def get_optional(detail: Dict[str, object], key: str) -> Optional[object]:
-    value = detail.get(key)
-    return value if value is not None else None

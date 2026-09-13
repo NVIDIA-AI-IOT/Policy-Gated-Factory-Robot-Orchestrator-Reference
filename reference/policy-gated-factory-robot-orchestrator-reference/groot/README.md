@@ -1,10 +1,17 @@
 # GR00T action integration
 
-The learned-action path uses one fine-tuned NVIDIA Isaac GR00T checkpoint for
+The learned-action path uses one user-trained NVIDIA Isaac GR00T checkpoint for
 all three object types and both Franka arms. Two policy-server processes load
 the same checkpoint: one serves the left arm and one serves the right arm.
 These are independent serving instances, not separate models or per-color
 experts.
+
+Create your own demonstrations and checkpoint using the
+[dataset-creation guide](groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md),
+[training recipe](groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md), and
+[local export procedure](models/README.md). No project fine-tuned weights or
+recorded training dataset are supplied. Official NVIDIA base models and their
+license/access prerequisites remain required.
 
 ## Execution profiles
 
@@ -44,26 +51,23 @@ Inference completion alone is not treated as action success.
 
 ## Runtime and installation
 
+Thor runs the GR00T policy and relay processes directly in the pinned host
+Python environment. Follow the [bare-metal Thor setup](thor/README.md); the
+project does not provide a Thor GR00T container build. Dataset conversion and
+fine-tuning use the separate workstation workflow linked above. The Thor
+installer selects the FFmpeg 6 shared libraries required by TorchCodec without
+requesting the FFmpeg command-line package.
+
 The installable action runtime lives in [`runtime/`](runtime/). It contains
 the home-state convergence, two-arm routing, shared-model deployment,
 mixed-color pair execution, and scene-reset implementation. Reset restores the
 complete action runtime; no separate runtime staging command is required.
 
-Install it into an idle Isaac scripts mount with the checkpoint path and the
-two relay service-state paths:
-
-```bash
-export PGFR_GROOT_MODEL_ROOT="$HOME/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24"
-
-ops/install-groot-cell.sh \
-  --mount /path/to/isaac-scripts \
-  --checkpoint-path "$PGFR_GROOT_MODEL_ROOT" \
-  --left-service-state /groot-state/shared-left.json \
-  --right-service-state /groot-state/shared-right.json
-
-systemctl --user start pgfr-groot-shared-stack.target
-ops/launch-groot-isaac.sh /path/to/isaac-scripts
-```
+Follow the [two-host installation sequence](../../../docs/REPRODUCIBLE-DEMO.md):
+prepare Thor's runtime, export and verify your model, install its profiles, then
+install the RTX bridge and cell while services are stopped. The bootstrap does
+not select a model or generate the shared profiles. Start services only after
+both hosts have matching checkpoint metadata and all installation steps pass.
 
 The installer assigns one policy port and one relay port per arm. If those
 defaults are already occupied, select alternatives with
@@ -79,14 +83,13 @@ markers.
 
 When Thor and Isaac run on different hosts, Thor remains the sole owner of the
 two policy servers, two relays, and their authoritative service-state files.
-First fetch and verify the pinned shared checkpoint on Thor, then install only
-its two shared profiles and target:
+First copy and verify your exported checkpoint on Thor, then install its two
+shared profiles and target:
 
 ```bash
-export PGFR_GROOT_HF_REPO=mmallick/industrial-claw-groot-order744-cont24
-export PGFR_GROOT_HF_REVISION=9307ac9cba3a27c9a57ed2d90393ceefb28367e1
-ops/fetch-groot-models.sh
-ops/install-groot-thor-shared-profiles.sh
+export PGFR_GROOT_MODEL_ROOT="$HOME/policy-gated-factory-robot-orchestrator-reference-models/my-checkpoint"
+ops/fetch-groot-models.sh "$PGFR_GROOT_MODEL_ROOT"
+ops/install-groot-thor-shared-profiles.sh --checkpoint-path "$PGFR_GROOT_MODEL_ROOT"
 ```
 
 The Thor profile installer verifies the existing generic policy/relay unit
@@ -96,12 +99,14 @@ ports, stale readiness files, or differing existing profiles. It installs only
 `pgfr-groot-shared-stack.target`; it never enables or starts them and does not
 replace the generic templates used by other profiles.
 
-The simulation host then installs the dedicated bridge:
+Copy `pgfr_checkpoint.json` and `SHA256SUMS` together to a local directory on
+the simulation host. It then installs the dedicated bridge:
 
 ```bash
 ops/install-groot-two-host-bridge.sh \
   --thor-ssh user@thor-host \
-  --remote-checkpoint /absolute/path/to/order744-cont24 \
+  --remote-checkpoint /absolute/thor/path/to/my-checkpoint \
+  --checkpoint-metadata /absolute/local/path/to/pgfr_checkpoint.json \
   --remote-state-root /absolute/thor/state/root
 ```
 
@@ -112,8 +117,9 @@ It publishes a separate local state pair only while both remote units,
 listeners, checkpoint identities, fingerprints, and relay contracts are
 valid. Tunnel or identity failure removes both local readiness records.
 
-The Isaac installer then consumes the derived left/right state paths and the
-bridge's local policy/relay ports. It does not need network-facing GR00T
+The Isaac installer then consumes the derived left/right state paths, the
+bridge's local policy/relay ports, and the same local `--checkpoint-metadata`
+file. Its `--checkpoint-path` is the absolute model path on Thor. It does not need network-facing GR00T
 listeners, and the existing executor and relay protocol remain unchanged.
 For the bridge defaults, render the cell contracts with policy ports
 5792/5793, relay ports 5741/5742, and service-state paths beneath
@@ -121,7 +127,7 @@ For the bridge defaults, render the cell contracts with policy ports
 
 ```bash
 export PGFR_GROOT_STATE_ROOT="$HOME/.local/share/pgfr-spine/groot/remote-thor-v36"
-ops/launch-groot-isaac.sh /path/to/isaac-scripts
+ops/launch-groot-isaac.sh --accept-eula /path/to/isaac-scripts
 ```
 
 The development lineage remains in
@@ -129,27 +135,27 @@ The development lineage remains in
 
 - synchronized simulation capture and native-DROID conversion;
 - the official NVIDIA fine-tuning entry point and single-frame modality;
-- the isolated Order744-cont24 continuation recipe;
+- an explicit fine-tuning and optional corrective-continuation recipe;
 - the dataset and model validation contract.
 
 The direct executor lives in [`runtime/`](runtime/), and the serving bridge
 lives in [`relay/`](relay/). Earlier development iterations remain available
 through Git history. The public installer does not checksum normal source
 files: Git versions and behavioral tests cover source, while the model
-artifact checksum validates the downloaded weights at the serving boundary.
+artifact checksum validates the user-exported weights at the serving boundary.
 
 ## Reproduction status
 
-The one-model action runtime and its successful evidence are packaged. Thor
-supplies the Order744-cont24 checkpoint and authoritative state manifests
-produced by its two serving instances; a separate simulation host consumes
-validated derived manifests from the bridge. The public model and dataset
-revisions are pinned in [`models/manifest.yaml`](models/manifest.yaml) and can be
-downloaded without repository-specific access. The fetch path still requires
-Hugging Face authentication for its separately gated Cosmos-Reason2-2B runtime
-backbone. Persistent local service templates load the same checkpoint in two
-independent B=1 processes and publish one service-state record per arm. A
-fresh-machine full-cell validation remains a release input.
+The source packages the controller and the observation/action contract used in
+the development experiment. Both Thor policy instances must load the same
+user-exported checkpoint and publish its recorded identity. The bridge checks
+that identity before exposing readiness to Isaac Sim.
 
-See [`../../../docs/REPRODUCIBLE-DEMO.md`](../../../docs/REPRODUCIBLE-DEMO.md)
-for the two-host setup and the remaining release gates.
+The [model manifest](models/manifest.yaml) records upstream base/runtime
+prerequisites and the local artifact contract. It does not identify a project
+checkpoint or dataset to download. Historical mission evidence does not qualify
+a model trained from new demonstrations. Each checkpoint needs rollout and
+visual-verification acceptance on the matching scene, cameras, and alignment.
+
+See [the two-host setup](../../../docs/REPRODUCIBLE-DEMO.md) and
+[release scope](../../../docs/RELEASE-SCOPE.md).

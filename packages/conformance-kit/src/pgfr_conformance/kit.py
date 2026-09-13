@@ -176,11 +176,18 @@ def check_skill_manifest(path: str) -> list[CheckResult]:
     """Validate a skill manifest: required fields + only policy-known agent actions."""
     import yaml
 
-    results: list[CheckResult] = []
     try:
-        m = yaml.safe_load(open(path)) or {}
+        with open(path) as stream:
+            manifest = yaml.safe_load(stream)
     except Exception as exc:
         return [CheckResult("manifest parses", False, str(exc))]
+    return check_skill_manifest_data(manifest)
+
+
+def check_skill_manifest_data(manifest: Any) -> list[CheckResult]:
+    """Apply the file validator's checks to an already parsed manifest."""
+    m = manifest or {}
+    results: list[CheckResult] = []
     for f in ("name", "version", "description", "requires_tools", "allowed_actions", "done_criteria"):
         results.append(CheckResult(f"manifest field: {f}", f in m and m[f] not in (None, "", []),
                                    str(m.get(f, "MISSING"))[:50]))

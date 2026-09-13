@@ -2,11 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Scene dressing: tote compartment pads + matte materials (anti-glare).
 
-Port of add_tote_colors.py + matte_scene.py (2026-07-07). All names module-local —
-the CUBES-clobber class of bug is structurally impossible here.
+The cell boot sequence adds the pads and materials before physics starts.
 """
-import traceback
-
 import omni.usd
 from pxr import Gf, Sdf, Usd, UsdGeom, UsdShade
 
@@ -114,12 +111,3 @@ def matte_scene():
     for path in MATTE_CUBES + MATTE_PADS:
         process(stage.GetPrimAtPath(path))
     print("MATTE_DONE surfaces_matted=%d displaycolor_bound=%d" % (counts["surf"], counts["bind"]), flush=True)
-
-
-def dress_all():
-    try:
-        add_tote_pads()
-        matte_scene()
-    except Exception:
-        print("DRESSING_ERR:\n" + traceback.format_exc(), flush=True)
-        raise

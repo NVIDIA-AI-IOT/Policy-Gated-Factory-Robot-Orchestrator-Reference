@@ -9,6 +9,7 @@ and the floor service.
 
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, List
 
 import pytest
@@ -1293,6 +1294,7 @@ class TestAPI:
         r2 = client.post(
             "/api/chat", json={"session_id": sid, "message": "again"}, headers=HDR
         )
+        assert r2.status_code == 200
         hist = client.get(f"/api/sessions/{sid}").json()["history"]
         assert [h["content"] for h in hist if h["role"] == "user"] == ["hello", "again"]
 
@@ -1384,6 +1386,71 @@ class TestAPI:
         tool = next(item for item in saved["history"] if item["role"] == "tool")
         assert tool["result"]["harness"] == "openclaw"
         assert tool["result"]["harness_tool"] == "pgfr-floor__floor_state"
+
+    @pytest.mark.parametrize("vision_kind", ["evidence", "missing", "malformed"])
+    def test_batch_and_stream_preserve_the_same_replay_evidence(self, tmp_path, vision_kind):
+        expected_result = {
+            "verified": False, "reason": "Placement needs visual proof", "error": None,
+            "dispatched": True, "moved": False, "request_id": "camera-evidence-1",
+            "answer": "no", "yes": False, "vision_agrees": False,
+            "evidence": "The cube is beside the tote", "source_used": "inspect_cam",
+            "mode": "visual", "status": "uncertain", "goal_id": "placement-1",
+            "proof_gate": {"accepted": False}, "pending_visual_proof": True,
+            "harness": "openclaw", "harness_tool": "pgfr-floor__dispatch_task",
+        }
+        result = {**expected_result, "sensor_payload": [1, 2, 3]}
+        if vision_kind == "evidence":
+            expected_result["vision"] = {
+                "summary": "Cube beside the tote", "error": None, "raw": {"answer": "no"},
+                "parse_ok": True, "source_used": "inspect_cam", "cubes_visible": [],
+                "tote_on_rack": False, "region": "tote_r",
+            }
+            result["vision"] = {**expected_result["vision"], "image_bytes": "omitted"}
+        elif vision_kind == "missing":
+            result["vision"] = None
+        else:
+            result["vision"] = ["invalid vision response"]
+        args = {"action": "move", "color": "blue", "destination": "tote_r"}
+        tool_event = {"role": "tool", "name": "dispatch_task", "args": args, "result": result}
+        assistant = {"role": "assistant", "content": "Placement remains unverified."}
+
+        class EvidenceBackend(NativeHarnessBackend):
+            async def run_native_stream(self, messages, mission_id):
+                yield {"role": "tool_start", "name": "dispatch_task", "args": args}
+                yield tool_event
+                yield assistant
+
+        histories = []
+        for route in ("/api/chat", "/api/chat/stream"):
+            client = self.make_client(
+                EchoBackend(), openclaw_backend=EvidenceBackend(),
+                tmp_path=tmp_path / route.rsplit("/", 1)[-1],
+            )
+            response = client.post(
+                route, json={"message": "Move the blue cube", "backend": "openclaw"}, headers=HDR,
+            )
+            assert response.status_code == 200
+            if route.endswith("/stream"):
+                events = [json.loads(line[6:]) for line in response.text.splitlines()
+                          if line.startswith("data: ")]
+                session_id = events[0]["session_id"]
+                assert [event["role"] for event in events] == [
+                    "meta", "tool_start", "tool", "assistant",
+                ]
+                assert events[2] == tool_event
+            else:
+                body = response.json()
+                session_id = body["session_id"]
+                assert body["transcript"] == [tool_event, assistant]
+            # GET reloads the JSON session file, checking persisted evidence
+            # rather than the unfiltered result sent in the live response.
+            histories.append(client.get(f"/api/sessions/{session_id}").json()["history"])
+        expected_history = [
+            {"role": "user", "content": "Move the blue cube"},
+            {"role": "tool", "name": "dispatch_task", "args": args, "result": expected_result},
+            assistant,
+        ]
+        assert histories == [expected_history, expected_history]
 
     def test_stop_idle_session_is_safe(self) -> None:
         client = self.make_client(EchoBackend())

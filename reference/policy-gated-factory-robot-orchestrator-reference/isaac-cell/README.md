@@ -1,8 +1,10 @@
 # Isaac Sim cell
 
 This directory contains the scenes, cameras, ROS 2 interface, and action
-implementations for the reference factory cell. Two supported deployment paths
-share the ROS contract but use separate Isaac Sim profiles and asset bundles.
+implementations for the reference factory cell. The scripted baseline and
+historical GR00T deployment share the ROS contract but use separate Isaac Sim
+profiles and asset bundles. Both use NVIDIA's official image with mounted
+project code; no project image is built or published.
 
 ## Deployment paths
 
@@ -13,9 +15,13 @@ share the ROS contract but use separate Isaac Sim profiles and asset bundles.
 
 ### Scripted baseline
 
-Run the supported launcher from the repository root:
+Complete the [workstation host prerequisites](../../../ops/ISAAC-SIM-WORKSTATION.md#host-prerequisites)
+and review NVIDIA's [Isaac Sim Additional Software and Materials License](https://www.nvidia.com/en-us/agreements/enterprise-software/isaac-sim-additional-software-and-materials-license/).
+Then pull NVIDIA's image and run the launcher from the repository root:
 
 ```bash
+docker pull --platform linux/amd64 \
+  nvcr.io/nvidia/isaac-sim:6.0.1@sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb
 ops/isaac-sim-workstation.sh --prepare
 ops/isaac-sim-workstation.sh --check --accept-eula
 ops/isaac-sim-workstation.sh --run --accept-eula
@@ -36,8 +42,10 @@ contracts, and capture context. The installer refuses to modify a scripts
 mount used by a running container.
 
 Follow the [two-host deployment guide](../../../docs/REPRODUCIBLE-DEMO.md) for
-the complete install command and host-specific paths. Do not merge this bundle
-with the scripted baseline files at the root of this directory.
+the complete install command and host-specific paths. Its launcher requires
+explicit `--accept-eula` before starting the pinned NVIDIA runtime. Learned
+motion on Isaac Sim 6.0.1 is not qualified. Do not merge this bundle with the
+scripted baseline files at the root of this directory.
 
 ## Source layout
 

@@ -3,10 +3,7 @@
 
 """Tests for the PGFR console aggregator + API.
 
-Hardware-free: a fake seam (FastAPI TestClient-style httpx MockTransport is
-not used because the aggregator owns its client; instead we run a real
-in-process HTTP server via uvicorn-free asyncio) — simplest robust approach:
-monkeypatch the aggregator's HTTP layer with canned responses.
+Hardware-free tests replace upstream HTTP calls with canned responses.
 """
 
 from __future__ import annotations
@@ -542,13 +539,64 @@ class TestAPI:
         import pathlib
 
         static = pathlib.Path(__file__).parent.parent / "src" / "pgfr_console" / "static"
-        for name in ("app.js", "chat.js", "inspect.js", "assurance.js"):
+        for name, alias in (("app.js", "esc"), ("chat.js", "cesc"),
+                            ("inspect.js", "iesc"), ("gpu.js", "gesc")):
             src = (static / name).read_text()
-            assert any(f"function {p}esc(" in src for p in ("", "c", "i", "s", "a")), name
+            assert f"escapeHtml as {alias}" in src, name
             # the raw mission fields must never be interpolated without esc()
             for raw in ("${id}", "${op.reason", "${w.name}", "${t.description}",
                         "${body.error", "${n.label}", "${e.label}"):
                 assert raw not in src, f"{name} interpolates {raw} unescaped"
+
+    def test_shared_escape_keeps_hostile_input_as_text_and_one_attribute(self) -> None:
+        import json
+        from html.parser import HTMLParser
+        from pathlib import Path
+        import shutil
+        import subprocess
+
+        node = shutil.which("node")
+        if node is None:
+            pytest.skip("JavaScript behavior check requires Node (installed by CI)")
+        static = Path(__file__).parent.parent / "src" / "pgfr_console" / "static"
+        hostile = [
+            '"><img src=x onerror="alert(1)">',
+            "'</div><script>globalThis.compromised=true</script>",
+            "&quot; autofocus onfocus='alert(1)' — café 🦾",
+        ]
+        result = subprocess.run(
+            [node, "--input-type=module", "-e", """
+                import {readFileSync} from 'node:fs';
+                import {pathToFileURL} from 'node:url';
+                const {escapeHtml} = await import(pathToFileURL(process.argv[1]).href);
+                const values = JSON.parse(readFileSync(0, 'utf8'));
+                const fragments = values.map(value =>
+                    `<div title="${escapeHtml(value)}">${escapeHtml(value)}</div>`);
+                console.log(JSON.stringify(fragments));
+            """, str(static / "display.js")],
+            input=json.dumps(hostile), text=True, capture_output=True, check=True, timeout=10,
+        )
+
+        class Fragment(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.tags = []
+                self.attributes = []
+                self.text = []
+
+            def handle_starttag(self, tag, attrs):
+                self.tags.append(tag)
+                self.attributes.extend(attrs)
+
+            def handle_data(self, data):
+                self.text.append(data)
+
+        for value, markup in zip(hostile, json.loads(result.stdout), strict=True):
+            fragment = Fragment()
+            fragment.feed(markup)
+            assert fragment.tags == ["div"]
+            assert fragment.attributes == [("title", value)]
+            assert "".join(fragment.text) == value
 
     def test_chat_shows_journaled_frame_even_when_vlm_errors(self) -> None:
         import pathlib

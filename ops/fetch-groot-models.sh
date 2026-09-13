@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-# Download the immutable shared GR00T model and verify its artifacts.
+# Verify your local GR00T export and fetch only the pinned upstream Cosmos backbone.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-MODEL_REPO="${PGFR_GROOT_HF_REPO:-}"
-MODEL_REVISION="${PGFR_GROOT_HF_REVISION:-}"
-BACKBONE_REPO="${PGFR_GROOT_BACKBONE_HF_REPO:-nvidia/Cosmos-Reason2-2B}"
-BACKBONE_REVISION="${PGFR_GROOT_BACKBONE_HF_REVISION:-9ce19a195e423419c349abfc86fd07178b230561}"
+BACKBONE_REPO="nvidia/Cosmos-Reason2-2B"
+BACKBONE_REVISION="9ce19a195e423419c349abfc86fd07178b230561"
 BACKBONE_MODEL_SHA256="fa5a6e6ef4fce40216b185cc48a3b24d31637ac3e2ba69c107ed1f389c1e6ede"
-MODEL_ROOT="${PGFR_GROOT_MODEL_ROOT:-$HOME/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24}"
+MODEL_ROOT="${1:-${PGFR_GROOT_MODEL_ROOT:-}}"
 HF_BIN="${PGFR_HF_BIN:-}"
 HF_HOME="${PGFR_HF_HOME:-$(dirname "$MODEL_ROOT")/hf-home}"
 HF_TOKEN_PATH="${PGFR_HF_TOKEN_PATH:-$HF_HOME/token}"
@@ -22,8 +20,9 @@ LEGACY_GUARD="$REPO/ops/pgfr-legacy-guard.sh"
 # shellcheck disable=SC1090
 . "$LEGACY_GUARD"
 
-[ -n "$MODEL_REPO" ] || fail "set PGFR_GROOT_HF_REPO to the published shared-model repository"
-[ -n "$MODEL_REVISION" ] || fail "set PGFR_GROOT_HF_REVISION to an immutable model revision"
+[ "$#" -le 1 ] || fail "usage: ops/fetch-groot-models.sh CHECKPOINT_DIRECTORY"
+[ -n "$MODEL_ROOT" ] || fail "supply your local checkpoint export path; create data, fine-tune, and run ops/export-groot-checkpoint.py first"
+"$REPO/ops/verify-groot-models.sh" "$MODEL_ROOT"
 if [ -z "$HF_BIN" ]; then
   runtime_hf="$HOME/groot_shadow/Isaac-GR00T/.venv/bin/hf"
   if [ -x "$runtime_hf" ]; then
@@ -49,18 +48,7 @@ for profile in shared-left shared-right; do
   fi
 done
 
-mkdir -p "$MODEL_ROOT" "$HF_HOME"
-"$HF_BIN" download "$MODEL_REPO" \
-  --revision "$MODEL_REVISION" \
-  --local-dir "$MODEL_ROOT" \
-  --include \
-    config.json embodiment_id.json \
-    model-00001-of-00003.safetensors \
-    model-00002-of-00003.safetensors \
-    model-00003-of-00003.safetensors \
-    model.safetensors.index.json processor_config.json statistics.json \
-    SHA256SUMS
-
+mkdir -p "$HF_HOME"
 "$HF_BIN" download "$BACKBONE_REPO" \
   --revision "$BACKBONE_REVISION" \
   --include \
@@ -80,5 +68,4 @@ printf '%s' "$BACKBONE_REVISION" >"$backbone_cache/refs/main"
 [ "$(cat "$backbone_cache/refs/main")" = "$BACKBONE_REVISION" ] \
   || fail "failed to bind the offline Cosmos main ref to the pinned revision"
 
-"$REPO/ops/verify-groot-models.sh" "$MODEL_ROOT"
-echo "PGFR_GROOT_MODEL_FETCHED repo=$MODEL_REPO revision=$MODEL_REVISION model_root=$MODEL_ROOT"
+echo "PGFR_GROOT_BACKBONE_FETCHED repo=$BACKBONE_REPO revision=$BACKBONE_REVISION model_root=$MODEL_ROOT"

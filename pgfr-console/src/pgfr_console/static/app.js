@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { rememberSessions, sessionTitle, sessionDate, verificationSummary } from "./display.js?v=console-cleanup4";
+import { escapeHtml as esc, rememberSessions, sessionTitle, sessionDate, verificationSummary } from "./display.js?v=console-maintenance1";
 
 // PGFR Console SPA — zero-dependency ES module (no build step, no CDN).
 // Renders the declared topology as SVG with live status classes, a node
@@ -110,13 +110,6 @@ function visibleTopology() {
     walk(edge.target, edge.status, new Set([edge.source]));
   }
   return {nodes: visible, edges: [...merged.values()]};
-}
-
-function center(id, side) {
-  const p = POS[id];
-  if (!p) return { x: 0, y: 0 };
-  const cy = p.y + H / 2;
-  return side === "left" ? { x: p.x, y: cy } : { x: p.x + p.w, y: cy };
 }
 
 const KIND_ICON = { agent: "◆", model: "◇", service: "▣", tool: "ƒ", sim: "◈",
@@ -244,12 +237,6 @@ function wirePanZoom() {
 // Every value rendered into innerHTML below originates from client-settable
 // journal fields (x-mission-id is unauthenticated, journaled verbatim). Escape
 // unconditionally — an unescaped mission id is a stored-XSS -> robot-motion path.
-function esc(v) {
-  return String(v ?? "").replace(/[&<>"']/g, (c) => (
-    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
-  ));
-}
-
 const STATUSES = new Set(["ok", "degraded", "down", "unknown"]);
 function badge(status) {
   const s = STATUSES.has(status) ? status : "unknown";

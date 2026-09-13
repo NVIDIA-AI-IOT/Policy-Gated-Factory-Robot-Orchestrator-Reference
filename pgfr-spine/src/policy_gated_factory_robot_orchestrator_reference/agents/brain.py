@@ -112,7 +112,6 @@ class BrainAgent:
         if len(items) > self.config.max_subtasks:
             raise InvalidPlanError(f"plan exceeds max_subtasks={self.config.max_subtasks}")
         subtasks: list[Subtask] = []
-        endpoint_ids = {e["id"] for e in self.action.list_action_endpoints()}
         endpoint_caps = {
             e["id"]: {c["name"] for c in e["capabilities"]}
             for e in self.action.list_action_endpoints()
@@ -123,7 +122,7 @@ class BrainAgent:
             except ValidationError as exc:
                 raise InvalidPlanError(f"subtask schema invalid: {exc}") from exc
             if st.kind.value == "action":
-                if st.endpoint_id not in endpoint_ids:
+                if st.endpoint_id not in endpoint_caps:
                     raise InvalidPlanError(f"unknown endpoint_id: {st.endpoint_id}")
                 if st.capability not in endpoint_caps[st.endpoint_id]:
                     raise InvalidPlanError(

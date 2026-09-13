@@ -13,14 +13,12 @@ readiness markers, schema IDs, persistent paths, and generated configuration.
 Stop both hosts before changing paths or installed files. Never run legacy and
 PGFR services against the same ports or writable state.
 
-The two published Hugging Face identifiers are the only legacy product slugs
-used by the runtime and do not change:
-
-- `mmallick/industrial-claw-groot-order744-cont24`
-- `mmallick/industrial-claw-groot-order744-cont24-dataset`
-
-Those strings identify external repositories. Do not replace them in an
-environment file, model manifest, cache metadata, or downloaded snapshot.
+The public installation now takes a user-trained local checkpoint. It does
+not fetch a project checkpoint or recorded dataset. Preserve existing model
+files and caches during migration; do not rewrite third-party snapshot metadata.
+Export the selected local checkpoint using the [model guide](../reference/policy-gated-factory-robot-orchestrator-reference/groot/models/README.md)
+and use its new metadata/identity consistently when regenerating profiles and
+bridge contracts. An older mission result does not qualify a newly trained model.
 
 ## What changes
 
@@ -48,8 +46,8 @@ environment file, model manifest, cache metadata, or downloaded snapshot.
 | A checkout such as `~/industrial-claw/` | `~/Policy-Gated-Factory-Robot-Orchestrator-Reference/` | Use a clean checkout of the exact release commit. Rerender every path-bound unit. |
 
 The paths that do not carry the project prefix keep their names, including
-`~/.openclaw/secrets.env`, `~/groot_shadow/Isaac-GR00T/`, the two published
-Hugging Face cache identities, and the full-form product paths in the table.
+`~/.openclaw/secrets.env`, `~/groot_shadow/Isaac-GR00T/`, official upstream
+model cache identities, and the full-form product paths in the table.
 Their contents still require review: the secrets file can contain `IC_*` keys,
 and generated OpenClaw configuration can contain old agent, MCP, or executable
 identifiers. The `pgfr-*` units and `pgfr` state paths are new destinations, not
@@ -245,7 +243,7 @@ not overwrite or combine it. Verify the model tree after moving it:
 
 ```bash
 ops/verify-groot-models.sh \
-  "$HOME/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24"
+  "$HOME/policy-gated-factory-robot-orchestrator-reference-models/my-checkpoint"
 ```
 
 The bootstrap seeds missing environment files but preserves existing operator
@@ -272,9 +270,8 @@ OPENCLAW_CONFIG_PATH=/home/YOUR_USER/.policy-gated-factory-robot-orchestrator-re
 ```
 
 Do not rename third-party variables or ordinary words that happen to contain
-the same letters. Do not change either published
-`mmallick/industrial-claw-groot-order744-cont24` Hugging Face identifier. Treat
-any other remaining legacy value as an item for explicit review, not an
+the same letters. Preserve upstream artifact identities and treat
+any remaining project-owned legacy value as an item for explicit review, not an
 invitation to run an unrestricted repository-wide substitution.
 
 The migrated OpenClaw `openclaw.json` can contain an absolute command path to
@@ -298,7 +295,9 @@ post-upgrade check. On Thor, move `shared-left.json` and `shared-right.json`
 from the migrated `~/.local/share/pgfr-spine/groot/` tree into the backup. On
 the simulation host, move the same two files from
 `~/.local/share/pgfr-spine/groot/remote-thor-v36/`, plus the migrated
-`~/.config/pgfr-spine/groot-two-host-bridge.env`. Archive any generated bridge
+`~/.config/pgfr-spine/groot-two-host-bridge.env`. If present, also archive
+`~/.config/pgfr-spine/groot-bridge-checkpoint/`, which is the prior installed
+identity snapshot. Archive any generated bridge
 helper found under either full-form path in the migration table; the new
 installer recreates it from the candidate source. Keep mission journals, Chat
 sessions, and evidence in place; they are persistent records, not readiness
@@ -314,6 +313,22 @@ merge the complete old `skills/` tree.
 The playbook synchronizer migrates either the legacy or current marked block to
 one current `PGFR-PLAYBOOK` block. Keep its timestamped backup until the new
 OpenClaw configuration and tool list pass validation.
+
+The shared profiles are generated from checkpoint identity. Archive them on
+Thor while the stack is stopped; merely renaming environment keys cannot
+update their fingerprint. Retain them for comparison with the newly generated
+profiles, rather than copying them back:
+
+```bash
+: "${UPGRADE_BACKUP:?set the restricted upgrade backup directory first}"
+for profile in shared-left shared-right; do
+  profile_path="$HOME/.config/pgfr-spine/groot/$profile.env"
+  if [ -e "$profile_path" ]; then
+    test ! -e "$UPGRADE_BACKUP/$profile.env.before-checkpoint-export"
+    mv -- "$profile_path" "$UPGRADE_BACKUP/$profile.env.before-checkpoint-export"
+  fi
+done
+```
 
 ## 5. Recreate environments and rerender installed files
 
@@ -346,7 +361,8 @@ ops/install-brain-host-prereqs.sh
 ops/prepare-groot-runtime.sh --install
 ops/bootstrap-brain.sh --check
 ops/bootstrap-brain.sh --install
-ops/install-groot-thor-shared-profiles.sh
+ops/install-groot-thor-shared-profiles.sh \
+  --checkpoint-path "$HOME/policy-gated-factory-robot-orchestrator-reference-models/my-checkpoint"
 ```
 
 `bootstrap-brain.sh --install` recreates the repository-owned environments
@@ -373,14 +389,16 @@ validation documented in the reproduction guide while the Gateway is stopped.
 
 On the simulation host, reinstall the bridge from the new checkout rather than
 moving the generated legacy helper. Use the same reviewed SSH target and the
-new absolute model path:
+new absolute model path. Copy the exported `pgfr_checkpoint.json` and its
+sibling `SHA256SUMS` to the simulation host as described in the two-host guide:
 
 ```bash
 cd "$HOME/Policy-Gated-Factory-Robot-Orchestrator-Reference"
 ops/install-groot-two-host-bridge.sh \
   --thor-ssh YOUR_THOR_USER@YOUR_THOR_IP \
   --remote-checkpoint \
-    /home/YOUR_THOR_USER/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24 \
+    /home/YOUR_THOR_USER/policy-gated-factory-robot-orchestrator-reference-models/my-checkpoint \
+  --checkpoint-metadata /absolute/local/path/to/pgfr_checkpoint.json \
   --remote-state-root /home/YOUR_THOR_USER/.local/share/pgfr-spine/groot
 ```
 
@@ -428,7 +446,7 @@ the exact old container, capture its inspect record and current logs in the
 restricted backup. Remove only that confirmed stopped container, then launch
 the freshly prepared cell; never select a container solely by image or port.
 
-Only the two published Hugging Face IDs may retain the old slug. Then run the
+Retained historical model metadata is not a project configuration alias. Run the
 read-only and live checks in the reproduction guide, including
 `ops/thor-deploy.sh --check`, both conformance commands, fresh Fast DDS
 payloads, model/checkpoint verification, bridge-derived readiness, an explicit

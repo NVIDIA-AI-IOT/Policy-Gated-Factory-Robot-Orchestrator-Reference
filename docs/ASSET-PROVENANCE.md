@@ -1,8 +1,8 @@
 # Asset provenance
 
-This inventory covers the eight tracked media and USD composition
-files in the Policy-Gated Factory Robot Orchestrator Reference release tree, plus the ten distinct NVIDIA Isaac
-6.0 assets referenced remotely by the USD compositions.
+This inventory covers the dashboard screenshot and five USD composition files
+in the Policy-Gated Factory Robot Orchestrator Reference release tree, plus the
+ten distinct NVIDIA Isaac 6.0 assets referenced remotely by the USD compositions.
 
 It records technical and Git-history evidence for release review. A commit
 author address, file presence in NVIDIA infrastructure, or an NVIDIA-hosted
@@ -14,9 +14,7 @@ Unless an item has a separately established grant, its rights status below is
 
 | Tracked path | File/media metadata | Bytes | SHA-256 | Introduction history | Rights status |
 |---|---|---:|---|---|---|
-| <code>docs/PGFR_Demo.mp4</code> | MP4; H.264 High; 2258x720; yuv420p; 30 fps; 46.766667 s; one video stream and no audio stream | 2,507,505 | <code>ed8f9e0eebb4693b21ba17a4687e315f031aa8593e181a2b2e25fe6f79de989c</code> | <code>4cc390c2e53f5d6a45f13ce5c1769b9c322608ca</code>; 2026-07-07; <code>mmallick@nvidia.com</code> | pending owner/OSRB confirmation; H.264/codec review also pending |
-| <code>docs/pgfr-spine-reference-architecture.png</code> | PNG; 1600x900; RGBA | 157,371 | <code>6c855c0c722f08ffbccc8a8e56fd643f200b6370a025485ed53b6a4ee508acd3</code> | <code>b32e7f278129558bbd75f415c4962cde135dc57a</code>; 2026-07-07; <code>mmallick@nvidia.com</code> | pending owner/OSRB confirmation |
-| <code>docs/pgfr-spine-deployment.svg</code> | SVG; viewBox 0 0 1440 820 | 5,973 | <code>a8e29275222e583e265ee3ba9543d1f97fd2a48940cdd7576c6c25d5229825a7</code> | <code>b32e7f278129558bbd75f415c4962cde135dc57a</code>; 2026-07-07; <code>mmallick@nvidia.com</code> | pending owner/OSRB confirmation |
+| <code>docs/images/orchestration-console.png</code> | PNG; 3796x1986; RGBA | 259,824 | <code>113b0f92992a26bc33024558c8d007d8a6b0c6043de66cdbcfcf26a093cae483</code> | Added to release sources; 2026-09-13. Owner-supplied dashboard screenshot; copied without modification. | pending owner/OSRB confirmation |
 | <code>reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/deployment/our_factory.usda</code> | ASCII USDA scene composition; remotely references Isaac assets | 98,335 | <code>1a5605cacb0568e08989472c5b2a80be2f8de021837512fbfd577ebca5a39381</code> | <code>a98a5e3679b8ba923fd787832b15cd87a4b280c8</code>; 2026-06-21; <code>mmallick@nvidia.com</code> | pending owner/OSRB confirmation |
 | <code>reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/factory_scene.usda</code> | ASCII USDA scene composition; remotely references Isaac assets | 8,961 | <code>da753cd4e7dcf1ce9acaa32dabb66e85454c3af36597b27bbf382c18fbb9e899</code> | <code>a98a5e3679b8ba923fd787832b15cd87a4b280c8</code>; 2026-06-21; <code>mmallick@nvidia.com</code> | pending owner/OSRB confirmation |
 | <code>reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/my_pick_place.usda</code> | ASCII USDA scene composition; remotely references Isaac assets | 8,963 | <code>6074c3fd8bc886f80159004cb48c0f38e51d0ba55d689a9ca4707a29d688e0b3</code> | <code>a98a5e3679b8ba923fd787832b15cd87a4b280c8</code>; 2026-06-21; <code>mmallick@nvidia.com</code> | pending owner/OSRB confirmation |
@@ -49,6 +47,6 @@ confirmation</strong>.
 ## Release gate
 
 Before public release, the owner/OSRB record should confirm the distribution
-right for each tracked asset, the permission to publish compositions that
-reference NVIDIA-hosted Isaac assets, and the H.264/codec treatment of the demo
-video. This document deliberately does not infer those approvals.
+right for each tracked asset and the permission to publish compositions that
+reference NVIDIA-hosted Isaac assets. This document deliberately does not infer
+those approvals.

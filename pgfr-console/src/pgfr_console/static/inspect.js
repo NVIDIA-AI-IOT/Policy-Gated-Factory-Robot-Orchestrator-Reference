@@ -1,19 +1,12 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { rememberSessions, sessionTitle, sessionDate, verificationSummary } from "./display.js?v=console-cleanup4";
+import { escapeHtml as iesc, rememberSessions, sessionTitle, sessionDate, verificationSummary } from "./display.js?v=console-maintenance1";
 
 // Inspector tab — the live audit feed that imprints how inspectable the backend
 // is. Every value is escaped before innerHTML (same escaping contract as the rest).
 
-function iesc(v) {
-  return String(v ?? "").replace(/[&<>"']/g, (c) => (
-    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
-  ));
-}
-
 const inspectMain = document.getElementById("inspect");
-const feedEl = document.getElementById("inspectfeed");
 const statsEl = document.getElementById("inspectstats");
 const tabInspect = document.getElementById("tab-inspect");
 const iTabs = ["tab-topo", "tab-chat"].map((id) => document.getElementById(id));

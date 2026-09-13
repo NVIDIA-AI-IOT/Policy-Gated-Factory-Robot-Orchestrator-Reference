@@ -10,7 +10,7 @@ guides link to that manifest rather than redefining it.
 
 | Document | Audience | Description |
 |---|---|---|
-| [Project overview](../README.md) | Evaluators and new contributors | Introduces the system, reference demonstration, primary components, and current validation boundary. |
+| [Project overview](../README.md) | Evaluators and new contributors | Introduces the system, primary components, and current validation boundary. |
 | [Installation](../INSTALL.md) | Deployers | Chooses between the standalone RTX scripted baseline and the full Thor plus RTX GR00T deployment, with the minimum readiness markers for each. |
 | [Reproduce the full demo](REPRODUCIBLE-DEMO.md) | Deployment owners | Installs, starts, validates, and accepts the complete two-host reference deployment. |
 | [Scripted Isaac Sim workstation](../ops/ISAAC-SIM-WORKSTATION.md) | RTX workstation operators | Runs the learned-policy-free Isaac Sim 6.0.1 baseline, WebRTC stream, and scripted acceptance gate. |
@@ -55,8 +55,10 @@ guides link to that manifest rather than redefining it.
 | [Robot-cell reference implementation](../reference/policy-gated-factory-robot-orchestrator-reference/README.md) | Simulation and robotics developers | Introduces the Isaac cell and learned-action implementation. |
 | [Isaac Sim cell](../reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/README.md) | Simulation developers | Describes the packaged factory scene, startup paths, and cell source layout. |
 | [GR00T integration](../reference/policy-gated-factory-robot-orchestrator-reference/groot/README.md) | GR00T deployers and developers | Covers action serving, policy routing, concurrency behavior, and reproduction status. |
-| [GR00T N1.7 pipeline](../reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/README.md) | Model developers | Runs the published checkpoint and introduces fine-tuning and dataset extension. |
+| [GR00T N1.7 pipeline](../reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/README.md) | Model developers | Introduces local dataset creation, fine-tuning, and user-checkpoint deployment. |
+| [Dataset creation](../reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md) | Model trainers | Capture demonstrations, convert them, and compute training statistics. |
 | [Fine-tuning recipe](../reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md) | Model trainers | Records the training inputs, command sequence, and artifact outputs. |
+| [Release scope](RELEASE-SCOPE.md) | Release owners and users | Defines source-only runtime delivery, separate local training, and upstream image/model prerequisites. |
 | [Pipeline validation](../reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/VALIDATION.md) | Model and release engineers | Defines checks for the fine-tuning and serving pipeline. |
 | [Thor runtime](../reference/policy-gated-factory-robot-orchestrator-reference/groot/thor/README.md) | Thor deployment engineers | Documents the pinned native runtime, dependency qualification, and smoke checks. |
 | [GR00T models](../reference/policy-gated-factory-robot-orchestrator-reference/groot/models/README.md) | Model release owners | Explains model manifests, immutable identifiers, and verification. |
@@ -82,6 +84,4 @@ guides link to that manifest rather than redefining it.
 
 | Artifact | Description |
 |---|---|
-| [`pgfr-spine-deployment.svg`](pgfr-spine-deployment.svg) | Current architecture and two-host reference-deployment view. |
-| [`pgfr-spine-reference-architecture.png`](pgfr-spine-reference-architecture.png) | Provenance-tracked legacy view. Its visible title predates the full-form rename, so it is not the current architecture diagram. |
-| [`PGFR_Demo.mp4`](PGFR_Demo.mp4) | Recorded reference mission in Isaac Sim. |
+| [Dashboard screenshot](images/orchestration-console.png) | Orchestration Console with Chat selected. |

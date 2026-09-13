@@ -8,13 +8,7 @@
 // (validated: adjacent-pair CVD ΔE ≥ 8, normal ≥ 15; three low-contrast
 // slots are relieved by the legend, tooltip, and the Now table).
 
-import { rememberSessions, sessionTitle, sessionDate } from "./display.js?v=console-cleanup4";
-
-function gesc(v) {
-  return String(v ?? "").replace(/[&<>"']/g, (c) => (
-    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
-  ));
-}
+import { escapeHtml as gesc, rememberSessions, sessionTitle, sessionDate } from "./display.js?v=console-maintenance1";
 
 const gpuMain = document.getElementById("gpu");
 const tabGpu = document.getElementById("tab-gpu");

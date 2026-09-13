@@ -1,10 +1,13 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-"""Static and contract tests for the public Order744-cont24/V36 runtime."""
+"""Static and contract tests for the runtime and user checkpoint integrity."""
 
 from __future__ import annotations
 
 import ast
+import hashlib
+import importlib.util
+import shutil
 import json
 from pathlib import Path
 import stat
@@ -45,15 +48,136 @@ PYTHON_SOURCES = (
 )
 
 
+_checkpoint_spec = importlib.util.spec_from_file_location("pgfr_checkpoint_contract_test", REPO / "ops/pgfr_checkpoint.py")
+checkpoint_helpers = importlib.util.module_from_spec(_checkpoint_spec)
+_checkpoint_spec.loader.exec_module(checkpoint_helpers)
+
+
+def checkpoint_fixture(root: Path, *, sharded: bool = False) -> Path:
+    root.mkdir()
+    for name in checkpoint_helpers.REQUIRED_JSON:
+        (root / name).write_text('{"fixture": true}\n', encoding="utf-8")
+    if sharded:
+        index = {"weight_map": {"layer.a": "weights-1.safetensors", "layer.b": "weights-2.safetensors"}}
+        (root / checkpoint_helpers.INDEX_NAME).write_text(json.dumps(index), encoding="utf-8")
+        for name in index["weight_map"].values():
+            (root / name).write_bytes(b"fixture weights")
+    else:
+        (root / "model.safetensors").write_bytes(b"fixture weights")
+    names = checkpoint_helpers.inference_files(root)
+    metadata = {
+        "schema_version": 1,
+        "model_label": "user-trained-test",
+        "embodiment_tag": checkpoint_helpers.EMBODIMENT_TAG,
+        "provenance": {"kind": "user_trained", "checkpoint": "/training/my-run/checkpoint-4", "dataset": "/my-data"},
+        "inference_files": names,
+    }
+    (root / "pgfr_checkpoint.json").write_text(json.dumps(metadata), encoding="utf-8")
+    (root / "SHA256SUMS").write_text("".join(
+        f"{checkpoint_helpers.digest_file(root / name)}  {name}\n"
+        for name in sorted([*names, "pgfr_checkpoint.json"])
+    ), encoding="ascii")
+    return root
+
+
+class LocalCheckpointTests(unittest.TestCase):
+    def test_export_accepts_trainer_shards_and_preserves_source(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = checkpoint_fixture(root / "checkpoint-4", sharded=True)
+            dataset = root / "data"
+            dataset.mkdir()
+            output = root / "export"
+            result = subprocess.run([
+                sys.executable, str(REPO / "ops/export-groot-checkpoint.py"),
+                "--checkpoint", str(source), "--output-dir", str(output),
+                "--model-label", "my-checkpoint", "--dataset-path", str(dataset),
+            ], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            identity = checkpoint_helpers.verify_checkpoint(output)
+            self.assertEqual(identity["model_label"], "my-checkpoint")
+            self.assertEqual(identity["provenance"]["dataset"], str(dataset))
+            self.assertEqual(identity["checkpoint_fingerprint"], hashlib.sha256((output / "SHA256SUMS").read_bytes()).hexdigest())
+            self.assertEqual(checkpoint_helpers.verify_checkpoint(source)["model_label"], "user-trained-test")
+
+    def test_metadata_transfer_requires_no_weights(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            export = checkpoint_fixture(root / "export")
+            identity_dir = root / "identity"
+            identity_dir.mkdir()
+            for name in ("pgfr_checkpoint.json", "SHA256SUMS"):
+                shutil.copyfile(export / name, identity_dir / name)
+            self.assertEqual(checkpoint_helpers.read_identity(identity_dir / "pgfr_checkpoint.json"), checkpoint_helpers.verify_checkpoint(export))
+            with self.assertRaises(ValueError):
+                checkpoint_helpers.verify_checkpoint(identity_dir)
+
+    def test_verifier_rejects_changed_weights_and_metadata(self) -> None:
+        for name in ("model.safetensors", "pgfr_checkpoint.json"):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
+                root = checkpoint_fixture(Path(directory) / "export")
+                if name.endswith(".json"):
+                    payload = json.loads((root / name).read_text())
+                    payload["model_label"] = "different-checkpoint"
+                    (root / name).write_text(json.dumps(payload))
+                else:
+                    (root / name).write_bytes(b"changed weights")
+                with self.assertRaisesRegex(ValueError, "checksum mismatch"):
+                    checkpoint_helpers.verify_checkpoint(root)
+
+    def test_verifier_rejects_incomplete_duplicate_and_unsafe_checksums(self) -> None:
+        for mutation in ("missing", "duplicate", "traversal"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                root = checkpoint_fixture(Path(directory) / "export")
+                sums = root / "SHA256SUMS"
+                lines = sums.read_text().splitlines(keepends=True)
+                if mutation == "missing":
+                    sums.write_text("".join(lines[1:]))
+                elif mutation == "duplicate":
+                    sums.write_text("".join([*lines, lines[0]]))
+                else:
+                    sums.write_text("".join(lines) + "0" * 64 + "  ../outside\n")
+                with self.assertRaises(ValueError):
+                    checkpoint_helpers.verify_checkpoint(root)
+
+    def test_verifier_rejects_symlink_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = checkpoint_fixture(Path(directory) / "export")
+            target = Path(directory) / "weights"
+            (root / "model.safetensors").rename(target)
+            (root / "model.safetensors").symlink_to(target)
+            with self.assertRaisesRegex(ValueError, "symlink"):
+                checkpoint_helpers.verify_checkpoint(root)
+
+    def test_policy_start_rejects_another_valid_checkpoint_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = checkpoint_fixture(Path(directory) / "export")
+            result = subprocess.run(["bash", str(REPO / "ops/verify-groot-models.sh"), str(root), "0" * 64], capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("installed serving identity", result.stderr)
+
+    def test_fetch_without_checkpoint_stops_before_network(self) -> None:
+        import os
+        environment = {**os.environ, "PGFR_GROOT_MODEL_ROOT": "", "PGFR_HF_BIN": "/missing/hf"}
+        result = subprocess.run(["bash", str(REPO / "ops/fetch-groot-models.sh")], env=environment, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("supply your local checkpoint export path", result.stderr)
+
+
 class PublicRuntimeTests(unittest.TestCase):
-    def test_deployment_manifest_names_the_public_two_instance_stack(self) -> None:
+    def setUp(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.checkpoint = checkpoint_fixture(Path(temporary.name) / "export")
+
+    def test_deployment_manifest_requires_a_user_checkpoint_for_two_instances(self) -> None:
         manifest = DEPLOYMENT_MANIFEST.read_text(encoding="utf-8")
         for value in (
-            "status: public",
+            "status: user_checkpoint_required",
             "source_revision: e5749287857afd97b78f1147166137de29746392",
-            "repository_id: mmallick/industrial-claw-groot-order744-cont24",
-            "revision: 9307ac9cba3a27c9a57ed2d90393ceefb28367e1",
-            "fingerprint: bef1f16e82d87962b6d9659c25ed5cc8e7ec75bf2a7c7bfc5afcfa1af9ca5178",
+            "source: locally_trained_by_user",
+            "metadata: pgfr_checkpoint.json",
+            "fingerprint: sha256_of_sha256sums_bytes",
             "franka_left:",
             "policy_port: 5592",
             "relay_port: 5641",
@@ -72,8 +196,9 @@ class PublicRuntimeTests(unittest.TestCase):
             source = path.read_text(encoding="utf-8")
             compile(source, str(path), "exec")
             lowered = source.lower()
-            for forbidden in ("sha256", "checksum", "hashlib"):
-                self.assertNotIn(forbidden, lowered, f"{path}: {forbidden}")
+            if path.is_relative_to(RUNTIME):
+                for forbidden in ("sha256", "checksum", "hashlib"):
+                    self.assertNotIn(forbidden, lowered, f"{path}: {forbidden}")
             self.assertNotIn("_source.replace", source, str(path))
 
     def test_thor_installer_freezes_lock_and_requires_pinned_torchcodec(self) -> None:
@@ -92,7 +217,8 @@ class PublicRuntimeTests(unittest.TestCase):
         )
         self.assertEqual(configured, expected)
         self.assertIn('--extra dev --frozen', source)
-        self.assertIn('ffmpeg "${TORCHCODEC_FFMPEG6_RUNTIME[@]}"', source)
+        self.assertIn('"${TORCHCODEC_FFMPEG6_RUNTIME[@]}"', source)
+        self.assertNotIn('ffmpeg "${TORCHCODEC_FFMPEG6_RUNTIME[@]}"', source)
         self.assertIn('UV_VERSION="0.11.32"', source)
         self.assertIn(
             'UV_INSTALLER_SHA256="43aff33a967fe40e8c17949d8c85c65bc43f3b5c94742393c957f56ab5ba80f4"',
@@ -161,14 +287,9 @@ class PublicRuntimeTests(unittest.TestCase):
             source.index('[ ! -e "$DEST" ]'),
         )
 
-        dockerfile = THOR_DOCKERFILE.read_text(encoding="utf-8")
-        self.assertIn(
-            "FROM nvidia/cuda:13.0.0-devel-ubuntu24.04@sha256:"
-            "1e8ac7a54c184a1af8ef2167f28fa98281892a835c981ebcddb1fad04bdd452d",
-            dockerfile,
-        )
-        self.assertIn("consumes the Thor pyproject.toml and lock in place", dockerfile)
-        self.assertNotIn("copies thor/pyproject.toml to repo root", dockerfile)
+        self.assertFalse(THOR_DOCKERFILE.exists())
+        self.assertIn('rm -f -- "$tmp/scripts/deployment/thor/Dockerfile"', source)
+        self.assertIn('for name in install_deps.sh pyproject.toml uv.lock; do', source)
 
     def test_thor_lock_keeps_binary_runtimes_on_attested_nvidia_wheels(
         self,
@@ -287,7 +408,7 @@ class PublicRuntimeTests(unittest.TestCase):
         self.assertIn("table-camera contract restore failed", reset)
 
     def test_renderer_writes_only_two_contracts(self) -> None:
-        checkpoint = "/models/order744-cont24"
+        checkpoint = "/models/my-checkpoint"
         left_state = "/scripts/runtime/gr00t-left.json"
         right_state = "/scripts/runtime/gr00t-right.json"
         with tempfile.TemporaryDirectory() as directory:
@@ -297,6 +418,8 @@ class PublicRuntimeTests(unittest.TestCase):
                     str(RENDERER),
                     "--checkpoint-path",
                     checkpoint,
+                    "--checkpoint-metadata",
+                    str(self.checkpoint / "pgfr_checkpoint.json"),
                     "--left-service-state",
                     left_state,
                     "--right-service-state",
@@ -326,6 +449,9 @@ class PublicRuntimeTests(unittest.TestCase):
                 ).read_text()
             )
             self.assertEqual(serial["checkpoint"], checkpoint)
+            identity = checkpoint_helpers.verify_checkpoint(self.checkpoint)
+            self.assertEqual(serial["checkpoint_fingerprint"], identity["checkpoint_fingerprint"])
+            self.assertEqual(concurrent["model_label"], identity["model_label"])
             self.assertEqual(serial["service_state_path"], left_state)
             self.assertEqual(serial["server_port"], 5592)
             self.assertEqual(serial["relay_port"], 5641)
@@ -343,7 +469,9 @@ class PublicRuntimeTests(unittest.TestCase):
                     sys.executable,
                     str(RENDERER),
                     "--checkpoint-path",
-                    "/models/order744-cont24",
+                    "/models/my-checkpoint",
+                    "--checkpoint-metadata",
+                    str(self.checkpoint / "pgfr_checkpoint.json"),
                     "--left-service-state",
                     "/scripts/runtime/gr00t-left.json",
                     "--right-service-state",
@@ -505,7 +633,7 @@ class PublicRuntimeTests(unittest.TestCase):
             sys.executable,
             str(RENDERER),
             "--checkpoint-path",
-            "/models/order744-cont24",
+            "/models/my-checkpoint",
             "--left-service-state",
             "/scripts/runtime/gr00t-left.json",
             "--right-service-state",
@@ -602,7 +730,7 @@ class PublicRuntimeTests(unittest.TestCase):
         for name, (policy_port, relay_port, state_name) in expected.items():
             environment = (GROOT_SYSTEMD / name).read_text(encoding="utf-8")
             self.assertIn(
-                "MODEL_PATH=__PGFR_HOME__/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24",
+                'MODEL_PATH="__PGFR_CHECKPOINT_PATH__"',
                 environment,
             )
             self.assertIn(f"POLICY_PORT={policy_port}", environment)

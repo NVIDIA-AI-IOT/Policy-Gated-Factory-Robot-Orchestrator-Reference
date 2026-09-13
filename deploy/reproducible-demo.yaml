@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-schema_version: 2
+schema_version: 3
 validated_on: 2026-08-08
 
 # `validated_on` applies to the historical two-host GR00T demo and its
@@ -35,7 +35,9 @@ containers:
     digest: sha256:2589a8fba5257307857890173c069852c2abf913a0be7970f172478baecb09e4
     platform: linux/amd64
     purpose: scripted_baseline_acceptance
+  # Upstream image retained for the GPU smoke check, not a GR00T container build.
   thor_cuda_build:
+    purpose: upstream_gpu_smoke_check
     tag: nvidia/cuda:13.0.0-devel-ubuntu24.04
     digest: sha256:1e8ac7a54c184a1af8ef2167f28fa98281892a835c981ebcddb1fad04bdd452d
     platform: linux/arm64
@@ -66,17 +68,21 @@ runtime_artifacts:
     install_phase: post_uv_sync
 
 groot_serving:
-  status: public
+  status: user_checkpoint_required
+  qualification_scope: runtime_reference_only_user_checkpoint_requires_evaluation
   framework: NVIDIA Isaac-GR00T
   serving_owner: thor_host
   authoritative_state_owner: thor_host
   source_revision: e5749287857afd97b78f1147166137de29746392
   artifact_manifest: reference/policy-gated-factory-robot-orchestrator-reference/groot/models/manifest.yaml
   checkpoint:
-    name: Policy-Gated Factory Robot Orchestrator Reference Order744-cont24
-    repository_id: mmallick/industrial-claw-groot-order744-cont24
-    revision: 9307ac9cba3a27c9a57ed2d90393ceefb28367e1
-    fingerprint: bef1f16e82d87962b6d9659c25ed5cc8e7ec75bf2a7c7bfc5afcfa1af9ca5178
+    source: locally_trained_by_user
+    required_environment: PGFR_GROOT_MODEL_ROOT
+    metadata: pgfr_checkpoint.json
+    checksums: SHA256SUMS
+    fingerprint: sha256_of_sha256sums_bytes
+    export_helper: ops/export-groot-checkpoint.py
+    verification_helper: ops/verify-groot-models.sh
   embodiment_tag: OXE_DROID_RELATIVE_EEF_RELATIVE_JOINT
   serving_instances:
     franka_left:
@@ -87,7 +93,7 @@ groot_serving:
       relay_port: 5642
   thor_shared_profiles:
     installer: ops/install-groot-thor-shared-profiles.sh
-    model_root: ~/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24
+    model_root: explicit_local_checkpoint_export_path
     authoritative_state_root: ~/.local/share/pgfr-spine/groot
     target: pgfr-groot-shared-stack.target
     installed_files:

@@ -298,21 +298,11 @@ def build_app(
         # not misled into trusting an unchecked manifest.
         conformance = "skipped"
         try:
-            from pgfr_conformance.kit import check_skill_manifest  # type: ignore
+            from pgfr_conformance.kit import check_skill_manifest_data  # type: ignore
         except ImportError:
-            check_skill_manifest = None  # type: ignore
-        if check_skill_manifest is not None:
-            import os
-            import tempfile
-
-            fd, tmp_name = tempfile.mkstemp(suffix=".yaml")
-            tmp = Path(tmp_name)
-            try:
-                tmp.write_text(yaml.safe_dump(manifest, sort_keys=False))
-                failures = [r.name for r in check_skill_manifest(str(tmp)) if not r.passed]
-            finally:
-                os.close(fd)
-                tmp.unlink(missing_ok=True)
+            check_skill_manifest_data = None  # type: ignore
+        if check_skill_manifest_data is not None:
+            failures = [r.name for r in check_skill_manifest_data(manifest) if not r.passed]
             if failures:
                 raise HTTPException(422, {"conformance_failures": failures})
             conformance = "passed"

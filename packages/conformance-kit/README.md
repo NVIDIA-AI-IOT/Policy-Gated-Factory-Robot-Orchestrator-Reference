@@ -60,6 +60,10 @@ Manifest validation requires the documented fields and rejects actions outside
 the current agent-action allowlist: `move`, `pick_and_place`, `inspect`, and
 `navigate_to`.
 
+Python callers can use `pgfr_conformance.kit.check_skill_manifest_data(manifest)`
+to validate a parsed dictionary. `check_skill_manifest(path)` provides the same
+checks for YAML files.
+
 ## Scope
 
 Conformance results describe protocol and schema compatibility. They do not

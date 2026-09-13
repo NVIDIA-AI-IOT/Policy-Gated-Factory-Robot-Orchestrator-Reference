@@ -1,73 +1,110 @@
----
-library_name: gr00t
-license: other
-license_name: nvidia-open-model-license
-license_link: https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/
-base_model: nvidia/GR00T-N1.7-DROID
-tags:
-  - robotics
-  - vision-language-action
-  - gr00t
-  - droid
----
+# Bring your own GR00T checkpoint
 
-# Policy-Gated Factory Robot Orchestrator Reference Order744-cont24
+This reference ships source and runtime contracts. To enable the GR00T path,
+record your own demonstrations, prepare native-DROID data, and fine-tune the
+pinned official `nvidia/GR00T-N1.7-DROID` base model using the
+[training pipeline](../groot_n1_7_pgfr_pipeline/README.md).
+No fine-tuned checkpoint or demonstration dataset is supplied by this repository.
 
-This repository publishes the shared GR00T N1.7 DROID checkpoint used by the
-Policy-Gated Factory Robot Orchestrator Reference Isaac Sim demonstration. One checkpoint handles the red cube,
-blue cylinder, and green brick for both Franka arms.
+One exported checkpoint is loaded by two policy processes, one per Franka arm.
+Artifact verification checks consistency and binds serving state to those bytes;
+it does not establish task success. Evaluate your trained model in the simulator
+before relying on it. Historical runtime results do not qualify your checkpoint.
 
-The checkpoint is loaded by two policy processes, one for each arm. These are
-two serving instances of the same model, not separate arm or object experts.
+## Export on the training host
 
-## Artifacts
+After training has finished, export the final local `checkpoint-N` directory to
+a fresh directory. Run from the repository root on the training RTX host:
 
-- [Fine-tuned Order744-cont24 checkpoint](https://huggingface.co/mmallick/industrial-claw-groot-order744-cont24)
-- [768-episode native-DROID dataset](https://huggingface.co/datasets/mmallick/industrial-claw-groot-order744-cont24-dataset)
+```bash
+python3 ops/export-groot-checkpoint.py \
+  --checkpoint /absolute/training-output/my-run/checkpoint-3000 \
+  --output-dir /absolute/model-exports/my-checkpoint \
+  --model-label my-checkpoint \
+  --dataset-path /absolute/my-native-droid-data
+ops/verify-groot-models.sh /absolute/model-exports/my-checkpoint
+```
 
-Both repositories are public artifacts and can be downloaded without
-repository-specific access. Model weights and dataset payloads are hosted on
-Hugging Face; this Git repository contains their manifest, setup, training,
-and runtime source. Immutable revisions are recorded in
-[`manifest.yaml`](manifest.yaml).
+Use the actual checkpoint step and paths from your training run. The checkpoint
+and dataset directories must exist when exporting; the dataset path is recorded
+as provenance, and its payload is not copied. Exporting does not publish files
+or modify the training checkpoint. Existing output directories are refused.
 
-The dataset is licensed under
-[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and publishes its
-dataset card, license text, and attribution notice at the immutable revision
-recorded in the manifest.
-
-## Training data
-
-Order744 was trained from vanilla `nvidia/GR00T-N1.7-DROID` with 744
-Policy-Gated Factory Robot Orchestrator Reference native-DROID episodes. The cont24 continuation adds 24
-accumulated-scene episodes. The companion Hugging Face dataset contains both
-cohorts and can be used with the public fine-tuning recipe.
-
-## Artifact layout
+The export contains these required metadata files and either supported weight
+layout; shard counts are taken from the trainer's index:
 
 ```text
 config.json
 embodiment_id.json
-model-00001-of-00003.safetensors
-model-00002-of-00003.safetensors
-model-00003-of-00003.safetensors
-model.safetensors.index.json
 processor_config.json
 statistics.json
+model.safetensors                          # unsharded, or:
+model.safetensors.index.json + its shards   # sharded
+pgfr_checkpoint.json
 SHA256SUMS
 ```
 
-`SHA256SUMS` covers only the published model artifacts. Source code is pinned
-by the Policy-Gated Factory Robot Orchestrator Reference Git revision and tested through the public runtime
-suite.
+`pgfr_checkpoint.json` records schema version 1, your model label, the DROID
+embodiment tag, training checkpoint/dataset provenance, and the complete
+inference file list. `SHA256SUMS` covers every inference file and
+`pgfr_checkpoint.json`. The serving fingerprint is the SHA-256 digest of the
+`SHA256SUMS` bytes; it is derived, never embedded in those metadata files.
+The verifier rejects missing files, omitted checksums, changed bytes, unsafe
+paths, symlinks, mismatched shard indexes, and extra files in the export.
+Checksums are not a signature or evidence of model performance.
 
-The NVIDIA trainer writes the final local output under `checkpoint-3000`.
-That training-directory name is not reproduced in the published model
-repository: the inference artifacts are stored directly at its root.
+## Transfer and install on Thor
 
-The model uses the DROID relative-action embodiment and the integrated
-Policy-Gated Factory Robot Orchestrator Reference measured-home, physical-friction, mixed-color runtime.
+Copy the **entire export** to a fresh directory on Thor. Substitute your own
+user, host, and destination; this command is illustrative:
 
-This checkpoint is a simulation research/demo artifact. It is not a
-functional-safety component and must not directly control physical equipment
-without independent, use-case-specific machinery-safety controls.
+```bash
+rsync -a /absolute/model-exports/my-checkpoint/ \
+  user@thor-host:/home/user/policy-gated-factory-robot-orchestrator-reference-models/my-checkpoint/
+```
+
+On Thor, from the repository root:
+
+```bash
+export PGFR_GROOT_MODEL_ROOT="$HOME/policy-gated-factory-robot-orchestrator-reference-models/my-checkpoint"
+ops/verify-groot-models.sh "$PGFR_GROOT_MODEL_ROOT"
+ops/fetch-groot-models.sh "$PGFR_GROOT_MODEL_ROOT"
+ops/install-groot-thor-shared-profiles.sh --checkpoint-path "$PGFR_GROOT_MODEL_ROOT"
+```
+
+Prepare the Thor runtime and generic service templates first as described in
+the [deployment guide](../../../../docs/REPRODUCIBLE-DEMO.md).
+`fetch-groot-models.sh` downloads only the pinned official
+`nvidia/Cosmos-Reason2-2B` runtime backbone. Accept NVIDIA's applicable model terms
+and authenticate the runtime user first. Its cache defaults to `hf-home` beside
+the checkpoint directory; set the same `PGFR_HF_HOME` for fetching and profile
+installation to use another location. Checkpoint verification and installation
+require an explicit local export and stop when it is missing.
+
+The installer writes profiles without enabling or starting services. It refuses
+to replace an active stack or differing installed profiles. Every policy start
+rechecks artifact bytes against the fingerprint installed in its profile.
+Use a new export and explicitly retire the old idle configuration when changing
+checkpoints; do not edit an export beneath a running server.
+
+## Identity files for the simulation host
+
+The RTX simulation host needs the exact `pgfr_checkpoint.json` and `SHA256SUMS`
+from the export served on Thor. If training happened on that RTX host, retain
+the original export there. Otherwise copy only those two files into a local
+identity directory, preserving their bytes and names:
+
+```bash
+mkdir -p "$HOME/checkpoint-identities/my-checkpoint"
+scp user@thor-host:/home/user/policy-gated-factory-robot-orchestrator-reference-models/my-checkpoint/pgfr_checkpoint.json \
+  user@thor-host:/home/user/policy-gated-factory-robot-orchestrator-reference-models/my-checkpoint/SHA256SUMS \
+  "$HOME/checkpoint-identities/my-checkpoint/"
+```
+
+Pass `--checkpoint-metadata "$HOME/checkpoint-identities/my-checkpoint/pgfr_checkpoint.json"`
+to the two-host bridge/cell installer and contract renderer. The checkpoint path
+in the contract remains the absolute **Thor** export path. Metadata-only checks
+verify the metadata checksum and complete declared checksum inventory; Thor
+performs full weight verification. The model label and fingerprint must match
+across exported metadata, installed profiles, relay state, and simulator
+contracts before readiness succeeds.

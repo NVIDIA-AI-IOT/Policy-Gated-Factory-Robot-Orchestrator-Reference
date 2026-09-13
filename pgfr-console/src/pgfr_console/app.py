@@ -96,9 +96,7 @@ def build_app(aggregator: Aggregator | None = None) -> FastAPI:
 
     @app.get("/api/inspect")
     async def inspect(limit: int = 30) -> dict:
-        # The audit feed that imprints inspectability: every recent floor op with
-        # its full request, full result, physics-verified flag, timing, and the
-        # exact frame the VLM saw — the data a normal agent harness discards.
+        # Recent floor operations with verification, timing, and VLM frame evidence.
         return await agg.inspect(limit=limit)
 
     @app.get("/api/gpu")

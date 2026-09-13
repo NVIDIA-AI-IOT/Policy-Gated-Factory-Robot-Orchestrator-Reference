@@ -2,10 +2,16 @@
 # SPDX-License-Identifier: Apache-2.0
 import argparse, os, json, subprocess, glob, numpy as np, pandas as pd
 
+from ffmpeg_contract import FFmpegError, check_ffmpeg, default_executable
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--src-root", default=os.path.expanduser("~/pgfr_demos"))
-parser.add_argument("--dst", default=os.path.expanduser("~/pgfr_demos/lerobot/pgfr_sort"))
-parser.add_argument("--fps", type=int, default=12)
+parser.add_argument("--dst", default=os.path.expanduser("~/pgfr_lerobot/pgfr_sort"))
+parser.add_argument("--fps", type=int, default=15)
+parser.add_argument(
+    "--ffmpeg", default=default_executable(),
+    help="Reviewed CPU FFmpeg executable; defaults to PGFR_FFMPEG_BIN or PATH ffmpeg.",
+)
 parser.add_argument(
     "--require-command-actions",
     action="store_true",
@@ -32,6 +38,8 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
+if args.fps <= 0:
+    parser.error("--fps must be positive")
 if args.trim_terminal_frames < 0:
     parser.error("--trim-terminal-frames must be non-negative")
 
@@ -42,17 +50,25 @@ VW, VH   = 320, 180
 
 eps = sorted(glob.glob(SRC_ROOT + "/ep_[0-9]*"))
 assert eps, "no ep_NNN episodes under " + SRC_ROOT
-assert os.path.realpath(DST) != os.path.realpath(SRC_ROOT), "destination must differ from source"
-
-# clean slate
-import shutil; shutil.rmtree(DST, ignore_errors=True)
+source_path, destination_path = os.path.realpath(SRC_ROOT), os.path.realpath(DST)
+if os.path.commonpath((source_path, destination_path)) in (source_path, destination_path):
+    raise ValueError("source and destination must be separate, non-overlapping directories")
+if os.path.lexists(DST):
+    raise FileExistsError("refusing to overwrite destination: " + DST)
+try:
+    ffmpeg_provenance = check_ffmpeg(args.ffmpeg)
+except FFmpegError as exc:
+    parser.error(str(exc))
 os.makedirs(DST + "/data/chunk-000")
 os.makedirs(DST + "/meta")
+with open(DST + "/meta/ffmpeg_provenance.json", "w") as stream:
+    json.dump(ffmpeg_provenance, stream, indent=2)
+    stream.write("\n")
 for vk in ("observation.images.wrist", "observation.images.front"):
     os.makedirs(DST + "/videos/chunk-000/" + vk)
 
 def enc(srcdir, outmp4, frames):
-    r = subprocess.run(["ffmpeg", "-y", "-framerate", str(FPS), "-i", srcdir + "/%04d.jpg",
+    r = subprocess.run([ffmpeg_provenance["executable"], "-y", "-framerate", str(FPS), "-i", srcdir + "/%04d.jpg",
                         "-vf", "scale=%d:%d" % (VW, VH), "-c:v", "libx264", "-pix_fmt", "yuv420p",
                         "-frames:v", str(frames), "-r", str(FPS), outmp4], capture_output=True, text=True)
     if r.returncode != 0:
@@ -84,6 +100,10 @@ for ei, epdir in enumerate(eps):
     if N <= 20:
         raise ValueError("episode is too short: %s (%d frames)" % (epdir, N))
     task = open(epdir + "/task.txt").read().strip()
+    if args.required_action_source and any(
+        row.get("fl_action_source") != args.required_action_source for row in states
+    ):
+        raise ValueError("every frame must declare the required action source: " + epdir)
     ti = task_idx(task)
     S = np.zeros((N, 8), dtype=np.float32)
     for i, s in enumerate(states):

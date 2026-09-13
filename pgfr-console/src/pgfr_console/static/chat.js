@@ -4,16 +4,10 @@
 // Chat tab — talks to the pgfr-chat gateway (write path). All untrusted values
 // (model text, tool args/results) are esc()'d before innerHTML.
 
-import { rememberSessions, sessionTitle, sessionDate } from "./display.js?v=console-cleanup4";
+import { escapeHtml as cesc, rememberSessions, sessionTitle, sessionDate } from "./display.js?v=console-maintenance1";
 
 const CHAT_API = window.PGFR_CHAT_URL || `${location.protocol}//${location.hostname}:8620`;
 const CHAT_TOKEN = window.PGFR_CHAT_TOKEN || "console";
-
-function cesc(v) {
-  return String(v ?? "").replace(/[&<>"']/g, (c) => (
-    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
-  ));
-}
 
 const chatMain = document.getElementById("chat");
 const topoMain = document.getElementById("topo");

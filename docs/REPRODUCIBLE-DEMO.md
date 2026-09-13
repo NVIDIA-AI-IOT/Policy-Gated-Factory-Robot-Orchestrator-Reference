@@ -5,11 +5,22 @@ a Jetson control host and an RTX simulation host. It covers PGFR Spine, PGFR
 Console, PGFR Chat/OpenClaw, the perception VLM, two GR00T policy processes, and
 the Isaac Sim reference cell.
 
+This is a source and installation-recipe deployment. Users obtain the official
+Isaac Sim runtime directly from NVIDIA; the launchers mount the prepared PGFR
+code read-only at `/scripts`. No project Isaac image is built or published.
+Writable simulator state remains in separate host directories.
+
 The deployment is qualified only for the host configuration in
-[`SUPPORT.md`](SUPPORT.md). Exact model, container, runtime, dataset, and port
+[`SUPPORT.md`](SUPPORT.md). Upstream model, container, runtime, and port
 identities are recorded in
 [`../deploy/reproducible-demo.yaml`](../deploy/reproducible-demo.yaml) and the
 [GR00T model manifest](../reference/policy-gated-factory-robot-orchestrator-reference/groot/models/manifest.yaml).
+Your fine-tuned checkpoint and generated data are local inputs. Follow
+[dataset creation](../reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md),
+[fine-tuning](../reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md),
+and [checkpoint export](../reference/policy-gated-factory-robot-orchestrator-reference/groot/models/README.md)
+before this learned-motion installation. No project weights or recorded
+training dataset are supplied; see [release scope](RELEASE-SCOPE.md).
 
 > **Acceptance boundary:** the 2026-09-08 two-host acceptance used the base
 > revision plus the then-uncommitted reproducibility fixes. Those fixes and the
@@ -29,7 +40,7 @@ identities are recorded in
 | RTX simulation host | x86_64 Linux workstation; NVIDIA RTX GPU; Docker and NVIDIA Container Runtime; X11 and `xauth` |
 | Operator access | Local access or SSH to the Jetson control host; local X11 session on the RTX simulation host for the qualified GR00T path |
 | Repository | Contents read access and one published 40-character commit ID |
-| Models | Access to the gated Hugging Face backbone and the pinned GR00T and perception artifacts |
+| Models | A locally trained, exported GR00T checkpoint; access to the official gated backbone and pinned perception model |
 | Credentials | A key for the selected NVIDIA or OpenAI-compatible Chat endpoint; separate Hugging Face and registry credentials where required |
 | Network | Passwordless SSH from the RTX simulation host to the Jetson control host; peer-scoped Fast DDS UDP traffic |
 | License | Acceptance of the NVIDIA Isaac Sim license before pulling or starting Isaac Sim |
@@ -41,7 +52,7 @@ checks those dependencies; it does not replace them.
 ## Contents
 
 1. [Prepare the Jetson control host](#1-prepare-the-jetson-control-host)
-2. [Fetch control-host artifacts](#2-fetch-control-host-artifacts)
+2. [Prepare the local checkpoint and upstream backbone](#2-prepare-the-local-checkpoint-and-upstream-backbone)
 3. [Prepare the RTX simulation host](#3-prepare-the-rtx-simulation-host)
 4. [Install the bridge and GR00T cell](#4-install-the-bridge-and-gr00t-cell)
 5. [Start the deployment](#5-start-the-deployment)
@@ -62,7 +73,7 @@ Related procedures:
 | RTX simulation host | Isaac Sim, ROS 2 cell node, cameras, executors, and the stop-on-uncertainty two-host GR00T bridge |
 | Operator machine | PGFR Console through SSH or a deliberately firewalled LAN profile; optional workstation viewing |
 
-The learned-motion path runs one fine-tuned checkpoint in two serving
+The learned-motion path runs one user-trained checkpoint in two serving
 processes, one per Franka arm. Both processes load the same model. The shipped
 profile executes six proof-gated moves in series. Mixed-color pairs are an
 explicit post-baseline capability; the three pairs remain sequenced before the
@@ -117,10 +128,10 @@ not use the RTX workstation's CUDA 12.8 smoke-test image for this check.
 
 The qualified GR00T policy and relay processes run bare metal from the pinned
 uv environment under `~/groot_shadow/Isaac-GR00T/`, owned by user systemd.
-Docker is still required for the perception VLM and for dependency
-qualification. The Thor Dockerfile is not the canonical model-serving
-deployment; its container smoke result is not policy-inference or full-mission
-evidence.
+Docker is still required for the upstream perception VLM and for dependency
+qualification. GR00T runtime preparation installs the pinned source and Python
+environment locally on Thor; it does not build a project container. A CUDA
+container smoke test is not policy-inference or full-mission evidence.
 
 Clone the repository, install host prerequisites, prepare the pinned GR00T
 source and environment, and install the control plane:
@@ -184,7 +195,15 @@ required completion smoke test.
 
 <a id="2-authenticate-and-fetch-the-brain-host-artifacts"></a>
 
-## 2. Fetch control-host artifacts
+<a id="2-fetch-control-host-artifacts"></a>
+
+## 2. Prepare the local checkpoint and upstream backbone
+
+Export on the training host using the [model export procedure](../reference/policy-gated-factory-robot-orchestrator-reference/groot/models/README.md).
+Copy the complete exported directory to Thor, including `pgfr_checkpoint.json`
+and `SHA256SUMS`. The example below uses `my-checkpoint`; use your actual
+export directory consistently in the Thor profiles, bridge, and Isaac contracts.
+The export records artifact integrity and provenance, not measured task success.
 
 Accept the terms for the gated runtime backbone
 [`nvidia/Cosmos-Reason2-2B`](https://huggingface.co/nvidia/Cosmos-Reason2-2B)
@@ -198,11 +217,15 @@ mkdir -p "$HF_HOME"
 "$PGFR_HF_BIN" auth login
 "$PGFR_HF_BIN" auth whoami
 
-export PGFR_GROOT_HF_REPO=mmallick/industrial-claw-groot-order744-cont24
-export PGFR_GROOT_HF_REVISION=9307ac9cba3a27c9a57ed2d90393ceefb28367e1
-ops/fetch-groot-models.sh
-ops/install-groot-thor-shared-profiles.sh
+export PGFR_GROOT_MODEL_ROOT="$HOME/policy-gated-factory-robot-orchestrator-reference-models/my-checkpoint"
+ops/verify-groot-models.sh "$PGFR_GROOT_MODEL_ROOT"
+ops/fetch-groot-models.sh "$PGFR_GROOT_MODEL_ROOT"
+ops/install-groot-thor-shared-profiles.sh --checkpoint-path "$PGFR_GROOT_MODEL_ROOT"
 ```
+
+`fetch-groot-models.sh` verifies the local checkpoint and downloads only the
+pinned official Cosmos backbone. It does not download a fine-tuned project model
+or a training dataset.
 
 Pull the exact perception image recorded in the deployment manifest. The
 systemd service starts it by digest and refuses a tag-only substitute:
@@ -218,12 +241,13 @@ not start or enable them.
 
 ## 3. Prepare the RTX simulation host
 
-The qualified two-host GR00T path uses the pinned Isaac Sim 6.0.0-dev2 image
-with local X11. It is separate from the standalone scripted baseline, which
-defaults to stable Isaac Sim 6.0.1 and headless WebRTC.
+The historically exercised two-host GR00T path uses the pinned Isaac Sim
+6.0.0-dev2 image with local X11. It is separate from the standalone scripted
+baseline, which uses stable Isaac Sim 6.0.1 and headless WebRTC. Learned motion
+on 6.0.1 has not been qualified.
 
 Accept the
-[Isaac Sim license](https://docs.isaacsim.omniverse.nvidia.com/6.0.0/common/NVIDIA_Omniverse_License_Agreement.html)
+[Isaac Sim Additional Software and Materials License](https://www.nvidia.com/en-us/agreements/enterprise-software/isaac-sim-additional-software-and-materials-license/)
 and complete the fresh-host installation and GPU-container smoke test in the
 [workstation runbook](../ops/ISAAC-SIM-WORKSTATION.md#host-prerequisites).
 
@@ -264,7 +288,7 @@ REMOTE_DIRTY="$(ssh "$THOR_SSH" \
   'git -C ~/Policy-Gated-Factory-Robot-Orchestrator-Reference status --porcelain=v1 --untracked-files=all')"
 test -z "$REMOTE_DIRTY"
 : "${DISPLAY:?run from the workstation X11 owner session}"
-docker pull nvcr.io/nvidia/isaac-sim:6.0.0-dev2@sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9
+docker pull --platform linux/amd64 nvcr.io/nvidia/isaac-sim:6.0.0-dev2@sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9
 export PGFR_GROOT_ISAAC_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/policy-gated-factory-robot-orchestrator-reference/isaac-sim-groot"
 export PGFR_GROOT_ISAAC_MOUNT="$PGFR_GROOT_ISAAC_ROOT/scripts"
 ops/isaac-sim-workstation.sh --prepare \
@@ -283,9 +307,11 @@ does not exist. Protect it as a service credential, or use a site-managed SSH
 key or agent. Verify the Jetson host-key fingerprint through a trusted channel.
 The `systemd-run` check proves the user manager can authenticate.
 
-The dev2 image is an immutable compatibility pin for the qualified GR00T cell,
-not NVIDIA's current stable recommendation. Upgrade only after rerunning cell,
-ROS, camera, GR00T, and rendering acceptance. The separate
+The dev2 digest records the historical GR00T compatibility environment. Its
+continued availability from NVIDIA has not been verified by a fresh pull. If
+that exact digest is unavailable, stop and qualify a replacement before
+changing the pin. Any upgrade requires cell, ROS, camera, GR00T, and rendering
+acceptance. The separate
 [standalone helper](../ops/ISAAC-SIM-WORKSTATION.md) prepares stable Isaac Sim
 6.0.1, checks 15 streams and one exactly-once scripted move, and resets the
 scene. That result is not Thor or GR00T evidence.
@@ -343,8 +369,11 @@ use a trusted isolated network, VPN, or DDS Security in production.
 
 ## 4. Install the bridge and GR00T cell
 
-Keep Isaac Sim stopped throughout this section. On the RTX simulation host,
-install the two-host bridge:
+Keep Isaac Sim stopped throughout this section. The bridge and cell need a
+local copy of the export metadata and checksum manifest to attest the remote
+model identity; the simulation host does not need another copy of the weights.
+On the RTX simulation host, copy those two files from the verified Thor export
+and install the two-host bridge:
 
 ```bash
 cd "$HOME/Policy-Gated-Factory-Robot-Orchestrator-Reference"
@@ -352,11 +381,16 @@ THOR_USER=YOUR_THOR_USER
 THOR_HOST=YOUR_THOR_IP
 THOR_SSH="$THOR_USER@$THOR_HOST"
 THOR_HOME="/home/$THOR_USER"
-THOR_MODEL_ROOT="$THOR_HOME/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24"
+THOR_MODEL_ROOT="$THOR_HOME/policy-gated-factory-robot-orchestrator-reference-models/my-checkpoint"
 THOR_STATE_ROOT="$THOR_HOME/.local/share/pgfr-spine/groot"
+CHECKPOINT_METADATA_DIR="$HOME/.local/share/pgfr-spine/checkpoints/my-checkpoint"
+mkdir -p "$CHECKPOINT_METADATA_DIR"
+scp "$THOR_SSH:$THOR_MODEL_ROOT/pgfr_checkpoint.json" "$CHECKPOINT_METADATA_DIR/"
+scp "$THOR_SSH:$THOR_MODEL_ROOT/SHA256SUMS" "$CHECKPOINT_METADATA_DIR/"
 ops/install-groot-two-host-bridge.sh \
   --thor-ssh "$THOR_SSH" \
   --remote-checkpoint "$THOR_MODEL_ROOT" \
+  --checkpoint-metadata "$CHECKPOINT_METADATA_DIR/pgfr_checkpoint.json" \
   --remote-state-root "$THOR_STATE_ROOT"
 ```
 
@@ -366,13 +400,15 @@ files:
 ```bash
 cd "$HOME/Policy-Gated-Factory-Robot-Orchestrator-Reference"
 THOR_USER=YOUR_THOR_USER
-THOR_MODEL_ROOT="/home/$THOR_USER/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24"
+THOR_MODEL_ROOT="/home/$THOR_USER/policy-gated-factory-robot-orchestrator-reference-models/my-checkpoint"
+CHECKPOINT_METADATA_DIR="$HOME/.local/share/pgfr-spine/checkpoints/my-checkpoint"
 PGFR_GROOT_ISAAC_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/policy-gated-factory-robot-orchestrator-reference/isaac-sim-groot"
 PGFR_GROOT_ISAAC_MOUNT="$PGFR_GROOT_ISAAC_ROOT/scripts"
 export PGFR_GROOT_STATE_ROOT="$HOME/.local/share/pgfr-spine/groot/remote-thor-v36"
 ops/install-groot-cell.sh \
   --mount "$PGFR_GROOT_ISAAC_MOUNT" \
   --checkpoint-path "$THOR_MODEL_ROOT" \
+  --checkpoint-metadata "$CHECKPOINT_METADATA_DIR/pgfr_checkpoint.json" \
   --left-service-state /groot-state/shared-left.json \
   --right-service-state /groot-state/shared-right.json \
   --left-policy-port 5792 \
@@ -413,7 +449,7 @@ export XAUTHORITY="${XAUTHORITY:-/run/user/$(id -u)/gdm/Xauthority}"
 test -r "$XAUTHORITY"
 xauth -f "$XAUTHORITY" nlist "$DISPLAY" | grep -q .
 systemctl --user start pgfr-groot-two-host-bridge.service
-ops/launch-groot-isaac.sh "$PGFR_GROOT_ISAAC_MOUNT"
+ops/launch-groot-isaac.sh --accept-eula "$PGFR_GROOT_ISAAC_MOUNT"
 ```
 
 The measured GDM desktop used `DISPLAY=:1`; use the display owned by the local
@@ -421,8 +457,11 @@ workstation session. On another desktop, set `XAUTHORITY` to its readable
 cookie file. Do not substitute a VNC or virtual display for this qualified GUI
 container path.
 
-The launcher sets `OMNI_TELEMETRY_DISABLE_ANONYMOUS_DATA=1` and preserves a
-failed container for diagnosis. It returns successfully only after both
+`--accept-eula` confirms the operator's acceptance for this launch and is
+required before host checks or state changes. The launcher uses only the
+already-pulled image (`--pull never`) and mounts project code read-only. It
+sets `OMNI_TELEMETRY_DISABLE_ANONYMOUS_DATA=1` and preserves a failed container
+for diagnosis. It returns successfully only after both
 `PGFR_GROOT_RUNTIME_READY` and `STARTUP_DONE full_scene+runner` remain healthy.
 
 Then start the remaining services on the Jetson control host:
@@ -510,4 +549,4 @@ decision separately to the RTX bridge.
 - Do not identify or terminate processes only by port number.
 - Keep policy and relay listeners loopback-only; use the qualified bridge for
   the two-host path.
-- Preserve model, dataset, image, and source revisions when comparing results.
+- Preserve the local checkpoint checksum manifest, dataset provenance, upstream model revisions, image digests, and source revision when comparing results.

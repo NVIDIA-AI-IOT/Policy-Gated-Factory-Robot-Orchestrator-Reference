@@ -1,32 +1,34 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-# Install only the shared Order744-cont24 GR00T profiles on an idle Thor stack.
+# Install shared GR00T profiles for a verified user-provided checkpoint on an idle Thor stack.
 set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: ops/install-groot-thor-shared-profiles.sh
+Usage: ops/install-groot-thor-shared-profiles.sh --checkpoint-path /absolute/local/export
 
-Verifies the existing generic GR00T policy/relay templates and the pinned
-Order744-cont24 checkpoint, then installs only the two shared profiles and
-their target. The command never enables or starts a service.
+Verifies the generic GR00T policy/relay templates and your checkpoint export,
+then installs two profiles with its checksum-derived identity. The command
+never enables or starts a service. Export your own training checkpoint first
+with ops/export-groot-checkpoint.py; no fine-tuned weights are downloaded.
 EOF
 }
 
-if (($#)); then
+MODEL_ROOT="${PGFR_GROOT_MODEL_ROOT:-}"
+while (($#)); do
   case "$1" in
+    --checkpoint-path) MODEL_ROOT=${2:?missing checkpoint path}; shift 2 ;;
     -h|--help) usage; exit 0 ;;
-    *) echo "install-groot-thor-shared-profiles: ERROR: no arguments are accepted" >&2; exit 2 ;;
+    *) echo "install-groot-thor-shared-profiles: ERROR: unknown argument: $1" >&2; exit 2 ;;
   esac
-fi
+done
 
 PGFR_REPO=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 PGFR_USER_HOME=${HOME:?HOME is required}
 SYSTEMD_DIR="${XDG_CONFIG_HOME:-$PGFR_USER_HOME/.config}/systemd/user"
 GROOT_ENV_DIR="${XDG_CONFIG_HOME:-$PGFR_USER_HOME/.config}/pgfr-spine/groot"
 STATE_ROOT="$PGFR_USER_HOME/.local/share/pgfr-spine/groot"
-MODEL_ROOT="$PGFR_USER_HOME/policy-gated-factory-robot-orchestrator-reference-models/order744-cont24"
 POLICY_UNIT="$SYSTEMD_DIR/pgfr-groot-policy@.service"
 RELAY_UNIT="$SYSTEMD_DIR/pgfr-groot-relay@.service"
 TARGET_NAME=pgfr-groot-shared-stack.target
@@ -47,6 +49,9 @@ fail() {
   printf 'install-groot-thor-shared-profiles: ERROR: %s\n' "$*" >&2
   exit 2
 }
+
+[[ $MODEL_ROOT = /* && $MODEL_ROOT != / ]] || fail "supply --checkpoint-path with an absolute local checkpoint export path"
+HF_CACHE="${PGFR_HF_HOME:-$(dirname "$MODEL_ROOT")/hf-home}"
 
 LEGACY_GUARD="$PGFR_REPO/ops/pgfr-legacy-guard.sh"
 [[ -r $LEGACY_GUARD ]] || fail "missing migration guard: $LEGACY_GUARD"
@@ -84,6 +89,7 @@ require_line "$POLICY_UNIT" "EnvironmentFile=$PGFR_USER_HOME/.config/pgfr-spine/
 require_text "$POLICY_UNIT" "ExecStart=$PGFR_USER_HOME/groot_shadow/Isaac-GR00T/.venv/bin/python gr00t/eval/run_gr00t_server.py"
 require_text "$POLICY_UNIT" "--host 127.0.0.1"
 require_text "$POLICY_UNIT" '--port ${POLICY_PORT} --model-path ${MODEL_PATH}'
+require_text "$POLICY_UNIT" 'ops/verify-groot-models.sh ${MODEL_PATH} ${PGFR_CHECKPOINT_FINGERPRINT}'
 require_line "$POLICY_UNIT" "Restart=on-failure"
 
 require_line "$RELAY_UNIT" "WorkingDirectory=$PGFR_USER_HOME/groot_shadow/Isaac-GR00T"
@@ -124,12 +130,39 @@ done
 
 STAGE=$(mktemp -d)
 trap 'rm -rf -- "$STAGE"' EXIT
-render() {
-  sed -e "s#__PGFR_REPO__#$PGFR_REPO#g" -e "s#__PGFR_HOME__#$PGFR_USER_HOME#g" "$1"
+python3 - "$PGFR_REPO/ops" "$MODEL_ROOT" "$PGFR_USER_HOME" "$PGFR_REPO" "$HF_CACHE" "$STAGE" <<'PYTHON'
+from pathlib import Path
+import sys
+sys.path.insert(0, sys.argv[1])
+from pgfr_checkpoint import read_identity
+root, user_home, repo, hf_cache, stage = sys.argv[2:]
+identity = read_identity(Path(root) / "pgfr_checkpoint.json")
+replacements = {
+    "__PGFR_REPO__": repo,
+    "__PGFR_HOME__": user_home,
+    "__PGFR_CHECKPOINT_PATH__": root,
+    "__PGFR_MODEL_LABEL__": identity["model_label"],
+    "__PGFR_CHECKPOINT_FINGERPRINT__": identity["checkpoint_fingerprint"],
+    "__PGFR_HF_HOME__": hf_cache,
 }
-render "$TARGET_SOURCE" >"$STAGE/$TARGET_NAME"
-render "$LEFT_SOURCE" >"$STAGE/shared-left.env"
-render "$RIGHT_SOURCE" >"$STAGE/shared-right.env"
+for value in replacements.values():
+    if any(ord(character) < 32 for character in value):
+        raise SystemExit("profile paths and identity must not contain control characters")
+for name in ("pgfr-groot-shared-stack.target", "shared-left.env", "shared-right.env"):
+    text = (Path(repo) / "ops/systemd/groot" / name).read_text(encoding="utf-8")
+    for placeholder, value in replacements.items():
+        text = text.replace(placeholder, value)
+    if name.endswith(".env"):
+        lines = []
+        for line in text.splitlines():
+            if line and not line.startswith("#"):
+                key, value = line.split("=", 1)
+                value = value.strip('"').replace("\\", "\\\\").replace('"', '\\"')
+                line = f'{key}="{value}"'
+            lines.append(line)
+        text = "\n".join(lines) + "\n"
+    (Path(stage) / name).write_text(text, encoding="utf-8")
+PYTHON
 
 check_destination() {
   local source=$1 destination=$2

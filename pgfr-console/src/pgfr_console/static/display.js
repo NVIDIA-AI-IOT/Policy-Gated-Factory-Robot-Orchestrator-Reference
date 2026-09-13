@@ -1,6 +1,13 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+// Escape untrusted values used in HTML text and quoted attributes.
+export function escapeHtml(v) {
+  return String(v ?? "").replace(/[&<>"']/g, (c) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
+}
+
 // Display labels only. API requests and stored session identities keep their original IDs.
 const sessions = new Map();
 const identity = (record) => typeof record === "string" ? record : record?.mission_id || record?.id || "";

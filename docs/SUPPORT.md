@@ -5,6 +5,12 @@ pass source and hardware-free tests without being accepted for the physical
 mission, so the tables below separate supported configuration from measured
 runtime evidence.
 
+The public learned-motion path uses user-created data and a locally trained
+checkpoint; project fine-tuned weights and full recorded datasets are not
+release artifacts. Historical mission evidence below does not qualify a new
+checkpoint. See [release scope](RELEASE-SCOPE.md) and the
+[training recipe](../reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md).
+
 ## Deployment targets
 
 | Component | Reference target | Not validated |
@@ -49,8 +55,10 @@ The accepted GR00T services ran bare metal on Thor from the frozen uv
 environment under `~/groot_shadow/Isaac-GR00T/`, followed by the
 checksum-attested TorchCodec `0.10.0a0` LFS-wheel overlay. Because that overlay
 is applied after the lock, the final environment is not entirely lock-resolved.
-The Thor container checks dependencies only; it does not qualify containerized
-GR00T serving.
+The public reproduction path uses this native Thor environment. The former
+project Dockerfile for dependency checks has been removed; this release does
+not provide a Thor inference image. Existing upstream VLM and CUDA diagnostic
+images remain operator-retrieved prerequisites.
 
 The physical mission validates the deterministic workflow and its recorded
 state, journal, simulator logs, and camera evidence. It does not automatically
@@ -96,7 +104,11 @@ Isaac Sim streaming dependency or a supported repository component.
 ## Open qualification items
 
 - Repeat a clean two-host installation and the full physical mission from one
-  immutable post-rename candidate commit.
+  immutable post-rename candidate commit, including explicit Isaac license
+  acceptance and the native Thor dependency installation.
+- Qualify dataset creation, the selected conversion codec build, and training
+  in a fresh local environment; evaluate each user-trained checkpoint. The
+  codec preflight checks build identity/features, not legal approval.
 - Run the stopped-service rename upgrade and repeat the same acceptance checks.
 - Connect and acceptance-test NVIDIA's native Isaac Sim WebRTC Streaming
   Client.

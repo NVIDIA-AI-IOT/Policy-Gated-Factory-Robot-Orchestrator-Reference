@@ -66,15 +66,19 @@ does not impose an unsupported free-space minimum.
 ## Pull, prepare, and validate
 
 Review and accept NVIDIA's
-[Isaac Sim license](https://docs.isaacsim.omniverse.nvidia.com/6.0.1/common/NVIDIA_Omniverse_License_Agreement.html),
+[Isaac Sim Additional Software and Materials License](https://www.nvidia.com/en-us/agreements/enterprise-software/isaac-sim-additional-software-and-materials-license/),
 then pull the qualified immutable amd64 image:
 
 ```bash
-docker pull \
+docker pull --platform linux/amd64 \
   nvcr.io/nvidia/isaac-sim:6.0.1@sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb
 ops/isaac-sim-workstation.sh --prepare
 ops/isaac-sim-workstation.sh --check --accept-eula
 ```
+
+`--accept-eula` is an explicit operator choice for each check or launch. The
+helper does not infer acceptance from an environment variable. Keep NVIDIA's
+runtime and asset notices; the project's source license does not replace them.
 
 Preparation never pulls an image or starts, stops, removes, or replaces a
 container. It builds and validates the complete bundle in a sibling directory,

@@ -64,7 +64,7 @@ def test_groot_launcher_is_private_fail_closed_and_multi_host_ready() -> None:
     assert "'{{.Image}}'" in launcher
     assert 'eq .Destination "/scripts"' in launcher
     assert "pinned Isaac image is already active" in launcher
-    assert "docker run -d --name" in launcher
+    assert "docker run -d --pull never --name" in launcher
     assert "docker run -d --rm" not in launcher
     assert "xhost +local:" not in launcher
     assert "no X11 authorization cookie exists" in launcher
@@ -150,6 +150,52 @@ exit 90
     assert "PGFR_GROOT_ISAAC_READY" not in result.stdout
 
 
+def test_groot_launcher_requires_explicit_eula_before_host_access(tmp_path: Path) -> None:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    call_log = tmp_path / "host.calls"
+    for name in ("docker", "systemctl", "nvidia-smi", "xauth"):
+        command = fake_bin / name
+        command.write_text(
+            '#!/bin/sh\nprintf "%s\\n" "$0 $*" >> "$HOST_CALL_LOG"\nexit 90\n',
+            encoding="utf-8",
+        )
+        command.chmod(0o755)
+    environment = {
+        **os.environ,
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+        "HOME": str(tmp_path / "home"),
+        "HOST_CALL_LOG": str(call_log),
+        # An inherited container variable must not opt the operator in.
+        "ACCEPT_EULA": "Y",
+        "PGFR_ISAAC_ROOT": str(tmp_path / "state"),
+    }
+    launcher = ROOT / "ops/launch-groot-isaac.sh"
+    missing = subprocess.run(
+        [str(launcher), str(tmp_path / "unprepared-scripts")],
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert missing.returncode == 2
+    assert "--accept-eula is required" in missing.stderr
+    assert not call_log.exists()
+    assert not (tmp_path / "state").exists()
+
+    help_result = subprocess.run(
+        [str(launcher), "--help"],
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert help_result.returncode == 0
+    assert "isaac-sim-additional-software-and-materials-license/" in help_result.stdout
+    assert "--accept-eula" in help_result.stdout
+    assert not call_log.exists()
+
+
 def test_groot_launcher_executes_the_state_root_checker_cli(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     ops = repo / "ops"
@@ -202,7 +248,7 @@ def test_groot_launcher_executes_the_state_root_checker_cli(tmp_path: Path) -> N
         "PGFR_ISAAC_ROOT": str(isaac_state),
     }
     result = subprocess.run(
-        [str(launcher), str(mount)],
+        [str(launcher), "--accept-eula", str(mount)],
         env=environment,
         text=True,
         capture_output=True,

@@ -5,7 +5,8 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-MOUNT="${1:-}"
+MOUNT=""
+ACCEPT_EULA=false
 IMAGE="${PGFR_ISAAC_IMAGE:-nvcr.io/nvidia/isaac-sim:6.0.0-dev2}"
 IMAGE_DIGEST="${PGFR_ISAAC_IMAGE_DIGEST:-sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9}"
 IMAGE_REF="$IMAGE@$IMAGE_DIGEST"
@@ -19,11 +20,39 @@ READY_TIMEOUT="${PGFR_GROOT_READY_TIMEOUT:-900}"
 ERROR_MARKER_RE='[A-Z][A-Z0-9_]*_(ERR|ERROR)(:|[[:space:]=]|$)'
 
 fail() { printf 'launch-groot-isaac: ERROR: %s\n' "$*" >&2; exit 2; }
+usage() {
+  cat <<'EOF'
+usage: ops/launch-groot-isaac.sh --accept-eula <isaac-scripts-mount>
+
+Start the installed GR00T cell in NVIDIA's pinned local Isaac Sim image.
+The historical learned-motion profile uses 6.0.0-dev2 and local X11;
+the separately qualified 6.0.1 scripted baseline has its own launcher.
+
+  --accept-eula  Accept NVIDIA's Isaac Sim Additional Software and Materials
+                 License for this launch. Required before any host changes.
+  -h, --help     Show this help without accessing Docker.
+
+Review the license before pulling or starting the official NVIDIA image:
+  https://www.nvidia.com/en-us/agreements/enterprise-software/isaac-sim-additional-software-and-materials-license/
+
+Pull the documented image explicitly before launching. This script never
+pulls or builds an image; project code is mounted read-only at /scripts.
+EOF
+}
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --accept-eula) ACCEPT_EULA=true; shift ;;
+    -h|--help) usage; exit 0 ;;
+    -*) fail "unknown argument: $1" ;;
+    *) [ -z "$MOUNT" ] || fail "specify only one Isaac scripts mount"; MOUNT="$1"; shift ;;
+  esac
+done
+[ -n "$MOUNT" ] || fail "usage: $0 --accept-eula <isaac-scripts-mount>"
+$ACCEPT_EULA || fail "--accept-eula is required; review NVIDIA's Isaac Sim Additional Software and Materials License (see --help)"
 LEGACY_GUARD="$REPO/ops/pgfr-legacy-guard.sh"
 [ -r "$LEGACY_GUARD" ] || fail "missing migration guard: $LEGACY_GUARD"
 # shellcheck disable=SC1090
 . "$LEGACY_GUARD"
-[ -n "$MOUNT" ] || fail "usage: $0 <isaac-scripts-mount>"
 [[ "$ROS_DOMAIN_ID_VALUE" =~ ^[0-9]+$ ]] \
   && [ "$ROS_DOMAIN_ID_VALUE" -le 232 ] \
   || fail "ROS_DOMAIN_ID must be an integer from 0 through 232"
@@ -134,7 +163,7 @@ printf '%s\n' "$XAUTH_ENTRY" | xauth -f "$XAUTH_FILE" nmerge - 2>/dev/null \
 chmod 0600 "$XAUTH_FILE"
 
 CONTAINER_ID="$(
-  docker run -d --name "$CONTAINER_NAME" \
+  docker run -d --pull never --name "$CONTAINER_NAME" \
     --entrypoint /isaac-sim/isaac-sim.sh --gpus all --net=host \
     -e ACCEPT_EULA=Y \
     -e OMNI_TELEMETRY_DISABLE_ANONYMOUS_DATA=1 \

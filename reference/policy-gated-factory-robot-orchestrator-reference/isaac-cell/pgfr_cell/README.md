@@ -6,17 +6,22 @@ the FIFO task loop, and action registration. It does not load a learned policy.
 
 ## Install and run
 
-Use the workstation launcher from the repository root:
+Complete the [workstation host prerequisites](../../../../ops/ISAAC-SIM-WORKSTATION.md#host-prerequisites)
+and review NVIDIA's [Isaac Sim Additional Software and Materials License](https://www.nvidia.com/en-us/agreements/enterprise-software/isaac-sim-additional-software-and-materials-license/).
+Then pull NVIDIA's image and run the launcher from the repository root:
 
 ```bash
+docker pull --platform linux/amd64 \
+  nvcr.io/nvidia/isaac-sim:6.0.1@sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb
 ops/isaac-sim-workstation.sh --prepare
 ops/isaac-sim-workstation.sh --check --accept-eula
 ops/isaac-sim-workstation.sh --run --accept-eula
 ```
 
 The prepare step validates and atomically installs this package together with
-`pgfr_boot.py` and `our_factory.usda`. The launcher mounts that complete bundle at
-`/scripts` and starts the boot entry. Successful startup emits:
+`pgfr_boot.py` and `our_factory.usda`. The launcher mounts that complete bundle
+read-only at `/scripts` in NVIDIA's image and starts the boot entry. It does not
+build a project image. Successful startup emits:
 
 ```text
 PGFR_CELL_UP markers=all

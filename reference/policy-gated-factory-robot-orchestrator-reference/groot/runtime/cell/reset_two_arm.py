@@ -68,9 +68,9 @@ try:
         _request = {"scene_profile": "pgfr_two_arm"}
 
     _profile = str(_request.get("scene_profile", "pgfr_two_arm")).strip().lower()
-    if _profile not in ("pgfr_two_arm", "groot_three_object"):
+    if _profile not in ("pgfr_two_arm", "groot_three_object", "expert_capture"):
         raise RuntimeError(
-            "scene_profile must be pgfr_two_arm or groot_three_object"
+            "scene_profile must be pgfr_two_arm, groot_three_object, or expert_capture"
         )
     _camera_profile = str(
         _contract.get(
@@ -78,6 +78,15 @@ try:
             os.environ.get("PGFR_CAMERA_PROFILE", ""),
         )
     ).strip().lower()
+
+    _expert_capture = _profile == "expert_capture"
+    if _expert_capture or _contract.get("scene_profile") == "expert_capture":
+        if (not _expert_capture or _contract.get("scene_profile") != "expert_capture"
+                or os.environ.get("PGFR_CAPTURE_ONLY") != "1"
+                or not 1 <= int(os.environ.get("ROS_DOMAIN_ID", "0")) <= 232
+                or _camera_profile != "capture"
+                or len(g.get("_PGFR_EXPERT_CAPTURE_CALLBACKS", ())) != 2):
+            raise RuntimeError("expert capture is fixed at isolated startup, not selectable by a reset command")
 
     # Remove passive capture wrappers before replacing the follower functions.
     # The modern sync adapter and the older expert-action adapter are mutually
@@ -421,93 +430,103 @@ try:
         g.pop(_concurrent_key, None)
     g["_GEXEC_OVERRIDE"] = 15
     g["_GROOT_AUTO_RECOVERY"] = False
-    _shared_executor_requested = True
-    if (
-        g.get("_PGFR_GROOT_POLICY_ROUTE") != "shared"
-        or not isinstance(g.get("_PGFR_GROOT_SHARED_POLICY_CONTRACT"), dict)
-    ):
-        raise RuntimeError(
-            "the public GR00T reset requires the shared policy route and contract"
-        )
-    _executor_revision = "v36h"
-    _executor_runtime_revision = "home_convergence_v36_direct"
-    _executor_loader_path = (
-        "/scripts/native_droid_work/follow_groot_dual_physical_v36.py"
-    )
-    _executor_context_key = "_PGFR_DUAL_GROOT_V36H_CONTEXTS"
-
-    # The live Isaac globals dictionary is the left executor namespace.  Clear
-    # both derivative caches so every reset rebuilds exactly the selected,
-    # validated executor instead of taking an older reuse path.
-    for _executor_cache_key in (
-        "_PGFR_DUAL_GROOT_V27_CONTEXTS",
-        "_PGFR_DUAL_GROOT_V27_STARTS",
-        "_PGFR_DUAL_GROOT_V27_RUNS",
-        "_PGFR_DUAL_GROOT_V29_CONTEXTS",
-        "_PGFR_DUAL_GROOT_V29_STARTS",
-        "_PGFR_DUAL_GROOT_V29_RUNS",
-        "_PGFR_DUAL_GROOT_V30_CONTEXTS",
-        "_PGFR_DUAL_GROOT_V30_STARTS",
-        "_PGFR_DUAL_GROOT_V30_RUNS",
-        "_PGFR_DUAL_GROOT_V31_CONTEXTS",
-        "_PGFR_DUAL_GROOT_V31_STARTS",
-        "_PGFR_DUAL_GROOT_V31_RUNS",
-        "_PGFR_DUAL_GROOT_V32_CONTEXTS",
-        "_PGFR_DUAL_GROOT_V32_STARTS",
-        "_PGFR_DUAL_GROOT_V32_RUNS",
-        "_PGFR_DUAL_GROOT_V36H_CONTEXTS",
-        "_PGFR_DUAL_GROOT_V36H_STARTS",
-        "_PGFR_DUAL_GROOT_V36H_RUNS",
-    ):
-        g.pop(_executor_cache_key, None)
-
-    with open(_executor_loader_path, encoding="utf-8") as _executor_loader_stream:
-        _executor_loader_source = _executor_loader_stream.read()
-    compile(_executor_loader_source, _executor_loader_path, "exec")
-    exec(
-        compile(_executor_loader_source, _executor_loader_path, "exec"),
-        g,
-    )
-    for _path in (
-        "/scripts/fix_amr_haul_joint.py",
-        "/scripts/pgfr_serving_health.py",
-    ):
-        with open(_path, encoding="utf-8") as _handle:
-            exec(compile(_handle.read(), _path, "exec"), g)
-
-    def _source_path(_callable):
-        return str(getattr(getattr(_callable, "__code__", None), "co_filename", ""))
-
-    _executor_contexts = g.get(_executor_context_key) or {}
-    if set(_executor_contexts) != {"franka_left", "franka_right"}:
-        raise RuntimeError(
-            "%s dual-arm GR00T contexts were not restored"
-            % _executor_revision
-        )
-    for _context_arm, _context in _executor_contexts.items():
+    if _expert_capture:
+        _expert_start, _expert_run_move = g["_PGFR_EXPERT_CAPTURE_CALLBACKS"]
+        for _callback in (_expert_start, _expert_run_move):
+            if getattr(getattr(_callback, "__code__", None), "co_filename", None) != "/scripts/pgfr_node_v2.py":
+                raise RuntimeError("expert capture requires the stock physical RMPflow callbacks")
+        g["start"], g["run_move"] = _expert_start, _expert_run_move
+        g["finish"] = g["_PGFR_BASE_FINISH"]
+        _shared_executor_requested = False
+        _executor_contexts = {}
+    else:
+        _shared_executor_requested = True
         if (
-            _context.get("_PGFR_GROOT_EXECUTION_REVISION")
-            != _executor_runtime_revision
+            g.get("_PGFR_GROOT_POLICY_ROUTE") != "shared"
+            or not isinstance(g.get("_PGFR_GROOT_SHARED_POLICY_CONTRACT"), dict)
         ):
             raise RuntimeError(
-                "%s executor identity mismatch in %s"
-                % (_executor_revision, _context_arm)
+                "the public GR00T reset requires the shared policy route and contract"
             )
-    if (
-        g.get("start") is not g.get("_dual_start")
-        or g.get("run_move") is not g.get("_dual_run_move")
-    ):
-        raise RuntimeError(
-            "%s dual-arm GR00T router was not restored"
-            % _executor_revision
+        _executor_revision = "v36h"
+        _executor_runtime_revision = "home_convergence_v36_direct"
+        _executor_loader_path = (
+            "/scripts/native_droid_work/follow_groot_dual_physical_v36.py"
         )
-    if (
-        _source_path(g.get("_PGFR_BASE_FINISH")) != "/scripts/pgfr_node_v2.py"
-        or g.get("finish") is not g.get("_PGFR_BASE_FINISH")
-    ):
-        raise RuntimeError("canonical result finalizer was not restored")
+        _executor_context_key = "_PGFR_DUAL_GROOT_V36H_CONTEXTS"
 
-    if _profile == "groot_three_object":
+        # The live Isaac globals dictionary is the left executor namespace.  Clear
+        # both derivative caches so every reset rebuilds exactly the selected,
+        # validated executor instead of taking an older reuse path.
+        for _executor_cache_key in (
+            "_PGFR_DUAL_GROOT_V27_CONTEXTS",
+            "_PGFR_DUAL_GROOT_V27_STARTS",
+            "_PGFR_DUAL_GROOT_V27_RUNS",
+            "_PGFR_DUAL_GROOT_V29_CONTEXTS",
+            "_PGFR_DUAL_GROOT_V29_STARTS",
+            "_PGFR_DUAL_GROOT_V29_RUNS",
+            "_PGFR_DUAL_GROOT_V30_CONTEXTS",
+            "_PGFR_DUAL_GROOT_V30_STARTS",
+            "_PGFR_DUAL_GROOT_V30_RUNS",
+            "_PGFR_DUAL_GROOT_V31_CONTEXTS",
+            "_PGFR_DUAL_GROOT_V31_STARTS",
+            "_PGFR_DUAL_GROOT_V31_RUNS",
+            "_PGFR_DUAL_GROOT_V32_CONTEXTS",
+            "_PGFR_DUAL_GROOT_V32_STARTS",
+            "_PGFR_DUAL_GROOT_V32_RUNS",
+            "_PGFR_DUAL_GROOT_V36H_CONTEXTS",
+            "_PGFR_DUAL_GROOT_V36H_STARTS",
+            "_PGFR_DUAL_GROOT_V36H_RUNS",
+        ):
+            g.pop(_executor_cache_key, None)
+
+        with open(_executor_loader_path, encoding="utf-8") as _executor_loader_stream:
+            _executor_loader_source = _executor_loader_stream.read()
+        compile(_executor_loader_source, _executor_loader_path, "exec")
+        exec(
+            compile(_executor_loader_source, _executor_loader_path, "exec"),
+            g,
+        )
+        for _path in (
+            "/scripts/fix_amr_haul_joint.py",
+            "/scripts/pgfr_serving_health.py",
+        ):
+            with open(_path, encoding="utf-8") as _handle:
+                exec(compile(_handle.read(), _path, "exec"), g)
+
+        def _source_path(_callable):
+            return str(getattr(getattr(_callable, "__code__", None), "co_filename", ""))
+
+        _executor_contexts = g.get(_executor_context_key) or {}
+        if set(_executor_contexts) != {"franka_left", "franka_right"}:
+            raise RuntimeError(
+                "%s dual-arm GR00T contexts were not restored"
+                % _executor_revision
+            )
+        for _context_arm, _context in _executor_contexts.items():
+            if (
+                _context.get("_PGFR_GROOT_EXECUTION_REVISION")
+                != _executor_runtime_revision
+            ):
+                raise RuntimeError(
+                    "%s executor identity mismatch in %s"
+                    % (_executor_revision, _context_arm)
+                )
+        if (
+            g.get("start") is not g.get("_dual_start")
+            or g.get("run_move") is not g.get("_dual_run_move")
+        ):
+            raise RuntimeError(
+                "%s dual-arm GR00T router was not restored"
+                % _executor_revision
+            )
+        if (
+            _source_path(g.get("_PGFR_BASE_FINISH")) != "/scripts/pgfr_node_v2.py"
+            or g.get("finish") is not g.get("_PGFR_BASE_FINISH")
+        ):
+            raise RuntimeError("canonical result finalizer was not restored")
+
+    if _profile in ("groot_three_object", "expert_capture"):
         _arm = str(_request.get("arm", "franka_right")).strip().lower()
         _color = str(_request.get("color", "red")).strip().lower()
         _layout = int(_request.get("layout", 1))
@@ -722,53 +741,55 @@ try:
         if g.get("spawn_scene") is not g.get("_shape_spawn_scene"):
             raise RuntimeError("shape-aware spawn wrapper was not installed")
         _saved_start = (g.get("_PGFR_SHAPE_ORIG") or {}).get("start")
-        if _saved_start is not g.get("_dual_start"):
+        _expected_start = _expert_start if _expert_capture else g.get("_dual_start")
+        if _saved_start is not _expected_start:
             raise RuntimeError(
                 "shape mode saved a stale follower start function"
             )
-        _deployment_path = (
-            "/scripts/native_droid_work/pgfr_groot_certified_deployment_v36.py"
-        )
-        with open(_deployment_path, encoding="utf-8") as _deployment_stream:
-            _deployment_source = _deployment_stream.read()
-        compile(_deployment_source, _deployment_path, "exec")
-        exec(
-            compile(_deployment_source, _deployment_path, "exec"),
-            g,
-        )
-        if (
-            not g.get("_PGFR_GROOT_DEPLOYMENT_READY", False)
-            or g.get("start") is not g.get("_pgfr_groot_certified_start")
-            or g.get("_PGFR_GROOT_DEPLOYMENT_ORIGINAL_START")
-            is not g.get("_shape_start")
-            or len(g.get("_PGFR_GROOT_CERTIFIED_CASES") or {}) != 18
-        ):
-            raise RuntimeError(
-                "certified GR00T deployment adapter was not restored"
+        if not _expert_capture:
+            _deployment_path = (
+                "/scripts/native_droid_work/pgfr_groot_certified_deployment_v36.py"
             )
-        _concurrent_path = (
-            "/scripts/native_droid_work/pgfr_groot_dual_concurrent_mixed.py"
-        )
-        with open(_concurrent_path, encoding="utf-8") as _concurrent_stream:
-            _concurrent_source = _concurrent_stream.read()
-        compile(_concurrent_source, _concurrent_path, "exec")
-        exec(
-            compile(_concurrent_source, _concurrent_path, "exec"),
-            g,
-        )
-        if (
-            not g.get("_PGFR_GROOT_CONCURRENT_READY", False)
-            or not g.get("_PGFR_GROOT_CONCURRENT_MIXED_READY", False)
-            or g.get("_PGFR_GROOT_CONCURRENT_MIXED_REVISION")
-            != "per_arm_seed_v1"
-            or g.get("start") is not g.get("_concurrent_start")
-            or g.get("run_move") is not g.get("_concurrent_run_move")
-            or set(g.get("_PGFR_GROOT_CONCURRENT_CONTEXTS") or {})
-            != {"franka_left", "franka_right"}
-        ):
-            raise RuntimeError(
-                "concurrent GR00T adapter was not restored"
+            with open(_deployment_path, encoding="utf-8") as _deployment_stream:
+                _deployment_source = _deployment_stream.read()
+            compile(_deployment_source, _deployment_path, "exec")
+            exec(
+                compile(_deployment_source, _deployment_path, "exec"),
+                g,
             )
+            if (
+                not g.get("_PGFR_GROOT_DEPLOYMENT_READY", False)
+                or g.get("start") is not g.get("_pgfr_groot_certified_start")
+                or g.get("_PGFR_GROOT_DEPLOYMENT_ORIGINAL_START")
+                is not g.get("_shape_start")
+                or len(g.get("_PGFR_GROOT_CERTIFIED_CASES") or {}) != 18
+            ):
+                raise RuntimeError(
+                    "certified GR00T deployment adapter was not restored"
+                )
+            _concurrent_path = (
+                "/scripts/native_droid_work/pgfr_groot_dual_concurrent_mixed.py"
+            )
+            with open(_concurrent_path, encoding="utf-8") as _concurrent_stream:
+                _concurrent_source = _concurrent_stream.read()
+            compile(_concurrent_source, _concurrent_path, "exec")
+            exec(
+                compile(_concurrent_source, _concurrent_path, "exec"),
+                g,
+            )
+            if (
+                not g.get("_PGFR_GROOT_CONCURRENT_READY", False)
+                or not g.get("_PGFR_GROOT_CONCURRENT_MIXED_READY", False)
+                or g.get("_PGFR_GROOT_CONCURRENT_MIXED_REVISION")
+                != "per_arm_seed_v1"
+                or g.get("start") is not g.get("_concurrent_start")
+                or g.get("run_move") is not g.get("_concurrent_run_move")
+                or set(g.get("_PGFR_GROOT_CONCURRENT_CONTEXTS") or {})
+                != {"franka_left", "franka_right"}
+            ):
+                raise RuntimeError(
+                    "concurrent GR00T adapter was not restored"
+                )
         _scene_record = _scene
     else:
         if g.get("_PGFR_SHAPE_ORIG") is not None:
@@ -1094,6 +1115,8 @@ try:
     if not _bootstrap_request and not _live_reset:
         g["_PGFR_FULL_SCENE_READY"] = _full_scene_ready_before_reset
     print(
+        "PGFR_EXPERT_CAPTURE_READY controller=RMPflow policy_queries=disabled"
+        if _expert_capture else
         "PGFR_GROOT_RUNTIME_READY executor=home_convergence_v36_direct "
         "concurrent=per_arm_seed_v1 route=shared",
         flush=True,

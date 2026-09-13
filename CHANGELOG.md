@@ -10,11 +10,16 @@ than inferring a release from component version strings.
 
 ### Added
 
+- A source-and-training release path: users capture demonstrations, compute
+  native-DROID statistics, fine-tune GR00T, and export a local checkpoint.
+- Local checkpoint metadata and checksum validation shared by Thor profiles,
+  the two-host bridge, and Isaac contracts. The simulation host can attest the
+  selected checkpoint using metadata without copying its weights.
 - Reproducible RTX workstation preparation, host preflight, immutable NVIDIA
   Isaac Sim image launch, exact read-only cell staging, lifecycle checks, and
   hardware-free contract tests.
 - A two-host RTX/Jetson AGX Thor reference path for Fast DDS, SSH-forwarded
-  GR00T policy/relay connections, pinned model and VLM identities and retrieval,
+  GR00T policy/relay connections, local checkpoint identity and pinned upstream VLM retrieval,
   user-systemd service ownership, conformance checks, and a deterministic
   serial acceptance procedure.
 - PGFR Console, PGFR Chat, workflow authoring/execution, OpenClaw gateway support,
@@ -24,6 +29,12 @@ than inferring a release from component version strings.
   project-prefix rename, including state migration and clean/upgrade validation.
 
 ### Changed
+
+- Reproduction uses directly pulled NVIDIA Isaac Sim images with explicit
+  license acceptance and mounted project files; GR00T remains native on Thor.
+  Removed the unused project Thor Dockerfile. The native installer no longer
+  requests the unversioned FFmpeg executable; dataset conversion has a separate
+  encoder selection and preflight.
 
 - Renamed the product from Industrial Claw to Policy-Gated Factory Robot
   Orchestrator Reference and changed the primary Python distribution, import,
@@ -69,15 +80,20 @@ than inferring a release from component version strings.
   Existing hosts must stop both legacy and PGFR services, back up and move
   persistent state/model paths, rename project environment keys, audit preserved
   files, recreate path-bound virtual environments, and rerender user units.
-- The published Hugging Face model and dataset IDs retain their legacy
-  `industrial-claw` slug because they are external immutable identifiers.
+- Project fine-tuned weights and recorded datasets are not supplied or linked
+  as release dependencies. Official upstream base-model and license references
+  remain prerequisites. Older installations must explicitly export and select
+  their local checkpoint before regenerating profiles and bridge contracts;
+  legacy artifact metadata is preserved rather than rewritten in place.
+- The public capture/training path requires its own hardware acceptance; prior
+  development results do not qualify a user-generated dataset or checkpoint.
 - The 2026-09-08 live RTX/Thor acceptance used the pre-rename source snapshot
   (the base revision plus then-uncommitted reproducibility fixes). The renamed
   tree has passed its documented hardware-free checks but has not yet completed
   a post-rename clean-clone and upgrade acceptance on both live hosts. Do not
   treat the historical date as that missing evidence.
 - GR00T serving in the accepted topology is bare metal on Thor from the pinned
-  uv environment. The Thor container path is dependency-qualification only,
+  uv environment. The former Thor container path was dependency-qualification only,
   not a canonical or mission-accepted serving topology.
 - A separate 2026-09-08 stable scripted-baseline qualification used isolated
   container `ic-isaac-sim-601-validation` with Isaac Sim `6.0.1`: NVIDIA's

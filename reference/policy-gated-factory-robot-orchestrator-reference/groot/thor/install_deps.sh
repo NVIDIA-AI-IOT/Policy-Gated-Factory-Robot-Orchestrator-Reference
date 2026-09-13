@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 # install_deps.sh — One-time install of GR00T deps on Jetson AGX Thor (aarch64, Python 3.12)
-# Used by both bare metal and scripts/deployment/thor/Dockerfile.
+# Installs the pinned bare-metal serving environment; no container build path.
 # After install, use `source scripts/activate_thor.sh` in each new shell.
 set -euo pipefail
 
@@ -48,7 +48,7 @@ mapfile -t TORCHCODEC_WHEELS < <(
 TORCHCODEC_WHL="${TORCHCODEC_WHEELS[0]}"
 if grep -Fqx 'version https://git-lfs.github.com/spec/v1' "$TORCHCODEC_WHL"; then
     echo "ERROR: torchcodec wheel is still a Git LFS pointer: $TORCHCODEC_WHL" >&2
-    echo "Run ops/prepare-groot-runtime.sh so the wheel is materialized before Docker build." >&2
+    echo "Run ops/prepare-groot-runtime.sh so the wheel is materialized before dependency installation." >&2
     exit 1
 fi
 if ! python3 -c 'import sys, zipfile; raise SystemExit(not zipfile.is_zipfile(sys.argv[1]))' "$TORCHCODEC_WHL"; then
@@ -155,9 +155,8 @@ esac
 # Install platform-specific deps from the Thor pyproject without mutating
 # the repo-root pyproject.toml / uv.lock. See the Orin installer for
 # details on UV_PROJECT_ENVIRONMENT + --no-install-project.
-# Respect a pre-set UV_PROJECT_ENVIRONMENT from the Dockerfile
-# (/opt/gr00t-venv, matched by the VIRTUAL_ENV + PATH ENV lines there);
-# fall back to $REPO_ROOT/.venv on bare metal.
+# Allow an explicit environment directory; the bare-metal default is
+# $REPO_ROOT/.venv, matching the installed policy/relay service templates.
 export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-$REPO_ROOT/.venv}"
 echo "Running uv sync with the Thor pyproject at $SCRIPT_DIR (venv: $UV_PROJECT_ENVIRONMENT)..."
 uv sync --project "$SCRIPT_DIR" --no-install-project --extra dev --frozen
@@ -174,9 +173,12 @@ uv pip install --python "$VENV_PYTHON" --no-deps -e "$REPO_ROOT"
 # Thor and Spark both use cp312 aarch64 wheels, but keep separate wheel
 # directories because the built bytes can differ across device stacks.
 # ──────────────────────────────────────────────────────────────────────────────
-# The pinned Thor wheel contains FFmpeg 6 extensions. JetPack 7.2 can select
-# NVIDIA's FFmpeg 8 binary, so install the versioned Ubuntu 24.04 compatibility
-# libraries alongside it rather than relying on the unversioned package alone.
+# The pinned Thor wheel links FFmpeg 6 shared libraries, not the ffmpeg CLI.
+# Select only the ABI-versioned Ubuntu 24.04 packages. The unversioned ffmpeg
+# package may resolve to a different NVIDIA build with nonfree components;
+# neither that executable nor an FFmpeg 8 ABI is needed by this wheel.
+# Dataset encoding/conversion belongs in the separately documented training
+# environment. These FFmpeg 6 libraries retain their own GPL license terms.
 TORCHCODEC_FFMPEG6_RUNTIME=(
     libavfilter9
     libavformat60
@@ -185,10 +187,10 @@ TORCHCODEC_FFMPEG6_RUNTIME=(
     libswresample4
     libswscale7
 )
-echo "Installing FFmpeg runtime..."
+echo "Installing FFmpeg 6 shared libraries for the pinned TorchCodec wheel..."
 $SUDO apt-get update -qq
 $SUDO apt-get install -y --no-remove --no-install-recommends \
-    ffmpeg "${TORCHCODEC_FFMPEG6_RUNTIME[@]}"
+    "${TORCHCODEC_FFMPEG6_RUNTIME[@]}"
 
 echo "Installing torchcodec from validated wheel: $TORCHCODEC_WHL"
 uv pip install --python "$VENV_PYTHON" --force-reinstall --no-deps "$TORCHCODEC_WHL"

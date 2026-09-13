@@ -471,17 +471,6 @@ def live_floor_state(backend: Any) -> dict[str, Any]:
     return payload
 
 
-def _perceive_region(target: str) -> str:
-    """Resolve a target to its region-specific visual source.
-
-    ``sources()`` intentionally exposes one source per region because regions
-    sharing a physical camera use different crops.  Preserve the requested
-    region so, for example, ``tote_r`` cannot silently select
-    ``conveyor_2``'s crop merely because both use ``outside_right_cam``.
-    """
-    return target
-
-
 def _ground_truth_on_rack(symbolic: dict[str, Any]) -> bool:
     return bool(symbolic.get("tote_on_rack", symbolic.get("racks", {}).get("rack_1", 0)))
 
@@ -521,8 +510,8 @@ async def _vision_for_target(backend: Any, target: str, vlm: Any) -> dict[str, A
     if vlm is None:
         return None
     try:
-        region = _perceive_region(target)
-        return await PerceptionAgent(backend.sources(), vlm).observe_visual(region)
+        # Preserve the region: sources sharing a camera can use different crops.
+        return await PerceptionAgent(backend.sources(), vlm).observe_visual(target)
     except Exception as exc:  # noqa: BLE001 - vision is advisory; degrade, don't raise
         return {"error": str(exc), "parse_ok": False, "cubes_visible": [], "tote_on_rack": None}
 

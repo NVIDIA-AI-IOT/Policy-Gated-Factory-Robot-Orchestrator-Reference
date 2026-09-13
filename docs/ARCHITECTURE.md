@@ -82,20 +82,10 @@ object moved.
 
 ## Reference deployment
 
-```text
-Operator browser
-  |-- PGFR Console (read aggregation)
-  |-- PGFR Chat -----------------------------+
-  +-- PGFR Workflows ------------------------+---- HTTP ----+
-                                                           |
-MCP client or OpenClaw ---> MCP server --------------------+---> PGFR Spine
-                                                                  |   |
-                                                    perception VLM   ROS 2
-                                                                      |
-                                                               Isaac Sim cell
-                                                                      |
-                                                        GR00T policy/relay pair
-```
+The Console aggregation API is read-only; the browser sends operator commands through Chat. ROS 2 carries
+floor commands and scene evidence. The separate GR00T bridge carries observations
+and action chunks between the Isaac executor and Thor policy servers. AMR tote
+transport uses scripted control.
 
 The reference two-host arrangement places PGFR Spine, PGFR Console, the agent
 services, the VLM, and both GR00T serving processes on the Jetson control host.

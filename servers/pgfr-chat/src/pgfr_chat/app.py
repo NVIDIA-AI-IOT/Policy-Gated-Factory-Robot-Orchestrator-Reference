@@ -91,6 +91,27 @@ def _reset_transcript(raw: Dict[str, Any]) -> List[Dict[str, Any]]:
     ]
 
 
+def _compact_tool_result(result: Dict[str, Any]) -> Dict[str, Any]:
+    """Keep replay evidence while omitting large transport payloads."""
+    keep = {
+        key: result[key]
+        for key in ("verified", "reason", "error", "dispatched", "moved", "request_id",
+                    "answer", "yes", "vision_agrees", "evidence", "source_used",
+                    "mode", "status", "goal_id", "proof_gate", "pending_visual_proof",
+                    "harness", "harness_tool")
+        if key in result
+    }
+    vision = result.get("vision") or {}
+    if isinstance(vision, dict) and vision:
+        keep["vision"] = {
+            key: vision[key]
+            for key in ("summary", "error", "raw", "parse_ok", "source_used",
+                        "cubes_visible", "tote_on_rack", "region")
+            if key in vision
+        }
+    return keep
+
+
 def _csrf_guard(
     request: Request, header: Optional[str], allowed_origins: List[str], token: Optional[str]
 ) -> None:
@@ -150,19 +171,14 @@ def build_app(
         selected_backend: ChatBackend,
         context: List[Dict[str, Any]],
         mission_id: str,
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         transcript: List[Dict[str, Any]] = []
         async for event in backend_events(selected_backend, context, mission_id):
             # The batch API has no placeholder-card concept; retain completed
             # tools and assistant/error events only.
             if event.get("role") in ("assistant", "tool", "error"):
                 transcript.append(event)
-        final = next(
-            (event.get("content", "") for event in reversed(transcript)
-             if event.get("role") == "assistant"),
-            "",
-        )
-        return {"transcript": transcript, "final": final}
+        return transcript
 
     def session_backend(
         state: Dict[str, Any], requested: Optional[str], *, require_configured: bool = True,
@@ -271,35 +287,18 @@ def build_app(
         ][-context_window:]
         active_missions.add(state["mission_id"])
         try:
-            out = await run_backend(selected_backend, context, state["mission_id"])
+            transcript = await run_backend(selected_backend, context, state["mission_id"])
         except Exception as exc:
             raise HTTPException(502, f"backend error: {type(exc).__name__}: {exc}")
         finally:
             active_missions.discard(state["mission_id"])
-        for entry in out["transcript"]:
+        for entry in transcript:
             if entry["role"] == "assistant" and entry.get("content"):
                 state["history"].append({"role": "assistant", "content": entry["content"]})
             elif entry.get("name"):
                 # Persist a compact tool record so opening the session later
                 # replays the tool cards and evidence frames, not just prose.
-                result = entry.get("result") or {}
-                keep = {
-                    k: result[k]
-                    for k in ("verified", "reason", "error", "dispatched",
-                              "moved", "request_id", "answer", "yes",
-                              "vision_agrees", "evidence", "source_used",
-                              "mode", "status", "goal_id", "proof_gate",
-                              "pending_visual_proof", "harness", "harness_tool")
-                    if k in result
-                }
-                vis = result.get("vision") or {}
-                if isinstance(vis, dict) and vis:
-                    keep["vision"] = {
-                        k: vis[k]
-                        for k in ("summary", "error", "raw", "parse_ok", "source_used",
-                                  "cubes_visible", "tote_on_rack", "region")
-                        if k in vis
-                    }
+                keep = _compact_tool_result(entry.get("result") or {})
                 state["history"].append({"role": "tool", "name": entry["name"],
                                          "args": entry.get("args") or {},
                                          "result": keep})
@@ -307,7 +306,7 @@ def build_app(
         return {
             "session_id": state["id"],
             "mission_id": state["mission_id"],
-            "transcript": out["transcript"],
+            "transcript": transcript,
         }
 
     @app.post("/api/chat/stream")
@@ -356,22 +355,7 @@ def build_app(
                     if ev.get("role") == "assistant" and ev.get("content"):
                         state["history"].append({"role": "assistant", "content": ev["content"]})
                     elif ev.get("role") == "tool":
-                        result = ev.get("result") or {}
-                        keep = {k: result[k] for k in (
-                            "verified", "reason", "error", "dispatched", "moved",
-                            "request_id", "answer", "yes", "vision_agrees", "evidence",
-                            "source_used", "mode", "status", "goal_id", "proof_gate",
-                            "pending_visual_proof", "harness", "harness_tool")
-                            if k in result}
-                        vis = result.get("vision") or {}
-                        if isinstance(vis, dict) and vis:
-                            keep["vision"] = {
-                                k: vis[k]
-                                for k in ("summary", "error", "raw", "parse_ok",
-                                          "source_used", "cubes_visible",
-                                          "tote_on_rack", "region")
-                                if k in vis
-                            }
+                        keep = _compact_tool_result(ev.get("result") or {})
                         state["history"].append({"role": "tool", "name": ev.get("name"),
                                                  "args": ev.get("args") or {}, "result": keep})
                     yield "data: " + _json.dumps(ev) + "\n\n"

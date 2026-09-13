@@ -15,7 +15,8 @@ complete.
   binary payload is redistributed by this repository.
 - **Redistributed binaries** require their own license, notice, export, codec,
   and security review. In particular, packaged NumPy/SciPy native libraries
-  and the observed GPL/nonfree FFmpeg build remain explicit review items.
+  and FFmpeg native libraries remain explicit review items. The observed
+  nonfree system FFmpeg build is not a binary supplied by this release.
 - <code>AND</code> and <code>OR</code> retain their normal SPDX meanings.
   Where an upstream lockfile offered a choice and this distribution selected
   one branch, that selection is stated explicitly.
@@ -25,17 +26,21 @@ The dependency tables are derived from the committed
 Package links are the attribution and license-detail entry points; installed
 distributions remain authoritative for complete copyright and license text.
 
-## Upstream source, models, and dataset
+## Upstream source and model prerequisites
 
 | Component | Immutable identity | Terms | Distribution role |
 |---|---|---|---|
-| [NVIDIA Isaac-GR00T](https://github.com/NVIDIA/Isaac-GR00T) | <code>e5749287857afd97b78f1147166137de29746392</code> | Apache-2.0; [repository copy](reference/policy-gated-factory-robot-orchestrator-reference/groot/LICENSE.NVIDIA-ISAAC-GROOT) | Upstream source patched by this repository |
-| [Order744-cont24 checkpoint](https://huggingface.co/mmallick/industrial-claw-groot-order744-cont24) | <code>9307ac9cba3a27c9a57ed2d90393ceefb28367e1</code> | [NVIDIA Open Model License](https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/) | Fine-tuned checkpoint retrieved at runtime |
+| [NVIDIA Isaac-GR00T](https://github.com/NVIDIA/Isaac-GR00T) | <code>e5749287857afd97b78f1147166137de29746392</code> | Apache-2.0; repository copy: <code>reference/policy-gated-factory-robot-orchestrator-reference/groot/LICENSE.NVIDIA-ISAAC-GROOT</code> | Upstream source patched by this repository |
 | [NVIDIA GR00T-N1.7-DROID](https://huggingface.co/nvidia/GR00T-N1.7-DROID) | <code>05e7cc97e40dbd33b0890c35cc0214fcb0547ab5</code> | NVIDIA Open Model License | Base checkpoint lineage |
 | [NVIDIA Cosmos-Reason2-2B](https://huggingface.co/nvidia/Cosmos-Reason2-2B) | <code>9ce19a195e423419c349abfc86fd07178b230561</code> | NVIDIA Open Model License | GR00T runtime backbone retrieved at runtime |
 | [Qwen3-VL-2B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct) | Upstream identity declared by Cosmos model card | Apache-2.0 | Nested Cosmos base-model attribution |
 | [NVIDIA Nemotron Nano 12B VL NVFP4](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-12B-v2-VL-NVFP4-QAD) | <code>312eb94f6d36209f7c6a82eda896e27200d152ee</code> | NVIDIA Open Model License | VLM retrieved at runtime |
-| [Order744-cont24 dataset](https://huggingface.co/datasets/mmallick/industrial-claw-groot-order744-cont24-dataset) | <code>da9b6e9a2faf5bd91bc559e7f12babd7102a5863</code> | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Native-DROID fine-tuning data; attribution is in the dataset repository |
+
+Project fine-tuned weights and full recorded training datasets are not supplied
+or retrieved by the public installation path. Users create demonstrations and
+train their own checkpoints. The tracked arm-alignment state files remain
+reference runtime inputs; this change does not remove their provenance or
+establish new distribution rights. See `docs/RELEASE-SCOPE.md` in the source repository.
 
 The GR00T bundle includes a Policy-Gated Factory Robot Orchestrator Reference patch against the pinned
 Isaac-GR00T source. The patch identifies modified upstream files; the
@@ -50,16 +55,32 @@ separately authored integration code.
 | NVIDIA Isaac Sim container (stable scripted baseline) | <code>nvcr.io/nvidia/isaac-sim:6.0.1@sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb</code> (linux/amd64) | NVIDIA Isaac Sim/container terms; runtime retrieval only |
 | ROS 2 Jazzy acceptance sidecar | <code>docker.io/library/ros:jazzy-ros-base-noble@sha256:2589a8fba5257307857890173c069852c2abf913a0be7970f172478baecb09e4</code> (linux/amd64) | ROS 2 and Ubuntu package terms; runtime retrieval only; retain package-provided notices |
 | vLLM OpenAI-compatible container | <code>vllm/vllm-openai:v0.20.0-ubuntu2404@sha256:aff65d7198dd284c37dd0a18a606544cc5e92bfb0d5eb608b77e8b8f1c6b8b0d</code> | [Apache-2.0](https://github.com/vllm-project/vllm/blob/main/LICENSE); runtime retrieval only |
-| Thor CUDA base image | <code>nvidia/cuda:13.0.0-devel-ubuntu24.04@sha256:1e8ac7a54c184a1af8ef2167f28fa98281892a835c981ebcddb1fad04bdd452d</code> (linux/arm64 child <code>sha256:38c2598ded0fd3ed2b0b13351543fde493faba43ae580f81f0a9ab58d76fdd2d</code>) | [NVIDIA CUDA Toolkit EULA](https://docs.nvidia.com/cuda/eula/index.html); runtime/container build input; digest identity recorded after the prior tag-based Thor qualification |
+| Upstream Thor CUDA GPU-check image | <code>nvidia/cuda:13.0.0-devel-ubuntu24.04@sha256:1e8ac7a54c184a1af8ef2167f28fa98281892a835c981ebcddb1fad04bdd452d</code> (linux/arm64 child <code>sha256:38c2598ded0fd3ed2b0b13351543fde493faba43ae580f81f0a9ab58d76fdd2d</code>) | [NVIDIA CUDA Toolkit EULA](https://docs.nvidia.com/cuda/eula/index.html); operator-retrieved GPU diagnostic only; no project Thor image is built or distributed |
 | Brain-host packages | <code>ca-certificates</code>, <code>curl</code>, <code>git-lfs</code>, <code>gnupg</code>, Node.js 22.22.3, ROS 2 Jazzy base/Fast DDS, CUDA 13 CUPTI/math runtimes | Retrieved from Ubuntu, NodeSource, ROS, and NVIDIA package repositories; retain package-provided copyright/license files |
-| Thor GR00T system packages | NVPL BLAS/LAPACK, CUDA development/runtime packages, FFmpeg 6 compatibility runtimes, Git LFS | Runtime retrieval; retain package-provided copyright/license files and NVIDIA SDK terms where applicable |
+| Thor GR00T system packages | NVPL BLAS/LAPACK, CUDA development/runtime packages, FFmpeg 6 compatibility runtimes, Git LFS | Native host installation from upstream; does not request the unversioned FFmpeg CLI package; retain package-provided copyright/license files and NVIDIA SDK terms where applicable |
 | TorchCodec Thor runtime artifact | <code>torchcodec-0.10.0a0-cp312-cp312-linux_aarch64.whl</code>, SHA-256 <code>1421de7e6248cc33398c16b2d7ba5ada4bf5c2a38af7cc44a003f3b0c36eb314</code> | [BSD-3-Clause](https://github.com/meta-pytorch/torchcodec/blob/main/LICENSE); Git LFS path <code>scripts/deployment/thor/wheels/</code> at pinned Isaac-GR00T revision <code>e5749287857afd97b78f1147166137de29746392</code>; installed only as an explicit post-sync overlay |
-| FFmpeg and H.264 path | Installed Thor build observed with GPL, nonfree, and libx264 enabled | [FFmpeg legal guidance](https://ffmpeg.org/legal.html) states nonfree builds are not redistributable; ARB/codec review remains open |
-| Remotely referenced Isaac 6.0 assets | Ten HTTPS assets referenced by five ASCII USDA compositions | NVIDIA Isaac asset terms; per-path provenance and rights state in [Asset provenance](docs/ASSET-PROVENANCE.md); owner/OSRB confirmation pending |
+| Observed development-host FFmpeg executable | NVIDIA <code>7:8.0.1-nvidia</code>; FFmpeg 8 with GPL, nonfree, and libx264 enabled | Reports nonfree/unredistributable; not supplied by this source release or requested by its Thor installer. This finding concerns redistribution, not a determination about prior internal use. [FFmpeg licensing](https://ffmpeg.org/doxygen/trunk/md_LICENSE.html) |
+| Thor FFmpeg 6 decoder libraries | Observed Ubuntu <code>7:6.1.1-3ubuntu5</code>: <code>libavcodec60</code>, <code>libavformat60</code>, <code>libavutil58</code>, <code>libavfilter9</code>, <code>libswscale7</code>, <code>libswresample4</code> | Identified as GPL-2.0-or-later; retrieved by the user for the pinned TorchCodec native adapters. Separate from the observed FFmpeg 8 executable. Retain upstream notices; any binary redistribution requires corresponding-source and linkage review. |
+| OpenCV bundled video libraries | Observed <code>opencv-python-headless==4.11.0.86</code> wheel includes FFmpeg 5 libraries, loaded by the GR00T policy processes | Bundled FFmpeg identified as LGPL-2.1-or-later; headless OpenCV is not FFmpeg-free. Runtime retrieval only; preserve [bundled third-party notices](https://github.com/opencv/opencv-python/blob/86/LICENSE-3RD-PARTY.txt). Identifying the license is not complete binary redistribution clearance. |
+| Dataset conversion and H.264 | User-selected FFmpeg executable with CPU <code>scale</code>, <code>libx264</code>, and MP4 support | Separate local training prerequisite. Preflight rejects a reported nonfree build and checks required encoding behavior; GPL is not rejected. H.264/ARB review remains open for project media and codec use. [FFmpeg legal guidance](https://ffmpeg.org/legal.html) |
+| Remotely referenced Isaac 6.0 assets | Ten HTTPS assets referenced by five ASCII USDA compositions | NVIDIA Isaac asset terms; per-path provenance and rights state in the source repository's <code>docs/ASSET-PROVENANCE.md</code>; owner/OSRB confirmation pending |
 
 No container image, OS package, model weight, dataset payload, FFmpeg binary,
 or remote Isaac asset binary is embedded in this source-tree inventory unless
 a separately listed tracked file says otherwise.
+
+The release uses official Isaac Sim images pulled directly by the operator,
+with project files mounted from the host. GR00T serving remains native on Thor;
+the optional project Thor Dockerfile has been removed. The NVIDIA image's Kit,
+assets, and other proprietary components retain their own terms; the source
+repository's Apache license does not cover every runtime component. See
+[Isaac Sim licensing](https://docs.isaacsim.omniverse.nvidia.com/6.0.1/common/licenses-isaac-sim.html).
+
+The codec observations above distinguish installed artifacts from libraries
+loaded by a process. They do not qualify a fresh installation, infer executed
+codec functions from process maps, or clear a future environment/container
+export. Complete source/build provenance of the custom TorchCodec wheel and
+any redistributed native bundles remains a separate review item.
 
 ## npm dependency inventory (431 identities)
 

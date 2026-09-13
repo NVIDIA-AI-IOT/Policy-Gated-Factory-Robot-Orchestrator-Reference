@@ -119,6 +119,19 @@ jobs:
             reference/policy-gated-factory-robot-orchestrator-reference/groot/tests/test_native_droid_relay_batch2.py \
             reference/policy-gated-factory-robot-orchestrator-reference/groot/tests/test_two_host_bridge.py
 
+      - name: Validate dataset creation and training preflight
+        run: |
+          # Reuse the reviewed lock for CPU-only fixtures without installing the GPU stack.
+          uv export --frozen --extra dev \
+            --project reference/policy-gated-factory-robot-orchestrator-reference/groot/thor \
+            --no-emit-project --no-hashes --no-annotate --no-header \
+            --format requirements-txt --output-file "$RUNNER_TEMP/pipeline-constraints.txt"
+          uv venv --python 3.12 "$RUNNER_TEMP/pipeline-tests"
+          uv pip install --python "$RUNNER_TEMP/pipeline-tests/bin/python" \
+            --constraint "$RUNNER_TEMP/pipeline-constraints.txt" pytest numpy pandas pyarrow scipy
+          "$RUNNER_TEMP/pipeline-tests/bin/python" -m pytest -q \
+            reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/tests
+
       - name: Validate deployment contracts
         run: |
           uv run --frozen --project servers/pgfr-workflows pytest -q \

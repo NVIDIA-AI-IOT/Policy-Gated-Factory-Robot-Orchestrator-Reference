@@ -1,185 +1,259 @@
-# Fine-tune the Policy-Gated Factory Robot Orchestrator Reference GR00T model
+# Fine-tune a user-owned native DROID dataset
 
-This recipe reproduces the shared Order744-cont24 checkpoint from the
-published Hugging Face dataset. It uses NVIDIA's GR00T N1.7 DROID base and
-official `examples/finetune.sh` entry point.
+This is an explicit training recipe, not a download of a project checkpoint or
+a promise to reproduce historical development weights. Create your own inputs
+with [DATASET_CREATION.md](DATASET_CREATION.md). The one-GPU settings below are
+starting values; this release has no measured training VRAM/time/convergence
+result for an RTX 6000 Pro using this new public data path.
 
-## 1. Download the dataset
+The base checkpoint, launcher, and dataset checks here target the supplied
+Franka/native-DROID reference example. To fine-tune on data from your own Isaac
+Sim scene or robot, follow the
+[custom-scene adaptation guidance](DATASET_CREATION.md#adapt-to-your-own-isaac-sim-scene)
+so capture, modality configuration, and runtime use matching contracts.
 
-Use the repository and immutable revision from
-[`../../models/manifest.yaml`](../../models/manifest.yaml):
+## Prepare the pinned x86 training environment
 
-```bash
-export PGFR_GROOT_DATASET_REPO='mmallick/industrial-claw-groot-order744-cont24-dataset'
-export PGFR_GROOT_DATASET_REVISION='da9b6e9a2faf5bd91bc559e7f12babd7102a5863'
-export PGFR_GROOT_DATASET_ROOT="$PWD/data/policy-gated-factory-robot-orchestrator-reference-groot"
-
-hf download "$PGFR_GROOT_DATASET_REPO" \
-  --repo-type dataset \
-  --revision "$PGFR_GROOT_DATASET_REVISION" \
-  --local-dir "$PGFR_GROOT_DATASET_ROOT"
-```
-
-The repository is public and does not require repository-specific access.
-
-The published dataset contract is:
-
-```text
-Order744/base
-  left/red       120 episodes
-  right/red      120 episodes
-  left/blue      120 episodes
-  right/blue     120 episodes
-  left/green      96 episodes
-  right/green     96 episodes
-  total          672 episodes
-
-Order744/corrective
-  left/red        12 episodes
-  right/red       12 episodes
-  left/blue       12 episodes
-  right/blue      12 episodes
-  left/green      12 episodes
-  right/green     12 episodes
-  total           72 episodes
-
-Order744 total   744 episodes
-
-cont24
-  left/blue       12 accumulated-scene episodes
-  right/red       12 accumulated-scene episodes
-  total           24 episodes
-```
-
-Every training dataset directory must contain `meta/info.json` and official
-GR00T statistics. Validate the episode totals before launching training.
-
-## 2. Prepare NVIDIA GR00T
-
-Create the supported GR00T environment and obtain the vanilla DROID
-checkpoint according to NVIDIA's Isaac-GR00T instructions. The training
-contract uses:
-
-```text
-base model:   nvidia/GR00T-N1.7-DROID
-embodiment:   OXE_DROID_RELATIVE_EEF_RELATIVE_JOINT
-modality:     pipeline/training/droid_checkpoint_single_frame_config.py
-video delta:  [0]
-```
-
-Set portable paths for your checkout and outputs:
+Follow the [pinned NVIDIA installation instructions](https://github.com/NVIDIA/Isaac-GR00T/blob/e5749287857afd97b78f1147166137de29746392/README.md#installation)
+for the workstation CUDA/driver prerequisites. The upstream x86 default uses
+Python 3.10 and CUDA 12.8; the separate Jetson Thor Python 3.12 environment is
+for serving and must not be substituted for this workstation setup.
+Install Git LFS and uv through your normal system provisioning first. Create a
+new training checkout/virtual environment; keep it separate from the recorder
+and Thor serving environments. Reproduce it from source and the lockfile,
+rather than archiving or publishing an installed environment. Select the CPU
+FFmpeg executable and compatible TorchCodec libraries as described below.
 
 ```bash
-export ISAAC_GROOT_ROOT=/path/to/Isaac-GR00T
-export GROOT_DROID_BASE=/path/to/GR00T-N1.7-DROID
-export PGFR_GROOT_OUTPUT_ROOT="$PWD/training-output"
-export PGFR_MODALITY_CONFIG="$PWD/reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/pipeline/training/droid_checkpoint_single_frame_config.py"
-```
-
-## 3. Train Order744
-
-Build a colon-separated `ORDER744_DATASETS` value from the 12 published
-native-DROID dataset directories: six base roots followed by the six
-corrective roots.
-
-```bash
-export ORDER744_DATASETS="\
-$PGFR_GROOT_DATASET_ROOT/order744/base/left/red:\
-$PGFR_GROOT_DATASET_ROOT/order744/base/right/red:\
-$PGFR_GROOT_DATASET_ROOT/order744/base/left/blue:\
-$PGFR_GROOT_DATASET_ROOT/order744/base/right/blue:\
-$PGFR_GROOT_DATASET_ROOT/order744/base/left/green:\
-$PGFR_GROOT_DATASET_ROOT/order744/base/right/green:\
-$PGFR_GROOT_DATASET_ROOT/order744/corrective/left/red:\
-$PGFR_GROOT_DATASET_ROOT/order744/corrective/right/red:\
-$PGFR_GROOT_DATASET_ROOT/order744/corrective/left/blue:\
-$PGFR_GROOT_DATASET_ROOT/order744/corrective/right/blue:\
-$PGFR_GROOT_DATASET_ROOT/order744/corrective/left/green:\
-$PGFR_GROOT_DATASET_ROOT/order744/corrective/right/green"
-
+export REPO=/absolute/path/Policy-Gated-Factory-Robot-Orchestrator-Reference
+export PIPELINE="$REPO/reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline"
+export ISAAC_GROOT_ROOT="$HOME/pgfr-training/Isaac-GR00T"
+GIT_LFS_SKIP_SMUDGE=1 git clone --no-checkout https://github.com/NVIDIA/Isaac-GR00T.git "$ISAAC_GROOT_ROOT"
+git -C "$ISAAC_GROOT_ROOT" checkout e5749287857afd97b78f1147166137de29746392
+git -C "$ISAAC_GROOT_ROOT" submodule update --init --recursive
+git -C "$ISAAC_GROOT_ROOT" apply --check "$REPO/reference/policy-gated-factory-robot-orchestrator-reference/groot/patches/isaac-groot-e574-policy-gated-factory-robot-orchestrator-reference.patch"
+git -C "$ISAAC_GROOT_ROOT" apply "$REPO/reference/policy-gated-factory-robot-orchestrator-reference/groot/patches/isaac-groot-e574-policy-gated-factory-robot-orchestrator-reference.patch"
 cd "$ISAAC_GROOT_ROOT"
-
-NUM_GPUS=1 \
-SAVE_STEPS=999999 \
-SAVE_TOTAL_LIMIT=1 \
-MAX_STEPS=3000 \
-USE_WANDB=0 \
-DATALOADER_NUM_WORKERS=4 \
-GLOBAL_BATCH_SIZE=16 \
-LEARNING_RATE=1e-4 \
-SHARD_SIZE=1024 \
-NUM_SHARDS_PER_EPOCH=100000 \
-EPISODE_SAMPLING_RATE=0.1 \
-COLOR_JITTER_BRIGHTNESS=0.3 \
-COLOR_JITTER_CONTRAST=0.4 \
-COLOR_JITTER_SATURATION=0.5 \
-COLOR_JITTER_HUE=0.08 \
-/bin/bash examples/finetune.sh \
-  --base-model-path "$GROOT_DROID_BASE" \
-  --dataset-path "$ORDER744_DATASETS" \
-  --embodiment-tag OXE_DROID_RELATIVE_EEF_RELATIVE_JOINT \
-  --output-dir "$PGFR_GROOT_OUTPUT_ROOT/order744" \
-  --experiment-name policy_gated_factory_robot_orchestrator_reference_order744 \
-  --modality-config-path "$PGFR_MODALITY_CONFIG" \
-  --state-dropout-prob 0.2 \
-  --save-only-model
+uv sync --frozen --python 3.10
+export GROOT_PYTHON="$ISAAC_GROOT_ROOT/.venv/bin/python"
+"$GROOT_PYTHON" -c 'import gr00t, torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))'
 ```
 
-Only the final `checkpoint-3000` is retained.
+The public capture conversion does not require upstream demo-data LFS blobs.
+Do not use `--skip-weight-loading` for actual training. Confirm the NVIDIA GPU
+and dependencies are usable before starting a long run; a successful import is
+not a training-performance measurement.
 
-## 4. Continue with cont24
-
-The continuation starts from the retained Order744 checkpoint. It trains on
-the same 12 Order744 dataset directories plus the two accumulated-scene
-directories, for 768 episodes in total.
+Record the local setup with your training artifacts. For example:
 
 ```bash
-export CONT24_DATASETS="\
-$ORDER744_DATASETS:\
-$PGFR_GROOT_DATASET_ROOT/cont24/left/blue:\
-$PGFR_GROOT_DATASET_ROOT/cont24/right/red"
-
-NUM_GPUS=1 \
-SAVE_STEPS=999999 \
-SAVE_TOTAL_LIMIT=1 \
-MAX_STEPS=3000 \
-USE_WANDB=0 \
-DATALOADER_NUM_WORKERS=4 \
-GLOBAL_BATCH_SIZE=16 \
-LEARNING_RATE=1e-5 \
-SHARD_SIZE=1024 \
-NUM_SHARDS_PER_EPOCH=100000 \
-EPISODE_SAMPLING_RATE=0.1 \
-COLOR_JITTER_BRIGHTNESS=0.3 \
-COLOR_JITTER_CONTRAST=0.4 \
-COLOR_JITTER_SATURATION=0.5 \
-COLOR_JITTER_HUE=0.08 \
-/bin/bash examples/finetune.sh \
-  --base-model-path "$PGFR_GROOT_OUTPUT_ROOT/order744/policy_gated_factory_robot_orchestrator_reference_order744/checkpoint-3000" \
-  --dataset-path "$CONT24_DATASETS" \
-  --embodiment-tag OXE_DROID_RELATIVE_EEF_RELATIVE_JOINT \
-  --output-dir "$PGFR_GROOT_OUTPUT_ROOT/order744-cont24" \
-  --experiment-name policy_gated_factory_robot_orchestrator_reference_order744_cont24 \
-  --modality-config-path "$PGFR_MODALITY_CONFIG" \
-  --state-dropout-prob 0.2 \
-  --save-only-model
+export TRAIN_PROVENANCE="$HOME/pgfr-training/provenance"
+mkdir -p "$TRAIN_PROVENANCE"
+git -C "$REPO" rev-parse HEAD > "$TRAIN_PROVENANCE/pgfr-commit.txt"
+git -C "$ISAAC_GROOT_ROOT" rev-parse HEAD > "$TRAIN_PROVENANCE/groot-commit.txt"
+git -C "$ISAAC_GROOT_ROOT" diff --binary > "$TRAIN_PROVENANCE/groot-local-changes.patch"
+sha256sum "$ISAAC_GROOT_ROOT/uv.lock" > "$TRAIN_PROVENANCE/uv-lock.sha256"
+uv --version > "$TRAIN_PROVENANCE/uv-version.txt"
+"$GROOT_PYTHON" --version > "$TRAIN_PROVENANCE/python-version.txt"
+uv pip freeze --python "$GROOT_PYTHON" > "$TRAIN_PROVENANCE/python-packages.txt"
+nvidia-smi > "$TRAIN_PROVENANCE/nvidia-smi.txt"
 ```
 
-The final serving artifact is
-`order744-cont24/policy_gated_factory_robot_orchestrator_reference_order744_cont24/checkpoint-3000`.
-`checkpoint-3000` is the local NVIDIA trainer output directory. When the model
-is published, its eight inference files and `SHA256SUMS` live at the Hugging
-Face model-repository root and are downloaded into one local model directory.
+Keep any local PGFR source changes, the original lockfile, installed wheel
+hashes/source references, OS release and native-package versions with these
+records. A package list alone does not identify every wheel or native library.
+Keep credentials out of provenance records; review local patches and package
+URLs before sharing them. This guide defines the setup and checks to run; it
+does not claim a newly provisioned workstation has completed training.
 
-## 5. Validate before serving
+## Select and check the local CPU encoder
 
-Require all of the following:
+Use an FFmpeg build whose package/source and license you have reviewed. A
+normal distribution CPU build with GPL/libx264 support can satisfy conversion;
+GPL is allowed in this local workflow. The selected reproduction profile
+rejects FFmpeg builds reporting `--enable-nonfree` or a nonfree/unredistributable
+license. This choice does not assert that private use of such a build is
+prohibited. Review [FFmpeg's licensing guidance](https://ffmpeg.org/legal.html)
+for any intended redistribution.
 
-1. training exits successfully at step 3000;
-2. the final checkpoint contains every indexed safetensor shard;
-3. model, processor, statistics, and index files are present;
-4. the dataset and model revisions are recorded; and
-5. rollout validation uses the integrated runtime in [`../../runtime/`](../../runtime/).
+On a fresh Ubuntu 24.04 x86 training host, inspect the package candidate first:
 
-Changing the dataset composition, base checkpoint, modality, learning rate,
-or step count defines a new experiment and should use a new output directory.
+```bash
+sudo apt-get update
+apt-cache policy ffmpeg
+```
+
+Proceed with the command below only when the candidate comes from the Ubuntu
+repositories. If it points to a Jetson/NVIDIA FFmpeg repository or another
+unreviewed source, select a compatible CPU build in a separate local training
+environment instead. This is not an instruction to replace the live Thor setup.
+
+```bash
+sudo apt-get install --no-remove --no-install-recommends ffmpeg
+
+dpkg-query -W ffmpeg > "$TRAIN_PROVENANCE/ffmpeg-package.txt"
+apt-cache policy ffmpeg > "$TRAIN_PROVENANCE/ffmpeg-package-origin.txt"
+```
+
+This installs the Ubuntu executable and its shared-library dependencies. Record
+the resolved versions; the Python lock does not pin OS packages. Confirm encoding
+and TorchCodec decoding with the checks below before using the environment.
+
+Select the exact executable, then run the preflight. `/usr/bin/ffmpeg` below
+is an example path, not an assumption that the installed build is suitable:
+
+```bash
+export PGFR_FFMPEG_BIN=/usr/bin/ffmpeg
+"$GROOT_PYTHON" "$PIPELINE/pipeline/conversion/ffmpeg_contract.py" \
+  --ffmpeg "$PGFR_FFMPEG_BIN" > "$TRAIN_PROVENANCE/ffmpeg.json"
+```
+
+The check inspects the reported build/license and performs a tiny CPU RGB
+scale → libx264/yuv420p → MP4 encode through pipes. It writes no dataset files.
+Missing executables, unidentified build/license reports, reported nonfree
+builds, and missing encoder/filter/muxer support stop conversion with an error.
+The converter accepts `--ffmpeg /absolute/path/to/ffmpeg`; otherwise it uses
+`PGFR_FFMPEG_BIN`, then `ffmpeg` from `PATH`, and applies the same checks.
+Retain the returned executable SHA-256 and reports; the converter stores them
+in `meta/ffmpeg_provenance.json` and the native builder preserves that file.
+
+This executable check is separate from TorchCodec's native-library needs.
+Provision shared FFmpeg libraries compatible with the TorchCodec wheel in the
+pinned upstream lockfile and record their exact packages/source references.
+The exact x86 native-library installation has not been qualified by this
+release; the custom Thor wheel's FFmpeg ABI does not establish x86 compatibility.
+Run an import check in this environment, then the
+[real converted-video decode check](DATASET_CREATION.md#check-decoding-in-the-actual-training-environment)
+before statistics or training:
+
+```bash
+"$GROOT_PYTHON" -c 'import torchcodec; from torchcodec.decoders import VideoDecoder; print(torchcodec.__version__)'
+```
+
+The executable hash does not cover shared `libav*` dependencies. Do not copy
+an installed Jetson environment or its custom ARM64 TorchCodec wheel into
+this x86 training setup. An import check, a CPU encode check, and a one-frame
+decode check each cover a different prerequisite; none measures model quality.
+
+## Obtain official NVIDIA prerequisites
+
+Use a dedicated Hugging Face cache for this pinned training run, then accept
+the applicable model terms, including the gated
+[NVIDIA Cosmos-Reason2-2B model](https://huggingface.co/nvidia/Cosmos-Reason2-2B),
+and authenticate to Hugging Face if required. Keep tokens out of source, shell
+scripts, run manifests, and published logs. The base model is
+[NVIDIA GR00T-N1.7-DROID](https://huggingface.co/nvidia/GR00T-N1.7-DROID).
+Code licensing and the NVIDIA model licenses are separate requirements.
+
+```bash
+export HF_HOME="$HOME/pgfr-training/hf-cache"
+"$ISAAC_GROOT_ROOT/.venv/bin/hf" auth login
+export GROOT_DROID_BASE="$HOME/pgfr-training/models/groot-n1.7-droid"
+"$ISAAC_GROOT_ROOT/.venv/bin/hf" download nvidia/GR00T-N1.7-DROID \
+  --revision 05e7cc97e40dbd33b0890c35cc0214fcb0547ab5 \
+  --local-dir "$GROOT_DROID_BASE"
+"$GROOT_PYTHON" - <<'PIN_BACKBONE'
+from pathlib import Path
+from huggingface_hub import snapshot_download
+revision = "9ce19a195e423419c349abfc86fd07178b230561"
+snapshot = Path(snapshot_download("nvidia/Cosmos-Reason2-2B", revision=revision))
+# Pinned GR00T loads this model ID without a revision argument. Bind its
+# offline default ref explicitly; downloading a commit alone does not do so.
+ref = snapshot.parent.parent / "refs" / "main"
+ref.parent.mkdir(parents=True, exist_ok=True)
+ref.write_text(revision)
+print("Pinned backbone:", snapshot)
+PIN_BACKBONE
+```
+
+The backbone remains in this dedicated cache because pinned GR00T loads it by
+its official model ID without a revision argument. The snippet binds that
+repository's default cache ref to the downloaded commit; a commit-only download
+does not create `refs/main` on a clean cache. Keep the same `HF_HOME` and set
+`HF_HUB_OFFLINE=1` for training so it cannot replace the pinned ref. Preserve
+upstream NVIDIA notices and model attribution in any permitted derived release.
+
+## Check inputs and train
+
+For each native training root, first run the real statistics command in the
+[creation guide](DATASET_CREATION.md#generate-real-statistics-before-training).
+The launcher refuses missing/placeholder statistics, incorrect dimensions,
+missing video/parquet files, and nonempty output directories.
+
+```bash
+export TRAIN_DATA="$HOME/pgfr-user-data/native/left-layout3-green-red-blue-green"
+export TRAIN_OUTPUT="$HOME/pgfr-training/outputs/my-policy"
+export HF_HUB_OFFLINE=1
+"$GROOT_PYTHON" "$PIPELINE/pipeline/training/launch_finetune.py" \
+  --groot-root "$ISAAC_GROOT_ROOT" --base-model "$GROOT_DROID_BASE" \
+  --dataset "$TRAIN_DATA" --output-dir "$TRAIN_OUTPUT" \
+  --max-steps 3000 --learning-rate 1e-4 \
+  --batch-size 16 --dry-run
+```
+
+Add `--dataset /absolute/path/to/another/native/root` once per additional
+training cohort, including both arms, every color and required accumulated
+context. A single green cohort above illustrates syntax; it cannot support a
+claim of complete two-arm, three-color capability. Run the same command without
+`--dry-run` only when the printed command and dataset inventory are correct.
+The launcher calls `gr00t/experiment/launch_finetune.py` directly with one GPU,
+explicit step/batch/LR/checkpoint arguments, and the provided modality config.
+It records the command and inputs in `pgfr_training_run.json`.
+
+The example fine-tunes the action model and projector while leaving the LLM and
+visual backbone frozen (plus pinned patched defaults for VLLN). It is not a
+LoRA recipe or full tuning of every backbone weight. The single-frame DROID
+configuration preserves the base checkpoint's `[0]` image history, 40-step
+action horizon, relative EEF/joint actions, and absolute gripper actions.
+
+Checkpoint output is `$TRAIN_OUTPUT/checkpoint-3000` for this example. The
+launcher leaves the upstream experiment-name option unset, so the output
+directory basename supplies the run label without an extra subdirectory.
+Check the trainer's actual final step and files before export. Loss alone does
+not establish closed-loop grasp/release success.
+
+## Optional continuation on your own corrective data
+
+Collect new, accepted corrective examples in separate roots, preserve held-out
+partitions, and compute their statistics. Initialize from **your own** first
+training output and use a new output directory:
+
+```bash
+"$GROOT_PYTHON" "$PIPELINE/pipeline/training/launch_finetune.py" \
+  --groot-root "$ISAAC_GROOT_ROOT" \
+  --base-model "$TRAIN_OUTPUT/checkpoint-3000" \
+  --dataset "$TRAIN_DATA" \
+  --dataset /absolute/path/to/your/corrective/native-root \
+  --output-dir "$HOME/pgfr-training/outputs/my-policy-continuation" \
+  --max-steps 3000 --learning-rate 1e-5 --batch-size 16 --dry-run
+```
+
+Inspect and then remove `--dry-run` to train. Here `--learning-rate 1e-5` is
+passed as an actual upstream argument. The pinned upstream
+[`examples/finetune.sh`](https://github.com/NVIDIA/Isaac-GR00T/blob/e5749287857afd97b78f1147166137de29746392/examples/finetune.sh)
+hardcodes `--learning_rate 1e-4`; setting an environment variable named
+`LEARNING_RATE` does not override it. This wrapper avoids that ambiguity and
+also passes checkpoint retention explicitly.
+
+The launcher saves model-only checkpoints. Continuation initializes new
+optimizer/scheduler state from saved weights; it is **not** an exact resume of
+optimizer, scheduler, or RNG state. Pick step counts and LR by held-out
+validation, not by assuming a historical count transfers to new demonstrations.
+
+## Export and qualify
+
+Use the [local export procedure](../../models/README.md). From the repo root:
+
+```bash
+python3 "$REPO/ops/export-groot-checkpoint.py" \
+  --checkpoint "$TRAIN_OUTPUT/checkpoint-3000" \
+  --output-dir "$HOME/pgfr-training/export/my-policy" \
+  --model-label my-policy --dataset-path "$TRAIN_DATA"
+```
+
+Retain the full training inventory and provenance when multiple dataset roots
+were used; the export's dataset-path field is a selected local reference, not
+a replacement for the run manifest. Export packages the checkpoint config,
+processor/statistics, model tensors, metadata and SHA-256 inventory. It does not
+upload, deploy, or validate the policy's physical behavior. Complete
+[VALIDATION.md](VALIDATION.md) before claiming a working learned-action demo.

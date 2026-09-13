@@ -75,9 +75,9 @@ def _validate(kind: str, obj: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]],
         if not isinstance(obj, dict):
             return None, "skill manifest must be a JSON object"
         try:
-            from pgfr_conformance.kit import check_skill_manifest  # type: ignore
+            from pgfr_conformance.kit import check_skill_manifest_data  # type: ignore
         except ImportError:
-            check_skill_manifest = None  # type: ignore
+            check_skill_manifest_data = None  # type: ignore
         required = ("name", "version", "description", "requires_tools",
                     "allowed_actions", "done_criteria")
         missing = [f for f in required if not obj.get(f)]
@@ -94,19 +94,8 @@ def _validate(kind: str, obj: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]],
             return None, f"requires_tools must be a list of known tools: {sorted(TOOLS)}"
         if not re.fullmatch(r"[a-z][a-z0-9-]{1,48}", str(obj["name"])):
             return None, "name must be kebab-case"
-        if check_skill_manifest is not None:
-            import tempfile
-            import os
-            import yaml
-
-            fd, tmp = tempfile.mkstemp(suffix=".yaml")
-            try:
-                with open(tmp, "w") as f:
-                    yaml.safe_dump(obj, f)
-                fails = [r.name for r in check_skill_manifest(tmp) if not r.passed]
-            finally:
-                os.close(fd)
-                os.unlink(tmp)
+        if check_skill_manifest_data is not None:
+            fails = [r.name for r in check_skill_manifest_data(obj) if not r.passed]
             if fails:
                 return None, f"conformance failures: {fails}"
         return obj, None

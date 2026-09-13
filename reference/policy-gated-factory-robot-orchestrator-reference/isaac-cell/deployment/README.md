@@ -6,6 +6,13 @@ package. [`ops/install-groot-cell.sh`](../../../../ops/install-groot-cell.sh)
 copies these files into the selected Isaac scripts mount together with the
 GR00T runtime and capture context.
 
+The [two-host guide](../../../../docs/REPRODUCIBLE-DEMO.md) runs this bundle as
+read-only mounted code in NVIDIA's directly pulled Isaac Sim 6.0.0-dev2 image.
+The launcher requires explicit `--accept-eula`; installation alone does not
+accept the runtime terms or start a container. This historical learned-motion
+profile is separate from the qualified 6.0.1 scripted baseline. No project
+Isaac image is built or published.
+
 The installed scene presents a red cube, blue cylinder, and green brick in
 front of each Franka arm. Installed filenames and `/scripts` destinations are
 part of the runtime contract.

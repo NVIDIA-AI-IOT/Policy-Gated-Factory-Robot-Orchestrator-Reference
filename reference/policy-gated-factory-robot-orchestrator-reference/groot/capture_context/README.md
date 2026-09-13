@@ -23,9 +23,11 @@ these files under `/scripts/groot_capture_context`. The direct deployment in
 [`../runtime/native_droid_work/pgfr_groot_certified_deployment_v36.py`](../runtime/native_droid_work/pgfr_groot_certified_deployment_v36.py)
 loads the selected file and fails closed if it is missing or malformed.
 
-These files are deployment alignment inputs, not a training dataset. Images,
-full trajectories, and policy actions are published separately in the
-native-DROID dataset described by [`../models/README.md`](../models/README.md).
+These files are deployment alignment inputs, not a training dataset. The
+public release does not supply demonstration images, full trajectories, or
+policy actions. Follow the [dataset-creation guide](../groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md)
+to record your own demonstrations and the [model guide](../models/README.md)
+to install the checkpoint trained from them.
 
 Do not hand-edit a state to accommodate a changed scene. A new robot, camera,
 object layout, or capture protocol requires a measured replacement followed by

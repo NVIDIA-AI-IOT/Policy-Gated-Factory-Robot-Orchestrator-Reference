@@ -71,6 +71,10 @@ Options:
 The image is immutable in this launcher:
   nvcr.io/nvidia/isaac-sim:6.0.1@sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb
 
+Review NVIDIA's Isaac Sim Additional Software and Materials License before
+pulling the image or passing --accept-eula:
+  https://www.nvidia.com/en-us/agreements/enterprise-software/isaac-sim-additional-software-and-materials-license/
+
 Prepare is idempotent only while the installed files exactly match this checkout.
 It refuses conflicting files and never replaces an existing container.
 EOF
@@ -148,7 +152,7 @@ esac
 if [ "$MODE" = prepare ]; then
   ! $ACCEPT_EULA || fail "--accept-eula is valid only with --check or --run"
 else
-  $ACCEPT_EULA || fail "--$MODE requires --accept-eula (review NVIDIA's Omniverse license first)"
+  $ACCEPT_EULA || fail "--$MODE requires --accept-eula (review NVIDIA's Isaac Sim Additional Software and Materials License; see --help)"
 fi
 if [ "$MODE" != run ]; then
   ! $PRIVACY_CONSENT || fail "--privacy-consent is valid only with --run"
@@ -455,7 +459,7 @@ run() {
   local xauth_file="" container_id
   local -a docker_args
   $ACCEPT_EULA \
-    || fail "--run requires --accept-eula (review NVIDIA's Omniverse license first)"
+    || fail "--run requires --accept-eula (review NVIDIA's Isaac Sim Additional Software and Materials License; see --help)"
   require_docker
   assert_container_absent
   assert_mount_idle

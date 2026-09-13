@@ -17,10 +17,27 @@ records mission evidence. PGFR Console provides the operator interface, while
 Chat, Workflows, MCP, and OpenClaw adapters connect agent runtimes to the same
 control service.
 
-[Watch the reference mission](https://github.com/user-attachments/assets/9f15f687-9a6d-4669-ac43-73ba49f89427)
-or [download the video](docs/PGFR_Demo.mp4).
+Use the supplied factory cell as a worked example, or adapt the reference to
+your own Isaac Sim scene and tasks. You can create or bring a custom demonstration
+dataset and fine-tune GR00T for that setup. See
+[Adapt the reference to your own scene](#adapt-the-reference-to-your-own-scene)
+for the integration steps.
 
-## Key capabilities
+The public release includes dataset-creation and fine-tuning instructions;
+it does not provide a project fine-tuned checkpoint or a recorded training
+dataset. For learned motion, [create demonstrations](reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md),
+[fine-tune GR00T](reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md), and install your own
+checkpoint. Official upstream model and license prerequisites remain required.
+See [release scope](docs/RELEASE-SCOPE.md). A newly trained model needs its own
+rollout validation.
+
+Reproduction uses NVIDIA's official Isaac Sim image with project files mounted
+from the RTX host, plus a native GR00T environment on Thor. This project does
+not publish a replacement Isaac Sim image, a Thor inference image, or a copy of
+the installed development environment. Dataset creation and training have their
+own instructions; the existing perception service still uses its upstream image.
+
+## Reference capabilities
 
 - **Policy-gated execution:** all floor actions pass through PGFR Spine before
   reaching ROS 2 or a robot controller.
@@ -28,22 +45,30 @@ or [download the video](docs/PGFR_Demo.mp4).
   checked against simulator state and fresh camera observations.
 - **Isaac Sim reference cell:** two Franka arms, conveyors, two totes, an AMR,
   a rack, and a deterministic reset profile.
-- **GR00T integration:** one fine-tuned checkpoint serves two arm-specific
+- **GR00T integration:** one user-trained checkpoint serves two arm-specific
   policy processes on Jetson AGX Thor.
-- **Operator tools:** PGFR Console provides topology, Chat, Workflows, mission
-  history, inspection, and GPU telemetry views.
+- **Operator tools:** PGFR Console provides Chat, topology, mission history,
+  inspection, and GPU telemetry views.
 - **Agent interfaces:** the floor API is available through MCP, OpenClaw, and
   an OpenAI-compatible Chat service.
-- **Reproducible deployment:** container images, model revisions, runtime
-  inputs, and dependency locks are recorded and validated.
+- **Versioned deployment:** upstream images and dependencies are pinned;
+  local data provenance and checkpoint checksums identify each trained model.
 
-The default acceptance workflow runs six serial GR00T placements followed by
-two tote transfers. Concurrent two-arm execution is a separate opt-in
-validation profile. Physical actions are not retried automatically.
+In the supplied reference cell, the default acceptance workflow runs six serial
+GR00T placements followed by two tote transfers. Concurrent two-arm execution
+is a separate opt-in validation profile. Physical actions are not retried automatically.
+
+## Dashboard
+
+The Orchestration Console opens in Chat, with topology, inspection, and GPU
+views available from the header.
+
+![Orchestration Console dashboard with Chat selected, example prompts, conversation history, and Reset Scene](docs/images/orchestration-console.png)
 
 ## Architecture
 
-![Policy-Gated Factory Robot Orchestrator Reference deployment](docs/pgfr-spine-deployment.svg)
+See [Architecture details](docs/ARCHITECTURE.md) for component responsibilities
+and the two-host deployment.
 
 | Component | Purpose | Interface |
 |---|---|---|
@@ -81,12 +106,13 @@ qualification items.
 
 ## Quick start
 
-Choose the deployment that matches the task:
+Choose a starting point for the supplied reference cell or your own integration:
 
 | Deployment | Hosts | Use case | Instructions |
 |---|---:|---|---|
 | Scripted Isaac Sim baseline | One RTX workstation | Run and validate the reference cell without Thor or GR00T | Steps below |
-| Full GR00T demo | Jetson AGX Thor and an RTX workstation | Run perception, policy serving, orchestration, and the complete mission | [Installation guide](INSTALL.md) |
+| User-trained GR00T deployment | Jetson AGX Thor and an RTX workstation | Create data, train a policy, then run perception and orchestration | [Installation guide](INSTALL.md) |
+| Custom Isaac Sim scene | Your adapted setup | Collect your own dataset, fine-tune GR00T, and integrate your scene | [Adapt the reference](#adapt-the-reference-to-your-own-scene) |
 
 ### Scripted Isaac Sim baseline
 
@@ -98,7 +124,7 @@ Prerequisites:
 - an NVIDIA driver supported by Isaac Sim 6.0.1 (the preflight currently
   requires 595.58.03 or newer); and
 - acceptance of the
-  [NVIDIA Isaac Sim license](https://docs.isaacsim.omniverse.nvidia.com/6.0.1/common/NVIDIA_Omniverse_License_Agreement.html).
+  [NVIDIA Isaac Sim license](https://docs.isaacsim.omniverse.nvidia.com/6.0.1/common/licenses-isaac-sim.html).
 
 Clone the repository and pull the pinned Isaac Sim image:
 
@@ -147,13 +173,35 @@ run it while another simulation task is active.
 The full deployment requires:
 
 - the validated Jetson and RTX host configurations;
-- access to the referenced Hugging Face model repositories;
+- a locally trained and exported GR00T checkpoint;
+- access to the documented official NVIDIA base models and runtime backbone;
 - credentials for the selected NVIDIA or OpenAI-compatible model endpoint; and
 - passwordless SSH from the simulation host to the Jetson control host.
 
 Start with [INSTALL.md](INSTALL.md), then follow the
 [two-host deployment guide](docs/REPRODUCIBLE-DEMO.md). The guides keep the
 stable scripted baseline and the learned GR00T profile separate.
+
+## Adapt the reference to your own scene
+
+The factory layout, two Franka arms, cameras, and example tasks demonstrate one
+integration. You can use your own Isaac Sim environment and a custom dataset:
+
+1. Define the robots, cameras, objects, and tasks in your scene. Collect or
+   import demonstrations with synchronized images, robot states, and executed
+   actions that match your setup.
+2. Adapt the [dataset pipeline](reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md#adapt-to-your-own-isaac-sim-scene)
+   to your robot and data, then [fine-tune GR00T](reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md).
+3. Connect your scene through the [ROS 2 contract](docs/floor-ros2-contract.md)
+   and [endpoint integration](docs/ENDPOINT-INTEGRATION.md). Update the runtime
+   mappings, policy rules, and outcome checks for your tasks.
+4. Evaluate your trained policy and complete orchestration in your scene.
+
+The included capture, training, and execution tools assume the reference
+Franka/DROID state and action layout and camera mappings. A different robot or
+data format requires corresponding changes; fine-tuning alone does not adapt
+the scene integration. The documented deployment and acceptance results apply
+to their stated reference configurations.
 
 ## Open the operator console
 
@@ -184,6 +232,8 @@ before changing service bind addresses or firewall rules.
 | Document | Description |
 |---|---|
 | [Installation](INSTALL.md) | Choose and prepare the standalone or two-host deployment |
+| [Dataset creation](reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md) | Collect reference demonstrations or adapt capture for your own scene |
+| [GR00T fine-tuning](reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md) | Train and export a policy using your custom dataset |
 | [Documentation index](docs/README.md) | Operator, deployment, integration, and developer guides |
 | [Two-host deployment](docs/REPRODUCIBLE-DEMO.md) | Prepare and start the Jetson and RTX deployment |
 | [Model providers](docs/MODEL-PROVIDERS.md) | Configure PGFR Chat endpoints, credentials, OpenClaw, and the perception boundary |

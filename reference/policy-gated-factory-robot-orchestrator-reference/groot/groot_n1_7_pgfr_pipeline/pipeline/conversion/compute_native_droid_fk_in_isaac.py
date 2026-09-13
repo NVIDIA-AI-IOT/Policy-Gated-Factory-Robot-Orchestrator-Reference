@@ -1,92 +1,71 @@
+#!/usr/bin/env python3
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-"""Compute stock Franka panda_link8 FK for a native-DROID request.
+"""Compute stock Franka panda_link8 FK in a separate, headless Isaac process.
 
-Run inside the already-bootstrapped Isaac Sim process after
-``build_native_droid_dataset.py export``.  This keeps FK on NVIDIA's stock Lula
-Franka description and does not define a joint map or kinematics model.
+CLI: /isaac-sim/python.sh this_file.py --request /data/request.json --output /data/fk.json
+The legacy embedded batch caller may instead supply the two explicit globals.
+No scene is opened, no ROS node is started, and no robot action is applied.
 """
-
+import argparse
 import json
-import traceback
-
-import numpy as np
-from isaacsim.robot_motion.motion_generation import LulaKinematicsSolver
+from pathlib import Path
 
 
-_g = globals()
+def compute(request_path, output_path):
+    import numpy as np
+    from isaacsim.core.utils.extensions import get_extension_path_from_name
+    from isaacsim.robot_motion.motion_generation import LulaKinematicsSolver
 
-try:
-    _request_path = _g.pop(
-        "_PGFR_NATIVE_DROID_FK_REQUEST",
-        "/scripts/native_droid_work/shape_pair_smoke16_fk_request.json",
-    )
-    _output_path = _g.pop(
-        "_PGFR_NATIVE_DROID_FK_OUTPUT",
-        "/scripts/native_droid_work/shape_pair_smoke16_fk_lula.json",
-    )
-    with open(_request_path, encoding="utf-8") as _stream:
-        _request = json.load(_stream)
-    if _request.get("frame") != "panda_link8":
-        raise ValueError("FK request frame must be panda_link8")
-
-    _solver = LulaKinematicsSolver(
-        robot_description_path=(
-            "/isaac-sim/exts/isaacsim.robot_motion.motion_generation/"
-            "motion_policy_configs/franka/rmpflow/robot_descriptor.yaml"
-        ),
-        urdf_path=(
-            "/isaac-sim/exts/isaacsim.robot_motion.motion_generation/"
-            "motion_policy_configs/franka/lula_franka_gen.urdf"
-        ),
+    output_path = Path(output_path)
+    if output_path.exists():
+        raise FileExistsError(f"Refusing to overwrite FK output: {output_path}")
+    request = json.loads(Path(request_path).read_text())
+    if request.get("schema_version") != 1 or request.get("frame") != "panda_link8" or not request.get("episodes"):
+        raise ValueError("Expected a nonempty schema-1 panda_link8 FK request")
+    extension = Path(get_extension_path_from_name("isaacsim.robot_motion.motion_generation"))
+    config = extension / "motion_policy_configs/franka"
+    solver = LulaKinematicsSolver(
+        robot_description_path=str(config / "rmpflow/robot_descriptor.yaml"),
+        urdf_path=str(config / "lula_franka_gen.urdf"),
     )
 
-    def _compute(_joint_rows):
-        _positions = []
-        _rotations = []
-        for _row in _joint_rows:
-            _joints = np.asarray(_row, dtype=float)
-            if _joints.shape != (7,) or not np.isfinite(_joints).all():
+    def poses(rows):
+        positions, rotations = [], []
+        for row in rows:
+            joints = np.asarray(row, dtype=float)
+            if joints.shape != (7,) or not np.isfinite(joints).all():
                 raise ValueError("FK input must be a finite seven-joint vector")
-            _position, _rotation = _solver.compute_forward_kinematics(
-                "panda_link8", _joints
-            )
-            _positions.append(np.asarray(_position, dtype=float).tolist())
-            _rotations.append(np.asarray(_rotation, dtype=float).tolist())
-        return {"position": _positions, "rotation": _rotations}
+            position, rotation = solver.compute_forward_kinematics("panda_link8", joints)
+            positions.append(np.asarray(position).tolist())
+            rotations.append(np.asarray(rotation).tolist())
+        return {"position": positions, "rotation": rotations}
 
-    _episodes = []
-    _frames = 0
-    for _expected_index, _episode in enumerate(_request.get("episodes", [])):
-        if int(_episode.get("episode_index", -1)) != _expected_index:
-            raise ValueError("FK request episodes are not contiguous")
-        _state_rows = _episode["state_joint_position"]
-        _action_rows = _episode["action_joint_position"]
-        if len(_state_rows) != len(_action_rows) or not _state_rows:
-            raise ValueError("FK state/action frame count mismatch")
-        _episodes.append(
-            {
-                "episode_index": _expected_index,
-                "source_file": _episode["source_file"],
-                "source_sha256": _episode["source_sha256"],
-                "state": _compute(_state_rows),
-                "action": _compute(_action_rows),
-            }
-        )
-        _frames += len(_state_rows)
+    episodes = []
+    for index, episode in enumerate(request["episodes"]):
+        state, action = episode["state_joint_position"], episode["action_joint_position"]
+        if episode.get("episode_index") != index or not state or len(state) != len(action):
+            raise ValueError("FK episodes must be contiguous with matching nonempty state/action rows")
+        episodes.append({"episode_index": index, "source_file": episode["source_file"],
+                         "source_sha256": episode["source_sha256"],
+                         "state": poses(state), "action": poses(action)})
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps({"schema_version": 1, "frame": "panda_link8",
+                                     "kinematics": "Isaac Sim LulaKinematicsSolver(Franka)",
+                                     "episodes": episodes}) + "\n")
+    print(f"PGFR_NATIVE_DROID_FK_DONE episodes={len(episodes)} output={output_path}", flush=True)
 
-    _result = {
-        "schema_version": 1,
-        "kinematics": "Isaac Sim LulaKinematicsSolver(Franka)",
-        "frame": "panda_link8",
-        "episodes": _episodes,
-    }
-    with open(_output_path, "w", encoding="utf-8") as _stream:
-        json.dump(_result, _stream)
-    print(
-        "PGFR_NATIVE_DROID_FK_DONE episodes=%d frames=%d output=%s"
-        % (len(_episodes), _frames, _output_path),
-        flush=True,
-    )
-except Exception:
-    print("PGFR_NATIVE_DROID_FK_ERR:\n" + traceback.format_exc(), flush=True)
+
+if "_PGFR_NATIVE_DROID_FK_REQUEST" in globals():
+    compute(globals().pop("_PGFR_NATIVE_DROID_FK_REQUEST"), globals().pop("_PGFR_NATIVE_DROID_FK_OUTPUT"))
+elif __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--request", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    from isaacsim import SimulationApp
+    simulation = SimulationApp({"headless": True})
+    try:
+        compute(args.request, args.output)
+    finally:
+        simulation.close()

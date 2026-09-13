@@ -39,9 +39,28 @@ def _exec_setup(_path):
         exec(compile(_setup_file.read(), _path, "exec"), globals())
 
 
+_scene_profile = _bootstrap_os.environ.get(
+    "PGFR_SCENE_PROFILE",
+    "groot_three_object",
+).strip().lower()
+if _scene_profile not in ("pgfr_two_arm", "groot_three_object", "expert_capture"):
+    raise RuntimeError(
+        "PGFR_SCENE_PROFILE must be pgfr_two_arm, groot_three_object, or expert_capture"
+    )
+# Expert collection is an operator-selected startup profile in a separate ROS
+# domain. A robot command cannot switch a serving scene into this profile.
+_expert_capture = _scene_profile == "expert_capture"
+if _expert_capture:
+    if (_bootstrap_os.environ.get("PGFR_CAPTURE_ONLY") != "1"
+            or not 1 <= int(_bootstrap_os.environ.get("ROS_DOMAIN_ID", "0")) <= 232
+            or _bootstrap_os.environ.get("PGFR_CAMERA_PROFILE") != "capture"):
+        raise RuntimeError("expert_capture requires PGFR_CAPTURE_ONLY=1, capture cameras, and a nonzero ROS domain")
+
 # Physics-affecting USD additions must precede World/tensor creation.
 _exec_setup("/scripts/setup_right_cell.py")
 _exec_setup("/scripts/pgfr_node_v2.py")
+if _expert_capture:
+    globals()["_PGFR_EXPERT_CAPTURE_CALLBACKS"] = (start, run_move)
 
 # Runtime/camera/visual/reset layers use the established working stack.
 for _setup_path in (
@@ -51,14 +70,6 @@ for _setup_path in (
 ):
     _exec_setup(_setup_path)
 
-_scene_profile = _bootstrap_os.environ.get(
-    "PGFR_SCENE_PROFILE",
-    "groot_three_object",
-).strip().lower()
-if _scene_profile not in ("pgfr_two_arm", "groot_three_object"):
-    raise RuntimeError(
-        "PGFR_SCENE_PROFILE must be pgfr_two_arm or groot_three_object"
-    )
 _ready_arm = _bootstrap_os.environ.get(
     "PGFR_GROOT_READY_ARM",
     "both",
@@ -140,7 +151,9 @@ _groot_policy_route = _bootstrap_os.environ.get(
     "PGFR_GROOT_POLICY_ROUTE",
     "specialist",
 ).strip().lower() or "specialist"
-if _groot_policy_route not in ("specialist", "shared"):
+if _expert_capture:
+    _groot_policy_route = "expert_capture"
+if _groot_policy_route not in ("specialist", "shared", "expert_capture"):
     raise RuntimeError(
         "PGFR_GROOT_POLICY_ROUTE must be specialist or shared"
     )
@@ -190,18 +203,18 @@ if globals().get("_PGFR_LAST_RESET_PROFILE") != _scene_profile:
         % globals().get("_PGFR_LAST_RESET_PROFILE")
     )
 
-if _scene_profile == "groot_three_object":
+if _scene_profile in ("groot_three_object", "expert_capture"):
     _ready_scene = globals().get("_PGFR_LAST_RESET_SCENE") or {}
     print(
-        "PGFR_GROOT_THREE_OBJECT_READY "
-        "target=%s layout=%d seed=%d arm=%s"
+        ("PGFR_EXPERT_THREE_OBJECT_READY " if _expert_capture else "PGFR_GROOT_THREE_OBJECT_READY ")
+        + "target=%s layout=%d seed=%d arm=%s"
         % (_ready_color, _ready_layout, _ready_seed, _ready_arm),
         flush=True,
     )
     if _ready_arm == "both":
         print(
-            "PGFR_GROOT_DUAL_THREE_OBJECT_READY "
-            "objects=6 arms=franka_left,franka_right",
+            ("PGFR_EXPERT_DUAL_THREE_OBJECT_READY " if _expert_capture else "PGFR_GROOT_DUAL_THREE_OBJECT_READY ")
+            + "objects=6 arms=franka_left,franka_right",
             flush=True,
         )
 
@@ -266,7 +279,7 @@ if tote_r is None:
 if S.get("task") is not None:
     raise RuntimeError("full-scene bootstrap ended with an active task: %s" % S.get("task"))
 if (
-    _scene_profile == "groot_three_object"
+    _scene_profile in ("groot_three_object", "expert_capture")
     and set(globals().get("_PGFR_SHAPE_ASSET_AUDIT") or {}) != {"blue", "green"}
 ):
     raise RuntimeError(
@@ -274,7 +287,7 @@ if (
         % globals().get("_PGFR_SHAPE_ASSET_AUDIT")
     )
 if (
-    _scene_profile == "groot_three_object"
+    _scene_profile in ("groot_three_object", "expert_capture")
     and _ready_arm == "both"
     and set(globals().get("_PGFR_SHAPE_DUAL_ASSET_AUDIT") or {})
     != {"blue", "green"}
@@ -301,7 +314,7 @@ print(
     + (
         "+shape_a0+groot_three_object"
         if _scene_profile == "groot_three_object"
-        else "+pgfr_two_arm"
+        else "+expert_capture" if _expert_capture else "+pgfr_two_arm"
     )
     + (
         "+dual_arm_six_object"

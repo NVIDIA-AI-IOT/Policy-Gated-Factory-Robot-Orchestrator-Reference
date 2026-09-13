@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-"""Render portable Order744-cont24 contracts for the Isaac runtime mount."""
+"""Render portable contracts from a user-supplied checkpoint identity."""
 
 from __future__ import annotations
 
@@ -12,10 +12,9 @@ from pathlib import Path
 import tempfile
 
 
-MODEL_LABEL = "droid15_dual_shared3_layout3_order744_cont24_droid1f_steps3000_v1"
-CHECKPOINT_FINGERPRINT = (
-    "bef1f16e82d87962b6d9659c25ed5cc8e7ec75bf2a7c7bfc5afcfa1af9ca5178"
-)
+from pgfr_checkpoint import read_identity, verify_checkpoint
+
+
 ROUTING = "shared-fixed-layout3-evaluation"
 MODE = "independent-b1-per-arm-v1"
 RELAY_CONTRACT = "explicit_pair_v1_single_frame_[0]"
@@ -73,6 +72,7 @@ def build_contracts(
     left_state: str,
     right_state: str,
     *,
+    identity: dict,
     left_policy_port: int,
     right_policy_port: int,
     left_relay_port: int,
@@ -115,8 +115,8 @@ def build_contracts(
 
     serial = {
         "checkpoint": checkpoint,
-        "checkpoint_fingerprint": CHECKPOINT_FINGERPRINT,
-        "model_label": MODEL_LABEL,
+        "checkpoint_fingerprint": identity["checkpoint_fingerprint"],
+        "model_label": identity["model_label"],
         "relay_contract": RELAY_CONTRACT,
         "relay_host": "127.0.0.1",
         "relay_port": relay_ports["franka_left"],
@@ -127,9 +127,9 @@ def build_contracts(
     }
     concurrent = {
         "checkpoint": checkpoint,
-        "checkpoint_fingerprint": CHECKPOINT_FINGERPRINT,
+        "checkpoint_fingerprint": identity["checkpoint_fingerprint"],
         "mode": MODE,
-        "model_label": MODEL_LABEL,
+        "model_label": identity["model_label"],
         "relays": relays,
         "schema_version": 1,
     }
@@ -139,6 +139,7 @@ def build_contracts(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkpoint-path", required=True)
+    parser.add_argument("--checkpoint-metadata", type=Path, help="pgfr_checkpoint.json with sibling SHA256SUMS; required when weights live on another host")
     parser.add_argument("--left-service-state", required=True)
     parser.add_argument("--right-service-state", required=True)
     parser.add_argument(
@@ -180,16 +181,21 @@ def main() -> int:
         raise RuntimeError("output directory is not a directory")
 
     try:
+        selected_ports = (args.left_policy_port, args.right_policy_port, args.left_relay_port, args.right_relay_port)
+        if len(set(selected_ports)) != len(selected_ports):
+            raise ValueError("policy and relay ports must be distinct")
+        identity = (read_identity(args.checkpoint_metadata) if args.checkpoint_metadata else verify_checkpoint(Path(checkpoint)))
         serial, concurrent = build_contracts(
             checkpoint,
             left_state,
             right_state,
+            identity=identity,
             left_policy_port=args.left_policy_port,
             right_policy_port=args.right_policy_port,
             left_relay_port=args.left_relay_port,
             right_relay_port=args.right_relay_port,
         )
-    except ValueError as exc:
+    except (OSError, ValueError) as exc:
         raise SystemExit(f"render-groot-cont24-contracts: ERROR: {exc}") from exc
     write_json(output_dir / "groot_shared_policy_contract.json", serial)
     write_json(
@@ -198,7 +204,7 @@ def main() -> int:
     )
     print(
         "Rendered GR00T contracts in "
-        f"{output_dir} for {MODEL_LABEL} using two serving instances."
+        f"{output_dir} for {identity['model_label']} using two serving instances."
     )
     return 0
 

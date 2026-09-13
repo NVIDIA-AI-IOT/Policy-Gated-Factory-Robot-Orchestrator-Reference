@@ -1,46 +1,41 @@
-# Order744-cont24 validation
+# Qualify a user-trained policy
 
-## Model
+Every user-generated dataset and checkpoint needs its own qualification.
+Existing developer demonstrations and offline source tests do not establish
+that a new checkpoint succeeds. No training or simulator run is performed by
+the conversion/export checks.
 
-The Policy-Gated Factory Robot Orchestrator Reference demo uses one Order744-cont24 checkpoint for both Franka
-arms. Order744 contains 744 episodes. The cont24 continuation adds 12
-left-blue and 12 right-red accumulated-scene episodes, for 768 training
-episodes in the continuation run.
+1. **Data acceptance:** preserve capture manifests and rejected-attempt records;
+   audit camera timing, applied action provenance, episode counts, finite values,
+   FK source hashes, absolute and relative statistics, and train/validation/test
+   separation by complete sequence. Decode sample and boundary video frames.
+2. **Training evidence:** record base/backbone revisions and terms, upstream Git
+   revision and patch hash, dataset hashes, full launch arguments, actual final
+   step, loss/held-out metrics, hardware, peak GPU memory, and elapsed time.
+   The public recipe currently provides no measured RTX training budget.
+3. **Artifact integrity:** export your own checkpoint, verify every checksum,
+   and retain dataset/training provenance and NVIDIA attribution. Confirm both
+   policy servers load the same identity. Passing hashes is not action success.
+4. **Single-arm simulation:** in an isolated test scene, exercise every required
+   color/shape, arm, pose/layout, and accumulated tote context. Measure physical
+   grasp, object tracking, release, settling, distractor motion and final tote
+   compartment placement. Include failures; no automatic physical redispatch.
+5. **Complete orchestration:** run the serial six-object task in the admitted
+   order, fresh visual verification after every action, then both scripted AMR
+   tote transfers. The optional paired path requires its separate explicit
+   configuration and mixed-color order. Refer to the [runtime guide](../../README.md)
+   for the current admitted serial/paired sequences.
+6. **Release evidence:** report sample counts, acceptance/failure criteria,
+   success rates, held-out coverage and limitations for this checkpoint. Do not
+   reuse historical success claims, an exact 768-episode count, or a developer
+   checkpoint label as evidence for new artifacts.
 
-The same final checkpoint is loaded by two policy processes. The model is not
-split by arm, color, or shape.
+The model-free `expert_capture` profile is for collecting expert demonstrations.
+Its grasp/camera acceptance must be run on real Isaac before gathering a large
+corpus. It is not the deployed GR00T profile. Successful expert rollouts do not
+prove that a policy learned from them will behave equivalently.
 
-## Integrated executor
-
-The installed runtime restores the complete action executor after every
-successful scene reset. Before each policy query it:
-
-```text
-commands the recorded task home for at least 120 physics ticks
-requires all seven arm joints within 0.030 rad
-requires 12 consecutive converged ticks
-fails closed after 600 ticks without querying the policy
-```
-
-The same runtime enforces canonical Franka limits, bounded policy requery,
-tracking, physical-friction grasp and release, settling, and floor-state
-verification.
-
-## Demonstrated sequence
-
-The shared model completed this mixed-color two-arm order:
-
-1. left blue with right green;
-2. left green with right red; and
-3. left red with right blue.
-
-All six placements returned verified physical results. PGFR Chat then hauled the
-two loaded totes to the rack and verified both tote contents and final rack
-state.
-
-## Validation scope
-
-The result covers the Policy-Gated Factory Robot Orchestrator Reference Isaac Sim cell, the published fixed
-three-object layout, the DROID relative-action embodiment, and the included
-runtime contract. It is a simulation action-validation result, not a
-functional-safety certification for physical equipment.
+The source license does not grant rights to redistribute third-party model
+weights, downloaded assets, or externally collected data. Follow the
+[project release scope](../../../../../docs/RELEASE-SCOPE.md) and applicable
+artifact terms for anything you intend to publish.

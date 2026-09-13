@@ -236,10 +236,3 @@ async def test_parallel_dispatch_keeps_mixed_child_colors_and_zones() -> None:
         ("franka_left", "green"),
         ("franka_right", "red"),
     ]
-
-
-def test_perceive_region_preserves_region_specific_camera_crop() -> None:
-    assert ros2._CAMERA_FOR_REGION["conveyor_2"] == "outside_right_cam"
-    assert ros2._CAMERA_FOR_REGION["tote_r"] == "outside_right_cam"
-    assert ros2._perceive_region("conveyor_2") == "conveyor_2"
-    assert ros2._perceive_region("tote_r") == "tote_r"
