@@ -1,6 +1,6 @@
 # PGFR Spine
 
-PGFR Spine is the policy and assurance service for the Policy-Gated Factory Robot
+PGFR Spine is the policy and verification service for the Policy-Gated Factory Robot
 Orchestrator Reference. It presents one floor API for perception, action
 dispatch, verification, task status, mission history, and evidence. The service
 can use a hardware-free mock backend or the ROS 2 backend for the Isaac Sim
@@ -62,7 +62,9 @@ uv run --frozen --project pgfr-spine \
   --host 127.0.0.1 --port 8766
 ```
 
-In another terminal, inspect and update the mock floor:
+The HTTP mock keeps its state in memory. The standalone CLI commands below
+use a separate file-backed mock. In their terminal, set
+`PGFR_FLOOR_BACKEND=mock` and `PGFR_FLOOR_STATE=/tmp/pgfr-floor.json` first:
 
 ```bash
 uv run --frozen --project pgfr-spine \
@@ -94,9 +96,8 @@ uv run --frozen --project pgfr-spine \
   --host 127.0.0.1 --port 8766
 ```
 
-Use the [`ops/bootstrap-brain.sh`](../ops/bootstrap-brain.sh) compatibility
-script for the complete Jetson control-host installation. See the [two-host
-deployment guide](../docs/REPRODUCIBLE-DEMO.md)
+Use [`ops/bootstrap-brain.sh`](../ops/bootstrap-brain.sh) for the Jetson
+control-host installation. See the [two-host deployment guide](../docs/REPRODUCIBLE-DEMO.md)
 for the Isaac Sim and GR00T services.
 
 ## Parallel-dispatch controls
@@ -107,7 +108,7 @@ readiness contract passes. The route also requires
 `PGFR_GROOT_FLEXIBLE_ORDER=1`. Both flags default to `0`.
 
 When both flags are enabled, PGFR Spine rejects same-color pairs and permits only
-the next pair in the qualified Order744 sequence:
+the next pair in the configured mixed-pair sequence:
 
 1. left blue and right green;
 2. left green and right red;

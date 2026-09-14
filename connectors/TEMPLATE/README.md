@@ -7,8 +7,8 @@ does not provide a path around PGFR Spine for dispatching robot actions.
 ## Requirements
 
 - Python 3.10 or later
-- The repository checkout, which supplies `pgfr-connector-sdk` through the local
-  package reference in `pyproject.toml`
+- The repository checkout, which supplies `pgfr-connector-sdk` at
+  `packages/connector-sdk`; `pyproject.toml` also configures that local path for uv
 
 ## Create a connector
 
@@ -44,11 +44,10 @@ that a successful result carries `source` and `ts` fields.
 
 ## Limitations
 
-`assert_connector_compliant` checks the connector shape, health response,
-capability schemas, and unknown-capability behavior. It does not verify an
-external system, authenticate requests, evaluate data quality, or confirm that
-all successful results contain provenance. Cover those requirements in the
-connector's own integration tests.
+`assert_connector_compliant` invokes the connector methods to check their
+structure and unknown-capability behavior. It does not validate successful
+capability calls, authentication, data quality, or provenance. Cover those
+requirements in the connector's integration tests.
 
 The repository does not include a connector registry or hosting process. Add
 the connector explicitly to the service that will expose its capabilities.

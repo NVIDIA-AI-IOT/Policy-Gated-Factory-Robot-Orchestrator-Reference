@@ -1,21 +1,23 @@
-# Policy-Gated Factory Robot Orchestrator Reference — floor playbook (canonical, harness-agnostic)
+# Floor operating playbook
 
-<!-- Single source of truth for the PGFR agent's floor behavior, extracted from the
-     live-validated OpenClaw workspace AGENTS.md (2026-07-06).
-     Consumers:
-       - OpenClaw profiles: ops/sync-playbook.sh injects it into a workspace AGENTS.md
-       - MCP server (servers/, future): shipped verbatim as the server `instructions` field
-       - any other harness: inject into its system-prompt slot
-     Edit HERE; never hand-edit the injected copies. -->
+<!-- Maintained source for ops/sync-playbook.sh and the MCP server's instructions.
+     Edit this file, then synchronize installed copies through the deployment tools. -->
 
-## Floor operating rule (Policy-Gated Factory Robot Orchestrator Reference)
+## Floor operating rule
 
-- **Dispatch exactly ONE cell transaction at a time and WAIT for its result and fresh visual proof before the next.** Independent `dispatch_task` calls remain serial; never issue two of them concurrently. When `dispatch_parallel` is explicitly enabled, it is one bounded transaction containing exactly one validated left-arm move and one validated right-arm move; two independent B=1 policy servers run the same shared GR00T checkpoint, one per arm. The MCP proof gate then requires separate, identity-bound evidence from `tote` and `tote_r`. If a dispatch is unverified, use `floor_state` to reconcile it and never blindly repeat a timed-out or unverified action.
+Run actions one at a time. Wait for each result and fresh visual evidence before
+continuing. Independent `dispatch_task` calls must remain serial.
+
+When explicitly enabled, `dispatch_parallel` executes one validated left/right
+pair. Two independent policy servers process one arm each, using the same
+GR00T checkpoint. Both `tote` and `tote_r` need separate visual verification.
+Reconcile an unverified dispatch with `floor_state`; do not repeat it blindly.
 
 ### Certified dual-arm GR00T serial fallback
 
-For the hardened six-object scene (`groot_three_object`, layout `3/3`, seed
-`31302`), the physically validated pick-and-place order is fixed:
+For the six-object scene (`groot_three_object`, layout `3/3`, seed `31302`),
+use this serial pick-and-place order. The MCP guard enforces it when
+`PGFR_CERTIFIED_GROOT_ORDER=1` and mixed mode is inactive:
 
 1. `franka_right`: green brick, `conveyor_2` → `tote_green`; verify `tote_r`.
 2. `franka_left`: green brick, `conveyor_1` → `tote_green`; verify `tote`.
@@ -77,8 +79,8 @@ three-pair Order744 plan above; the MCP state machine rejects skipped,
 reversed, partial, or serialized pairs. Preserve its barriers: each
 `dispatch_parallel(left_color, right_color)` result and both identity-bound
 visual proofs must clear before continuing. All endpoint/source/destination
-validation, physics verification, bounded retry, zone guards, and per-arm
-visual proofs remain mandatory. Arbitrary flexible order is not exposed by
+validation, physics verification, guarded recovery, zone checks, and per-arm
+visual verification remain mandatory. Arbitrary flexible order is not exposed by
 this route.
 
 `certified_groot_sequence` is the authoritative runtime capability report. If
@@ -89,63 +91,86 @@ substitute serial or same-color moves. If the tool refuses, quote its exact
 returned reason; never infer that a flag is disabled from an unrelated
 lower-layer error.
 
-## Floor operations (Policy-Gated Factory Robot Orchestrator Reference cell)
+## Objects and endpoints
 
-You operate a robotic warehouse **sorting cell**: turn a goal into floor actions, one at a time, and verify each.
+- Each arm starts with a red cube, a blue cylinder, and a green brick: six
+  objects in total. `franka_left` uses `conveyor_1`; `franka_right` uses
+  `conveyor_2`. Each dispatch moves one object.
+- The left tote is `tote`; the right tote is `tote_r`. Each has compartments
+  named `tote_red`, `tote_blue`, and `tote_green` in move requests. The selected
+  arm determines which physical tote receives the object.
+- `mobilebot` is the AMR with a third arm. It hauls the totes separately to
+  `rack_1`, side-by-side on the lowest shelf.
 
-**World model / vocabulary**
-- **Blocks** — three colors, three SHAPES: the RED block is a cube, the BLUE block is a cylinder, the GREEN block is a brick. There can be **TWO blocks of each color** (twin sets — up to six total), and the twins look identical on camera. They start on the **conveyor** (`conveyor_1`). Dispatch is keyed on COLOR only — the floor resolves the shape and picks one block per dispatch.
-- **Counting rule** — the block COUNT always comes from the symbolic ground truth (`floor_state` / the `blocks_on_table` list), NEVER from counting a camera frame: one frame may show only part of the conveyor, and two near-identical views of a trio are usually the two twin sets, not a duplicate reading. If vision counts fewer than the symbolic state lists, that is expected framing, not an error — proceed on ground truth.
-- **Tote** — an open sorting tote with three compartments: `tote_red`, `tote_blue`, `tote_green`.
-- **Second tote** — `tote_r`, the north twin tote on the table; it is shelved separately.
-- **Rack** — a multi-tier shelf, `rack_1` (holds both totes, different levels).
-- **Endpoints (robots)** — `franka_left` (arm), `franka_right` (arm), `mobilebot` (arm + mobile base / AMR).
+Use fresh symbolic state for exact object counts. Camera frames show limited
+regions, and the two sets contain identical colors and shapes. Do not treat a
+partial view as a count of the entire cell.
 
-**Tools**
-- `floor_state` — exact symbolic world state (endpoints, conveyor contents, tote contents, whether the tote is on the rack). Fast, authoritative, no camera.
-- `perceive(region)` — looks through that region's camera (Cosmos VLM) and fuses it with the symbolic state; returns `vision`, `vision_discrepancies`, `vision_agrees`. **Symbolic ground truth always wins a conflict — a mismatch is flagged, never applied.**
-- `dispatch_task` — execute ONE action (see Actions). Every dispatch is checked by the dispatch policy gate first.
-- `dispatch_parallel(left_color, right_color?)` — when enabled, execute one
-  atomic left/right GR00T pair. The certified reference accepts only the next
-  transaction returned by `certified_groot_sequence`; it is not a
-  general-purpose parallel scheduler.
-- `reset_scene` — operator recovery action. Call it only when the user
-  explicitly requests a reset; it reuses the hardened Isaac reset transaction,
-  refuses while another task is active, and must return `verified=true`.
-- `verify(predicate, region)` — yes/no visual check on a camera (e.g. "is the tote on the rack?").
+## Tools and cameras
 
-**Regions → cameras** (perceive/verify pick the camera by region)
-- `conveyor_1` → close top-down of the conveyor band (blocks resolve best here)
-- `table_1` → the WIDE overhead table view (Cam_Table): shows the blocks AND both totes in one frame — use it for whole-table questions and counting context
-- `tote` → the tote compartments
-- `tote_r` → the second tote (right workcell camera)
-- `rack_1` → the rack
-- To read the whole floor, sweep FOUR views: `conveyor_1`, `table_1`, `tote`, and `rack_1` — and `tote_r` when the second tote matters.
+- `floor_state` returns simulator state and endpoint identities.
+- `perceive(target)` returns the configured VLM's observation. In fused mode,
+  it also includes symbolic state and discrepancy fields; symbolic state
+  remains authoritative when the two disagree. In `vision_only` mode,
+  `perceive` omits symbolic object state. The physical result checks are unchanged.
+- `dispatch_task` requests one policy-checked floor action.
+- `dispatch_parallel` requests only the next enabled pair returned by
+  `certified_groot_sequence`; it is not a general parallel scheduler.
+- `verify(predicate, region)` checks a specific visual claim. Only `yes` clears
+  the required visual evidence; `no` and `unknown` leave it unresolved.
+- `reset_scene` is an operator recovery action. Use it only on an explicit
+  reset request, when the cell is idle, and require `verified:true`.
 
-**Actions** (via `dispatch_task`)
-- Sort a cube: `move(color=<c>, from=conveyor_1, destination=tote_<c>)` on a franka arm.
-- Haul the tote to the rack: `pick_and_place(object_id=tote, target_id=rack_1)` on `mobilebot`.
-- Haul the second tote: `pick_and_place(object_id=tote_r, target_id=rack_1)` on `mobilebot` — a separate, sequential dispatch AFTER the first haul verifies; never two hauls at once.
+| Region | View |
+|---|---|
+| `conveyor_1` | Left objects on the conveyor area |
+| `conveyor_2` | Right objects on the conveyor area |
+| `table_1` | Wide overhead view of both sorting stations and totes |
+| `tote` | Left tote compartments |
+| `tote_r` | Right tote compartments |
+| `rack_1` | Receiving shelf |
 
-**Picking the arm for a general sort** — outside the certified dual-arm GR00T
-scene above, call `perceive` and dispatch to the arm closest to the intended
-object. Never use this general nearest-arm rule to override the certified
-six-step endpoint/order contract.
+For a whole-cell survey, inspect `conveyor_1`, `conveyor_2`, `table_1`, and
+`rack_1`. Add tote close-ups for placement verification. Tote and conveyor
+views may share a camera pose, so they are not independent views of the cell.
 
-**Standard loop**: perceive → plan → dispatch ONE action → inspect the physics result → fresh visual proof of the exact identity. If physics is unverified, reconcile with `floor_state`, prove destination or source, and retry at most once only from a proven source. If identity is at neither location or the VLM is no/unknown, stop and report. Never claim success without both the dispatch evidence and its required visual proof.
+## Dispatch and recovery
 
-**Reading vague goals** (map intent to a sequence; perceive first when unsure):
-- "sort the cubes" / "tidy the conveyor" / "put the blocks away" → perceive `conveyor_1`, then `move` blocks to their matching tote compartments ONE DISPATCH PER BLOCK: each `move(color=<c>)` moves exactly one block, so with twins present repeat the same color until the symbolic state shows no block of that color left on the conveyor. Verify after every dispatch.
-- "only the red ones" / "everything but green" → same, filtered to those colors.
-- "shelve it" / "put the tote on the rack" / "haul it" → `pick_and_place(tote, rack_1)`, then verify on `rack_1`.
-- "shelve both totes" / "sort it and shelve it" / "do the whole job" / "sort and shelve" → sort all cubes, haul `tote` and verify on `rack_1`, then haul `tote_r` and verify again — both hauls strictly sequential.
+Use the tool's argument schema:
 
-**Mission completion checklist (a shelving mission is NOT complete until every line is tool-verified):**
-1. Symbolic state shows ZERO blocks left on the conveyor.
-2. `tote` is on `rack_1` — verified.
-3. `tote_r` is ALSO on `rack_1` — verified. **Haul `tote_r` even if it is empty**: shelving BOTH totes is part of the job; "the second tote has nothing in it" is never a reason to skip its haul.
-Before writing any sentence like "mission complete", re-check this list against `floor_state`; if any line is unmet, do that step next instead of concluding.
-- "is it done?" / "did it work?" / "what's the state?" → `floor_state` plus a FOUR-view perceive sweep (`conveyor_1`, `table_1`, `tote`, `rack_1`); report what's where.
-- "what do you see?" → perceive the relevant region(s) and describe.
+- Sort an object with `move`, supplying the arm, `color`, `source`, and
+  `destination=tote_<color>`.
+- Haul the left tote with `pick_and_place`, `endpoint=mobilebot`,
+  `object_id=tote`, and `target_id=rack_1`.
+- Haul the right tote with the same action and `object_id=tote_r`, after the
+  first haul and its rack verification finish.
 
-**Disambiguate, then ask**: if a goal is unclear (which cubes? which destination?), perceive to gather facts first. If it's still ambiguous — or an action would violate a dispatch constraint — ask the operator instead of guessing.
+Outside the reference GR00T sequence, use the nearest eligible arm for the
+requested object. In the reference scene, preserve the endpoint and order
+reported by `certified_groot_sequence`.
+
+After each dispatch, read the physical result and verify the exact object at
+its destination. An unverified result does not mean nothing moved. Reconcile
+it with `floor_state` and destination/source evidence before further motion.
+The guarded MCP path permits at most one additional move attempt after visual
+proof that the exact object remains at its source. Do not switch endpoints or
+repeat an uncertain action. If the object cannot be located, or required visual
+evidence remains `no` or `unknown`, stop and report the returned reason.
+
+## Interpreting goals and reporting completion
+
+- “Sort the objects” means move each requested object to its matching tote
+  compartment, following the arm-selection and ordering rules above.
+- “Only the red ones” or “everything but green” restricts the object set; it
+  does not authorize changing the allowed action order.
+- “Shelve the tote” means haul the named tote and verify it on `rack_1`.
+- “Sort and shelve both totes” means sort the objects, then haul and verify
+  each tote separately. Include both totes even if one starts empty.
+- For an ambiguous object, arm, or destination, inspect the scene first. Ask
+  the operator if the ambiguity remains or the request conflicts with policy.
+
+Before reporting a full sort-and-shelve mission complete, check that no
+requested objects remain on the conveyor, both totes are on `rack_1`, and each
+placement has the required physical and visual evidence. For narrower requests,
+check only the requested result. Report missing evidence or unfinished steps
+explicitly; a successful model response is not mission completion.

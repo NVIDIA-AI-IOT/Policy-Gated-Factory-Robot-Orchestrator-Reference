@@ -108,10 +108,9 @@ OpenClaw and other MCP-capable clients connect through the nine tools exposed
 by the [PGFR floor MCP server](../servers/policy-gated-factory-robot-orchestrator-reference-mcp/).
 The server supplies the operating playbook during the MCP handshake.
 
-An agent client can change without changing the robot endpoints or Console.
-PGFR Console uses the Chat and Workflows services for interactive operations and
-its aggregation API for read-only status. The selected agent runtime is
-conversation metadata, not a separate user interface.
+PGFR Console sends operator commands through Chat and uses its aggregation
+API for read-only status. The backend selected for a conversation determines
+which agent runs the tool loop.
 
 Run the [MCP conformance check](../packages/conformance-kit/README.md#check-an-mcp-server)
 after changing the server, tool descriptions, annotations, or handshake

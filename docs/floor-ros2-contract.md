@@ -1,8 +1,7 @@
 # Floor ROS 2 contract
 
-This document defines the ROS 2 boundary between PGFR Spine's
-`Ros2FloorBackend` and the Policy-Gated Factory Robot Orchestrator Reference cell. The reference Isaac Sim cell
-implements the same contract that a hardware adapter can implement.
+This contract connects PGFR Spine's `Ros2FloorBackend` to the Isaac Sim cell.
+A hardware adapter can implement the same message formats.
 
 The protocol uses JSON in `std_msgs/String` for commands, progress, results,
 and floor state. Camera streams use `sensor_msgs/Image`.
@@ -17,9 +16,8 @@ and floor state. Camera streams use `sensor_msgs/Image`.
 | `/pgfr/floor_state` | cell → PGFR Spine | `std_msgs/String` | Current floor-state JSON |
 | `/<camera>/image_raw` | cell → PGFR Spine | `sensor_msgs/Image` | Camera frame for perception or verification |
 
-The reference deployment uses one persistent ROS node in PGFR Spine. It caches
-state, results, feedback, and camera frames instead of recreating subscriptions
-for each tool call.
+PGFR Spine keeps one ROS node with cached state, results, and camera frames.
+The cell also publishes feedback for progress subscribers.
 
 ## Command envelope
 
@@ -42,9 +40,10 @@ available on each endpoint. PGFR Spine validates the capability and policy befor
 publishing the command. Action-specific parameters remain flat in the ROS JSON
 envelope.
 
-The reference cell executes one queued action at a time unless the action is an
-explicit paired-arm transaction. It retains a bounded window of seen goal IDs
-and drops a duplicate instead of executing it again.
+The cell executes one queued action at a time, including a paired-arm action
+as one transaction. The scripted baseline remembers the last 64 goal IDs; the
+GR00T cell keeps an in-memory set. Both drop duplicate IDs. This state is not
+durable across process restarts, so it is not a guarantee that resending is safe.
 
 ## Result envelope
 
@@ -72,9 +71,11 @@ The cell echoes the command's `goal_id`:
 requested physical effect passed the cell-side result check. Both must be true
 before the normal action path treats the operation as completed.
 
-PGFR Spine accepts the exact matching goal result. An unrelated or anonymous
-result cannot satisfy a newer motion command. A timeout produces an explicit
-unverified failure.
+PGFR Spine matches results by `goal_id`, either at the top level or inside
+`args`. A timeout returns an unverified failure. For older cells, synchronous
+dispatch also accepts a result without a goal ID if its action name matches.
+New adapters must echo the goal ID; asynchronous dispatch requires an exact
+ID match.
 
 ## Feedback envelope
 
@@ -106,16 +107,18 @@ different crops from one physical camera. PGFR Spine:
 1. waits for a fresh image on the selected topic;
 2. applies the region crop;
 3. encodes the frame for the configured VLM;
-4. records the exact frame as mission evidence; and
-5. returns `yes`, `no`, or `unknown` with supporting text.
+4. records the frame as mission evidence; and
+5. returns a scene observation for `perceive`, or `yes`, `no`, or `unknown`
+   with supporting text for `verify`.
 
-The reference regions and camera topics are defined in
-`pgfr-spine/src/policy_gated_factory_robot_orchestrator_reference/floor/ros2.py`. Camera freshness is exposed by
-the PGFR Spine health metadata.
+The region and camera mappings are in
+[`floor/ros2.py`](../pgfr-spine/src/policy_gated_factory_robot_orchestrator_reference/floor/ros2.py).
+Camera freshness is included in PGFR Spine health responses.
 
 ## Endpoint capabilities
 
-The current scene exposes these principal capabilities:
+When an endpoint omits `capabilities`, the ROS backend advertises these
+defaults based on endpoint type:
 
 | Endpoint type | Capability | Required parameters |
 |---|---|---|
@@ -124,17 +127,18 @@ The current scene exposes these principal capabilities:
 | AMR | `pick_and_place` | `object_id`, `target_id` |
 | AMR | `navigate_to` | `location_id` |
 
-The hardened reference deployment also exposes governed scene reset,
-paired-arm, and GR00T sequence operations through the MCP/HTTP layer. These
-operations still terminate at the same goal-correlated ROS command/result
-boundary.
+A capability declaration does not implement the controller. For example, the
+supplied Isaac AMR supports tote hauling through `pick_and_place`, but has no
+standalone `navigate_to` handler. Declare the actions your scene actually
+implements. Reset and paired-arm actions also use ROS commands; the MCP
+`certified_groot_sequence` tool reports the allowed plan without moving robots.
 
 ## Failure requirements
 
 - Do not publish until the cell subscriber has been discovered.
 - Do not infer success from publication, feedback, or elapsed time.
 - Match results by `goal_id`.
-- Return `verified:false` when the requested physical effect did not land.
+- Return `verified:false` when the requested physical effect cannot be confirmed.
 - Treat stale state, missing camera frames, and command timeouts as explicit
   failures.
 - Keep cancellation explicit; a subsequent command does not authorize stopping

@@ -1,10 +1,9 @@
 # Create your own demonstration dataset
 
-The public release contains capture/conversion source and small calibration
-records, not a training corpus. This workflow creates user-owned data. It does
-not reproduce an exact historical 768-episode collection or its trained
-weights. The new isolated expert profile requires real Isaac acceptance on
-your workstation; offline tests cannot validate grasp physics or camera timing.
+Use this workflow to collect your own demonstrations. The repository supplies
+capture/conversion tools and small calibration records, but no training corpus.
+Validate the expert profile in Isaac Sim on your workstation before collecting
+data; offline tests cannot validate grasp physics or camera timing.
 
 ## Adapt to your own Isaac Sim scene
 
@@ -27,7 +26,7 @@ Adapt these parts together:
 
 Recompute statistics for your adapted training data and
 [validate the resulting policy](VALIDATION.md) in your custom scene before
-claiming that it works. The supplied launcher and runtime enforce the example's
+deployment. The supplied launcher and runtime enforce the example's
 contracts and must be adapted when those contracts change.
 
 ## Prerequisites and paths
@@ -155,9 +154,9 @@ completion aborts collection, so inspect the simulator before another run.
 Each accepted `raw/COHORT/COLOR/ep_NNN/` contains `states.json`, `task.txt`,
 `scene.json`, `capture_quality.json`, and timestamp-matched `wrist/` and
 `outside/` JPEG sequences. State and action are seven Panda joints plus one
-finger width in meters. Language uses the arm-relative left/right camera
-mapping, for example `pick the green brick and place it into the green tote`.
-Read `task.txt` for the exact recorded instruction.
+finger width in meters. The recorded instruction names the object and target
+pad, for example `pick the green brick and place it on the green pad`. Read
+`task.txt` for each episode's instruction.
 
 Keep training, validation, and test cohorts separate by complete sequence and
 seed/layout; never split adjacent frames from one sequence across partitions.
@@ -225,8 +224,8 @@ docker run --rm --pull never --name pgfr-data-fk --gpus all --network none \
 FK results carry the SHA-256 of each source parquet. The native builder rejects
 stale or mismatched FK, non-finite arrays, and invalid rotation matrices. The
 native state/action order is EEF pose `[xyz, rotation6D]` (9), normalized gripper
-(1; 0 open, 1 closed), and seven joints: 17 values total. Both are absolute
-recorded quantities on disk. GR00T's modality config converts EEF/joint actions
+(1; 0 open, 1 closed), and seven joints: 17 values total. States and actions
+are stored as absolute values. GR00T's modality config converts EEF/joint actions
 to relative action chunks of length 40 during loading; gripper remains absolute.
 Videos are 320×180, exterior followed by wrist, with current-frame history `[0]`.
 

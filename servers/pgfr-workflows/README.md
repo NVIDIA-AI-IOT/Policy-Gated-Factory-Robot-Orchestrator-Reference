@@ -1,6 +1,6 @@
 # PGFR Workflows
 
-PGFR Workflows stores, validates, and executes reviewable YAML workflows through
+PGFR Workflows stores and validates YAML workflows, then executes them through
 PGFR Spine. Its HTTP API supports authoring, dry-runs, execution, schedules,
 and skill publication.
 
@@ -25,7 +25,7 @@ mission example, follow the
 |---|---|
 | Compose | Loads the tool palette from `/api/tools`. Arguments may use literals, `${params.name}`, or backward-only `${steps.N.field}` references. |
 | Save | Validates the specification and writes `workflows/<name>.yaml`. Only agent-class `move` and `pick_and_place` actions are accepted. |
-| Dry run | Resolves parameters and prior-step references without contacting PGFR Spine. |
+| Dry run | Resolves parameters and shows placeholders for prior-step results without contacting PGFR Spine. |
 | Run | Executes each step through PGFR Spine under one `wf-<name>-<hex>` mission ID. |
 | Schedule | Stores an opt-in interval of 30 to 86,400 seconds. Scheduled runs use the same validation, policy, and verification path as manual runs. |
 | Publish | Writes a skill manifest below `skills/wf-<name>/` and validates the same agent-action boundary. |
@@ -40,7 +40,8 @@ Physical steps always gate on the PGFR Spine result:
 - `dispatch_task` requires `verified=true`;
 - `dispatch_parallel` requires `verified=true` and
   `independent_b1_verified=true`; and
-- `check_predicate` requires `answer=yes` with complete evidence.
+- `check_predicate` requires `answer=yes` and nonempty `evidence`, `source_used`,
+  and `request_id` fields.
 
 The runner never retries `dispatch_task` or `dispatch_parallel`. A transport
 failure or unverified result stops the workflow because the physical outcome
@@ -105,4 +106,4 @@ skill conformance.
 - [Two-host deployment](../../docs/REPRODUCIBLE-DEMO.md)
 - [Deployment validation](../../docs/VALIDATION.md)
 - [Architecture](../../docs/ARCHITECTURE.md)
-- [Workflow schema](../../schemas/)
+- [Workflow specification and validation](src/pgfr_workflows/spec.py)

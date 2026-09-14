@@ -40,7 +40,6 @@ class CannedHTTP:
 def make_agg(payloads: Dict[str, Optional[Dict[str, Any]]], **env: str) -> Aggregator:
     settings = Settings()
     settings.vlm_url = env.get("vlm_url", "")
-    settings.gym_url = env.get("gym_url", "")
     settings.chat_url = env.get("chat_url", settings.chat_url)
     agg = Aggregator(settings)
     canned = CannedHTTP(payloads)
@@ -150,20 +149,20 @@ class TestAggregator:
     async def test_unconfigured_integrations_are_absent(self) -> None:
         snapshot = await make_agg({"/v1/health": HEALTHY}).poll_once()
         ids = {node.id for node in snapshot["nodes"]}
-        assert not ({"gym", "vlm", "groot"} & ids)
+        assert not ({"vlm", "groot"} & ids)
         assert all(edge.source in ids and edge.target in ids for edge in snapshot["edges"])
 
     @pytest.mark.parametrize("status_code", [404, 500, 503])
-    async def test_configured_gym_http_failure_remains_visible(self, status_code: int) -> None:
+    async def test_configured_model_http_failure_remains_visible(self, status_code: int) -> None:
         agg = make_agg({
-            "http://gym/": {"_http_status": status_code, "detail": "Unavailable"},
+            "http://vision/v1/models": {"_http_status": status_code, "detail": "Unavailable"},
             "/v1/health": HEALTHY,
-        }, gym_url="http://gym")
+        }, vlm_url="http://vision")
         snapshot = await agg.poll_once()
         nodes = {node.id: node for node in snapshot["nodes"]}
-        assert nodes["gym"].status == "down"
-        assert nodes["gym"].detail["url"] == "http://gym"
-        assert any(edge.source == "gym" for edge in snapshot["edges"])
+        assert nodes["vlm"].status == "down"
+        assert nodes["vlm"].detail["url"] == "http://vision"
+        assert any(edge.target == "vlm" for edge in snapshot["edges"])
 
     async def test_configured_unreachable_models_remain_visible(self) -> None:
         agg = make_agg({"/v1/health": HEALTHY}, vlm_url="http://vision")

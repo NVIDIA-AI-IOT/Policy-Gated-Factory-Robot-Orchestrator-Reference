@@ -1,10 +1,9 @@
 # Fine-tune a user-owned native DROID dataset
 
-This is an explicit training recipe, not a download of a project checkpoint or
-a promise to reproduce historical development weights. Create your own inputs
-with [DATASET_CREATION.md](DATASET_CREATION.md). The one-GPU settings below are
-starting values; this release has no measured training VRAM/time/convergence
-result for an RTX 6000 Pro using this new public data path.
+Fine-tune the NVIDIA base model on your own inputs from
+[DATASET_CREATION.md](DATASET_CREATION.md). The one-GPU settings below are
+starting values; training VRAM, time, and convergence have not been measured
+on an RTX 6000 Pro with this workflow.
 
 The base checkpoint, launcher, and dataset checks here target the supplied
 Franka/native-DROID reference example. To fine-tune on data from your own Isaac
@@ -20,9 +19,8 @@ Python 3.10 and CUDA 12.8; the separate Jetson Thor Python 3.12 environment is
 for serving and must not be substituted for this workstation setup.
 Install Git LFS and uv through your normal system provisioning first. Create a
 new training checkout/virtual environment; keep it separate from the recorder
-and Thor serving environments. Reproduce it from source and the lockfile,
-rather than archiving or publishing an installed environment. Select the CPU
-FFmpeg executable and compatible TorchCodec libraries as described below.
+and Thor serving environments. Use the pinned source and lockfile, then select
+the CPU FFmpeg executable and compatible TorchCodec libraries described below.
 
 ```bash
 export REPO=/absolute/path/Policy-Gated-Factory-Robot-Orchestrator-Reference
@@ -41,8 +39,7 @@ export GROOT_PYTHON="$ISAAC_GROOT_ROOT/.venv/bin/python"
 
 The public capture conversion does not require upstream demo-data LFS blobs.
 Do not use `--skip-weight-loading` for actual training. Confirm the NVIDIA GPU
-and dependencies are usable before starting a long run; a successful import is
-not a training-performance measurement.
+and dependencies are usable before training.
 
 Record the local setup with your training artifacts. For example:
 
@@ -63,8 +60,7 @@ Keep any local PGFR source changes, the original lockfile, installed wheel
 hashes/source references, OS release and native-package versions with these
 records. A package list alone does not identify every wheel or native library.
 Keep credentials out of provenance records; review local patches and package
-URLs before sharing them. This guide defines the setup and checks to run; it
-does not claim a newly provisioned workstation has completed training.
+URLs before sharing them.
 
 ## Select and check the local CPU encoder
 
@@ -177,8 +173,9 @@ upstream NVIDIA notices and model attribution in any permitted derived release.
 
 For each native training root, first run the real statistics command in the
 [creation guide](DATASET_CREATION.md#generate-real-statistics-before-training).
-The launcher refuses missing/placeholder statistics, incorrect dimensions,
-missing video/parquet files, and nonempty output directories.
+The launcher rejects missing or non-finite statistics, incorrect dimensions,
+missing or empty video/parquet files, and nonempty output directories. It cannot
+detect arbitrary placeholder values; compute statistics from your training data.
 
 ```bash
 export TRAIN_DATA="$HOME/pgfr-user-data/native/left-layout3-green-red-blue-green"
@@ -193,9 +190,9 @@ export HF_HUB_OFFLINE=1
 
 Add `--dataset /absolute/path/to/another/native/root` once per additional
 training cohort, including both arms, every color and required accumulated
-context. A single green cohort above illustrates syntax; it cannot support a
-claim of complete two-arm, three-color capability. Run the same command without
-`--dry-run` only when the printed command and dataset inventory are correct.
+context. The single green cohort above is only a syntax example. Run the same
+command without `--dry-run` only when the printed command and dataset inventory
+are correct.
 The launcher calls `gr00t/experiment/launch_finetune.py` directly with one GPU,
 explicit step/batch/LR/checkpoint arguments, and the provided modality config.
 It records the command and inputs in `pgfr_training_run.json`.
@@ -232,13 +229,13 @@ Inspect and then remove `--dry-run` to train. Here `--learning-rate 1e-5` is
 passed as an actual upstream argument. The pinned upstream
 [`examples/finetune.sh`](https://github.com/NVIDIA/Isaac-GR00T/blob/e5749287857afd97b78f1147166137de29746392/examples/finetune.sh)
 hardcodes `--learning_rate 1e-4`; setting an environment variable named
-`LEARNING_RATE` does not override it. This wrapper avoids that ambiguity and
-also passes checkpoint retention explicitly.
+`LEARNING_RATE` does not override it. The wrapper also sets checkpoint retention
+explicitly.
 
 The launcher saves model-only checkpoints. Continuation initializes new
 optimizer/scheduler state from saved weights; it is **not** an exact resume of
-optimizer, scheduler, or RNG state. Pick step counts and LR by held-out
-validation, not by assuming a historical count transfers to new demonstrations.
+optimizer, scheduler, or RNG state. Choose step counts and LR using held-out
+validation.
 
 ## Export and qualify
 
@@ -256,4 +253,4 @@ were used; the export's dataset-path field is a selected local reference, not
 a replacement for the run manifest. Export packages the checkpoint config,
 processor/statistics, model tensors, metadata and SHA-256 inventory. It does not
 upload, deploy, or validate the policy's physical behavior. Complete
-[VALIDATION.md](VALIDATION.md) before claiming a working learned-action demo.
+[VALIDATION.md](VALIDATION.md) before deployment.

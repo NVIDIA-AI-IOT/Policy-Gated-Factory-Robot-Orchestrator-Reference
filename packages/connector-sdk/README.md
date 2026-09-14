@@ -41,7 +41,9 @@ def test_sdk_compliance():
     assert_connector_compliant(MyConnector())
 ```
 
-The SDK does not provide transport, discovery, authentication, retries, secret
-management, or a hosting process. The compliance assertion also does not contact
-the wrapped system or validate result provenance. Implement and test those
-requirements in the connector.
+The compliance assertion calls `health()`, `capabilities()`, and an unknown
+capability; those methods may contact the wrapped system. It checks response
+structure, not successful capability results or their provenance.
+
+The SDK provides no transport, discovery, authentication, retries, secret
+management, or hosting process. Implement and test those in the connector.

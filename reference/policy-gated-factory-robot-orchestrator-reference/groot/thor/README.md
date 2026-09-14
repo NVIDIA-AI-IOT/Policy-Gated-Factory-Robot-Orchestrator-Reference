@@ -21,13 +21,16 @@ inactive and a new destination directory:
 ops/prepare-groot-runtime.sh --install
 ```
 
-This prepares the pinned NVIDIA Isaac-GR00T checkout at
-`$HOME/groot_shadow/Isaac-GR00T`, verifies and applies the project patch,
-materializes the checksum-verified TorchCodec wheel, and invokes the Thor
-installer. `PGFR_GROOT_SOURCE_ROOT` can select a different source destination;
-service templates must then use the same path. The preparation command refuses
-to replace an existing destination or prepare over active known profiles. It
-starts no policy or relay service.
+This prepares NVIDIA Isaac-GR00T at upstream commit
+`e5749287857afd97b78f1147166137de29746392` in
+`$HOME/groot_shadow/Isaac-GR00T`. It verifies the SHA-256 of the
+[project patch](../patches/isaac-groot-e574-policy-gated-factory-robot-orchestrator-reference.patch),
+checks that it applies cleanly, applies it, and checks the resulting source
+diff. It also materializes the checksum-verified TorchCodec wheel and invokes
+the Thor installer. `PGFR_GROOT_SOURCE_ROOT` can select another preparation
+directory, but the shared-profile installer requires the default path above.
+Preparation refuses an existing destination or active known profiles and starts
+no policy or relay service.
 
 To inspect the prepared source before installing dependencies, use this
 alternative sequence instead:
@@ -42,13 +45,18 @@ Do not run `--install` against the directory already created by `--source-only`;
 invoke its prepared installer as shown. The installer consumes the Thor
 `pyproject.toml` and `uv.lock` in place, performs a frozen sync into the source
 checkout's `.venv`, and installs GR00T editable without changing the upstream
-root dependency files. A different `UV_PROJECT_ENVIRONMENT` requires matching
-service configuration.
+root dependency files. Keep the default `.venv` for the shared-profile
+installer; it does not support a different `UV_PROJECT_ENVIRONMENT`.
 
 After dependency installation, continue with checkpoint export/verification,
-profile installation, and operator-controlled service startup in the
-[two-host guide](../../../../docs/REPRODUCIBLE-DEMO.md). Source preparation and
-dependency installation alone do not qualify a checkpoint or complete mission.
+profile installation, and service startup in the
+[two-host guide](../../../../docs/REPRODUCIBLE-DEMO.md).
+
+The patch covers configuration, fine-tuning, model, evaluation, policy, and
+inference-server changes used by training and serving. Apply it through the
+preparation script to retain revision and integrity checks. The
+[runtime guide](../runtime/README.md) describes the separate Isaac executor and
+serving relay; neither reads the patch during a rollout.
 
 ## FFmpeg and TorchCodec dependencies
 
@@ -64,8 +72,8 @@ line package. Jetson repositories can select an FFmpeg 8 build for that package,
 which does not supply the FFmpeg 6 ABI required by this wheel. Some previously
 observed NVIDIA FFmpeg builds report nonfree components. Dataset conversion
 uses a separately selected executable in the workstation training workflow.
-The installer does not request the FFmpeg executable; normal package dependency
-resolution still applies, with `--no-remove` preventing package removals.
+Normal package dependency resolution still applies; `--no-remove` prevents
+package removals.
 
 The measured Ubuntu 24.04 FFmpeg 6 packages are GPL builds. The pinned OpenCV
 headless wheel also bundles separate LGPL FFmpeg libraries. Their obligations
@@ -81,10 +89,8 @@ dpkg-query -W libavfilter9 libavformat60 libavcodec60 libavutil58 libswresample4
 apt-cache policy libavfilter9 libavformat60 libavcodec60 libavutil58 libswresample4 libswscale7
 ```
 
-The installer retains the known TorchCodec wheel and library ABI to preserve
-the bare-metal dependency contract. A smaller inference-only environment that
-omits TorchCodec/system FFmpeg requires separate cold-start and inference
-validation; it is not established by an import inventory or by this change.
+Omitting TorchCodec or system FFmpeg requires separate cold-start and inference
+validation.
 
 ## Pins and limits
 

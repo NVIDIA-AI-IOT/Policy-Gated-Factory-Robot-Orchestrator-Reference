@@ -9,7 +9,7 @@ No fine-tuned checkpoint or demonstration dataset is supplied by this repository
 One exported checkpoint is loaded by two policy processes, one per Franka arm.
 Artifact verification checks consistency and binds serving state to those bytes;
 it does not establish task success. Evaluate your trained model in the simulator
-before relying on it. Historical runtime results do not qualify your checkpoint.
+before relying on it.
 
 ## Export on the training host
 

@@ -26,8 +26,6 @@ Open [http://127.0.0.1:8600](http://127.0.0.1:8600).
   deterministic reset through PGFR Spine.
 - Topology opens with tools and cameras grouped. Enable **Show tools and cameras**
   to inspect each one; a group retains its least healthy member's status.
-- Optional integrations appear when configured or reported. NeMo Gym has an
-  optional evaluation connector and appears only when `PGFR_GYM_URL` is set.
 - Component details identify the status source. Vision model names come from
   the model endpoint; camera feeds come from simulator health. GR00T connection
   status uses the floor state's passive relay observations, not inference probes.
@@ -35,8 +33,6 @@ Open [http://127.0.0.1:8600](http://127.0.0.1:8600).
   session IDs and full results remain available in expandable details.
 - GPU opens in Live view. Selecting a historical session changes only the GPU
   view; process memory on Thor uses its shared CPU/GPU RAM measurements.
-- The browser calls PGFR Chat directly; Console does not proxy its write
-  requests.
 - The frontend is a static ES-module application with no build-time toolchain
   or external CDN dependency.
 
@@ -46,7 +42,6 @@ Open [http://127.0.0.1:8600](http://127.0.0.1:8600).
 |---|---|---|
 | `PGFR_FLOOR_SERVICE` | `http://127.0.0.1:8766` | PGFR Spine base URL |
 | `PGFR_VLM_URL` | unset | VLM liveness check (`/v1/models`) |
-| `PGFR_GYM_URL` | unset | Optional NeMo Gym resource server; omitted from the map when unset |
 | `PGFR_GPU_URL` | unset | GPU exporter on the serving host (`ops/pgfr_gpu_exporter.py` :8601) |
 | `PGFR_GPU_URL_THOR` | unset | GPU exporter on Jetson AGX Thor |
 | `PGFR_CONSOLE_HOST/PORT` | `127.0.0.1:8600` | bind address |
@@ -73,7 +68,7 @@ do not expose PGFR Spine, OpenClaw, GR00T relay, VLM, or GPU-exporter ports.
 uv run --frozen --project pgfr-console pytest -q pgfr-console/tests
 ```
 
-The hardware-free suite uses recorded PGFR Spine responses and verifies that the
+The hardware-free suite uses simulated upstream responses and checks that the
 aggregation API remains GET-only.
 
 ## Related documentation

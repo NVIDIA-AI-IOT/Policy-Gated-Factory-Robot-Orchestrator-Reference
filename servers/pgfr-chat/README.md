@@ -26,14 +26,13 @@ persisted with the session and cannot change mid-conversation:
 
 | Console choice | Talks to |
 |---|---|
-| **Traditional PGFR Chat** (default) | Adapter selected by `PGFR_CHAT_BACKEND` |
+| **Default Chat** (default) | Adapter selected by `PGFR_CHAT_BACKEND` |
 | **OpenClaw** | OpenClaw's typed headless Gateway, targeting the restricted `pgfr-console` agent and its native `pgfr-floor` MCP tools |
 
 Both choices use the same `pgfr-chat` browser API and session store. In OpenClaw
-mode, OpenClaw owns the MCP tool loop and PGFR Chat translates native `chat` and
-`agent/tool` events into the console's existing SSE/tool-card format. The
-operator token stays server-side and the browser never talks directly to port
-18790. OpenClaw's shipped frontend is not required; the Gateway runs headlessly.
+mode, PGFR Chat translates OpenClaw's `chat` and `agent/tool` events into the
+Console's SSE stream and tool cards. The Gateway runs headlessly; its token
+stays server-side and the browser does not connect directly to port 18790.
 The supplied config keeps `/v1/chat/completions` enabled only as an explicit
 compatibility path (`PGFR_OPENCLAW_NATIVE_GATEWAY=0`).
 
@@ -44,17 +43,16 @@ compatibility path (`PGFR_OPENCLAW_NATIVE_GATEWAY=0`).
 | `openai` (default) | OpenAI-compatible `/v1/chat/completions` endpoint, including NVIDIA API Catalog, NIM, vLLM, and compatible hosted services |
 | `anthropic` | Anthropic Messages API, including Claude through NVIDIA NIM |
 | `openclaw` | OpenClaw Gateway (native typed protocol by default; normally selected per conversation) |
-| `echo` | no network; deterministic; for tests/demos |
+| `echo` | Deterministic responses without a model service; explicit `tool` directives still execute PGFR Spine calls |
 
 Additional protocols are implemented as adapters in `backends.py`.
 
 ## Request and action boundary
 
-- `/api/chat` and `/api/reset-scene` require the `X-PGFR-Chat` header. When
-  `PGFR_CHAT_TOKEN` is configured, the header must match it. Browser requests
-  must use an allowed Origin.
-- `PGFR_CHAT_MAX_TURNS` limits model tool iterations for one user message.
-- Traditional and OpenClaw modes both dispatch through PGFR Spine.
+- Chat, streaming, stop, reset, and session-deletion requests require the
+  `X-PGFR-Chat` header. When `PGFR_CHAT_TOKEN` is configured, the header must
+  match it. Browser requests must use an allowed Origin.
+- `PGFR_CHAT_MAX_TURNS` limits iterations of PGFR Chat's own tool loop per message.
 - Physical actions are not resent automatically after a timeout or unverified
   outcome. Reconciliation begins with read-only state or visual evidence.
 - All services bind to loopback by default.
@@ -155,11 +153,12 @@ responses, operator-action refusal, sessions, and browser request guards.
 
 ## Chat history (persistent sessions)
 
-Conversations persist to `PGFR_CHAT_SESSIONS_DIR` (default `~/.pgfr_chat_sessions`),
-one JSON file per session (id validated, no traversal), auto-titled from the
-first user message, capped (`PGFR_CHAT_MAX_SESSIONS`) with the oldest evicted.
-Stored display history is capped (`PGFR_CHAT_MAX_HISTORY`, default 200); only the
-recent window (`PGFR_CHAT_CONTEXT_WINDOW`, default 24) is sent to the model.
+Conversations are stored in `PGFR_CHAT_SESSIONS_DIR` (default
+`~/.pgfr_chat_sessions`), one JSON file per validated session ID. Titles come
+from the first user message. `PGFR_CHAT_MAX_SESSIONS` (default 200) evicts the
+least recently updated sessions; `PGFR_CHAT_MAX_HISTORY` (default 200) limits
+stored history entries. Only the recent `PGFR_CHAT_CONTEXT_WINDOW` user and
+assistant messages (default 24) are sent to the model.
 
 - `GET /api/sessions` — list (id, backend, title, updated, message count)
 - `GET /api/sessions/{id}` — full transcript

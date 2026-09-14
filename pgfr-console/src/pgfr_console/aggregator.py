@@ -32,7 +32,6 @@ class Settings:
     def __init__(self) -> None:
         self.seam_url = os.environ.get("PGFR_FLOOR_SERVICE", "http://127.0.0.1:8766").rstrip("/")
         self.vlm_url = os.environ.get("PGFR_VLM_URL", "").rstrip("/")
-        self.gym_url = os.environ.get("PGFR_GYM_URL", "").rstrip("/")
         self.chat_url = os.environ.get("PGFR_CHAT_URL", "http://127.0.0.1:8620").rstrip("/")
         # GPU exporter on the serving host (ops/pgfr_gpu_exporter.py); unset -> pane
         # renders "unknown", per the measured-not-asserted rule.
@@ -145,21 +144,18 @@ class Aggregator:
         edges: Dict[str, Edge] = topo["edges"]  # type: ignore[assignment]
         s = self.settings
         for nid, url in (("brain", s.chat_url), ("seam", s.seam_url),
-                         ("vlm", s.vlm_url), ("gym", s.gym_url)):
+                         ("vlm", s.vlm_url)):
             nodes[nid].host = _configured_host(url)
         if not s.vlm_url:
             nodes.pop("vlm")
-        if not s.gym_url:
-            nodes.pop("gym")
 
         async with httpx.AsyncClient(timeout=s.timeout_s) as client:
             async def optional(url: str) -> Optional[Dict[str, Any]]:
                 return await self._get_json(client, url) if url else None
 
-            health, vlm, gym, chat = await asyncio.gather(
+            health, vlm, chat = await asyncio.gather(
                 optional(f"{s.seam_url}/v1/health"),
                 optional(f"{s.vlm_url}/v1/models" if s.vlm_url else ""),
-                optional(f"{s.gym_url}/" if s.gym_url else ""),
                 optional(f"{s.chat_url}/api/health" if s.chat_url else ""),
             )
 
@@ -213,11 +209,6 @@ class Aggregator:
                               if isinstance(model, dict) and isinstance(model.get("id"), str)]
                 if nodes["vlm"].status == "ok" and isinstance(models, list) else [],
             }
-        if s.gym_url:
-            nodes["gym"].status = (
-                "ok" if gym is not None and gym.get("_http_status") == 200 else "down"
-            )
-            nodes["gym"].detail = {"url": s.gym_url, "status_basis": "Configured Gym endpoint"}
 
         # These are logical capabilities, not independently probed services.
         for tid in ("t_floor_state", "t_perceive", "t_dispatch", "t_verify", "mcp"):

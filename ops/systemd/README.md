@@ -27,8 +27,8 @@ operated separately on the RTX host. It runs no model or relay.
 
 ## Operate the control-host stack
 
-The repository helper is read-only unless an explicit operation and target are
-provided:
+Use `--check` or `--status` to inspect the stack. Start and restart operations
+require an explicit target:
 
 ```bash
 ops/thor-deploy.sh --check
@@ -39,7 +39,7 @@ ops/thor-deploy.sh --restart chat
 
 Supported operation targets are `vlm`, `seam`, `gateway`, `chat`,
 `workflows`, `gpu`, `console`, and `all`. Start the GR00T target separately,
-after its model and readiness inputs have been verified:
+after verifying its checkpoint and installed profiles:
 
 ```bash
 systemctl --user start pgfr-groot-shared-stack.target

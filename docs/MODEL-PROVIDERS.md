@@ -1,6 +1,6 @@
 # Configure model providers
 
-The Jetson control host uses two independent model services:
+Configure Chat reasoning separately from perception:
 
 | Service | Purpose | Configuration |
 |---|---|---|
@@ -8,7 +8,7 @@ The Jetson control host uses two independent model services:
 | Perception VLM | Camera evidence on port `8001` | Pinned container and model in [`../deploy/reproducible-demo.yaml`](../deploy/reproducible-demo.yaml) |
 
 PGFR Chat accepts an OpenAI-compatible endpoint. The endpoint URL, credential,
-and model ID must be a valid tuple; the application does not infer the
+and model ID must match; the application does not infer the
 endpoint from the API-key prefix.
 
 ## Contents
@@ -158,7 +158,7 @@ curl --fail-with-body --silent --show-error \
 ```
 
 The mode-`0600` temporary header file keeps the key out of `curl`'s process
-arguments. The sourced secrets are removed from its environment before launch,
+arguments. The shown API-key and gateway-token variables are unset before `curl` starts,
 and the file is removed when the subshell exits.
 
 ## Perception VLM boundary

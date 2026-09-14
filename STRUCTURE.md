@@ -1,82 +1,27 @@
 # Repository structure
 
-This repository contains PGFR Spine, PGFR Console, agent interfaces, and the Isaac
-Sim/GR00T reference implementation. OpenClaw is installed as the pinned
-dependency in `package.json`; its runtime source is not vendored.
+Start with [Architecture](docs/ARCHITECTURE.md) for runtime behavior or
+[Contributing](CONTRIBUTING.md) for development and test commands. Components
+are installed independently; there is no combined Python distribution.
+OpenClaw is pinned in [package.json](package.json), not vendored.
 
-## Runtime relationship
-
-The working example under
-`reference/policy-gated-factory-robot-orchestrator-reference/` composes the
-top-level software components with the Isaac Sim cell and GR00T:
-
-```text
-Agent interfaces / PGFR Chat                 PGFR Console
-              |                                |
-              +---------------+----------------+
-                              |
-                    PGFR Spine floor service      pgfr-spine/
-                              |
-                    Isaac Sim reference cell    reference/.../isaac-cell/
-                              |
-                    GR00T action execution      reference/.../groot/
-                              |
-                    Two Franka arms + AMR
-```
-
-## Directory guide
-
-```text
-.
-├── pgfr-spine/                 PGFR Spine orchestration and floor service
-├── pgfr-console/               PGFR Console operator interface
-├── reference/policy-gated-factory-robot-orchestrator-reference/
-│   ├── README.md             working-example overview
-│   ├── isaac-cell/           Isaac Sim baseline and deployment assets
-│   │   └── deployment/      current two-arm, three-block cell deployment
-│   └── groot/
-│       ├── groot_n1_7_pgfr_pipeline/    GR00T N1.7 PGFR pipeline
-│       ├── capture_context/            distilled per-arm capture states
-│       ├── runtime/                    action execution and telemetry
-│       ├── relay/                      GR00T request/response bridge
-│       ├── training/                   fine-tuning entry points
-│       └── models/                     artifact metadata
-├── servers/
-│   ├── policy-gated-factory-robot-orchestrator-reference-mcp/  MCP adapter over PGFR Spine
-│   ├── pgfr-chat/              swappable chat/harness gateway
-│   └── pgfr-workflows/         workflow authoring and execution
-├── plugins/openclaw/         OpenClaw integration
-├── skills/                   canonical agent playbook and templates
-├── ops/                      installers, systemd units, and health checks
-├── deploy/                   measured deployment contract
-├── schemas/                  API and cell-protocol contracts
-├── packages/                 conformance and connector tooling
-├── connectors/               optional system and evaluation integrations
-├── docs/                     installation, operations, and integration guides
-└── package.json              pinned OpenClaw dependency
-```
-
-## Supported entry points
-
-For hardware-free PGFR Spine development:
-
-```bash
-uv sync --frozen --extra dev --project pgfr-spine
-uv run --frozen --project pgfr-spine pytest -q pgfr-spine/tests
-
-export PGFR_FLOOR_STATE=/tmp/pgfr-floor.json
-uv run --frozen --project pgfr-spine \
-  policy_gated_factory_robot_orchestrator_reference floor-state
-uv run --frozen --project pgfr-spine \
-  policy_gated_factory_robot_orchestrator_reference dispatch \
-    --endpoint amr_franka_1 --action move \
-    --color red --from table_1 --destination red_rack
-```
-
-For the two-host live system, follow
-[`docs/REPRODUCIBLE-DEMO.md`](docs/REPRODUCIBLE-DEMO.md). The model training
-and serving lineage is documented under
-[`reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/`](reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/).
-
-Validated platforms and dated hardware evidence are recorded in
-[`docs/SUPPORT.md`](docs/SUPPORT.md).
+| Source | Purpose |
+|---|---|
+| [pgfr-spine](pgfr-spine/README.md) | Floor service: policy, dispatch, perception, verification, and journals |
+| [pgfr-console](pgfr-console/README.md) | Operator UI and read-only aggregation API |
+| [servers/pgfr-chat](servers/pgfr-chat/README.md) | Chat gateway and model-provider integration |
+| [servers/pgfr-workflows](servers/pgfr-workflows/README.md) | Deterministic workflow execution and scheduling |
+| [MCP server](servers/policy-gated-factory-robot-orchestrator-reference-mcp/README.md) | Agent-facing floor tools and operating instructions |
+| [Server template](servers/TEMPLATE/README.md) | Scaffold for another MCP tool server |
+| [plugins/openclaw](plugins/openclaw/README.md) | OpenClaw tool adapter |
+| [skills](skills/README.md) | Orchestration skill, canonical playbook, and skill template |
+| [Isaac Sim cell](reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/README.md) | Scene assets, scripted controllers, ROS 2 endpoints, and learned-motion startup |
+| [GR00T integration](reference/policy-gated-factory-robot-orchestrator-reference/groot/README.md) | Training pipeline, Thor serving, relays, and simulator executor |
+| [ops](ops/) | Installers, preflights, and acceptance scripts; [service guide](ops/systemd/README.md) |
+| [deploy/reproducible-demo.yaml](deploy/reproducible-demo.yaml) | Two-host deployment versions, artifact identities, ports, and service ownership |
+| [HTTP schema](schemas/floor-service.openapi.json) | Generated PGFR Spine API contract; tests detect drift |
+| [Cell protocol schemas](schemas/cell-protocol/) | ROS 2 JSON payloads; action-registry tests check supported actions |
+| [Conformance kit](packages/conformance-kit/README.md) | Black-box floor API, MCP, and skill checks |
+| [Connector SDK](packages/connector-sdk/README.md) | Typed interfaces for external integrations |
+| [connectors](connectors/README.md) | Optional evaluation integrations and connector template |
+| [docs](docs/README.md) | Setup, operations, training, and release guidance |

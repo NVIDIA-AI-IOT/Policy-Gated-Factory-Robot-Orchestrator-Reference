@@ -1,8 +1,7 @@
 # Validate the two-host deployment
 
-Use this guide after both hosts have been installed and the services have
-started successfully. It separates startup checks from actions that change the
-simulated scene.
+Use this guide after installing both hosts and starting their services. Run
+the startup checks before the tests that change the simulated scene.
 
 | Validation | Changes the scene | Required result |
 |---|---:|---|
@@ -84,8 +83,7 @@ Before every run, open **Chat** in PGFR Console, start a new conversation, and
 enter **`Reset the scene`**. Reset is operator-gated; Chat must wait for the
 verified result before issuing a mission action. A successful reset restores
 the canonical `groot_three_object` layout, with both totes on the work tables
-in front of the Franka arms. It resets the complete simulated cell, not only a
-camera view or tote transform.
+in front of the Franka arms. Reset restores the complete simulated cell.
 
 If Console Chat is unavailable, issue the equivalent explicit operator action
 locally on the Jetson control host:
@@ -209,9 +207,9 @@ ops/thor-deploy.sh --check
 
 ## Check Isaac Sim
 
-On the RTX simulation host, inspect the complete log for the current container.
-The launcher refuses to reuse an existing `isaac-sim` container, so its
-`StartedAt` timestamp scopes the log to this run:
+On the RTX simulation host, check the current container run for startup
+markers and project errors. The launcher refuses to reuse an existing
+`isaac-sim` container, so its `StartedAt` timestamp scopes the log to this run:
 
 ```bash
 (
@@ -326,9 +324,11 @@ PGFR Spine before ROS contact. Submit this goal through PGFR Chat using the
 > blue together. Verify both totes after each pair. Finally, haul both totes to
 > the rack and verify completion.
 
-This is a separate end-to-end harness acceptance. Re-run every authoritative
-state, journal, and simulator-log check above before recording it as
-successful.
+This is a separate end-to-end harness acceptance. Check the floor state,
+journal, and simulator logs for this run, including all three pair results,
+their visual proofs, both hauls, and final rack verification. Use this run's
+mission ID; the serial workflow's fixed mission-ID and operation-count
+assertions above do not apply.
 
 ## Acceptance checklist
 
@@ -338,8 +338,8 @@ successful.
 - Both GR00T profiles report the same checkpoint identity.
 - Both relays and bridge-derived readiness records are valid.
 - Scene reset restores both three-object work areas and the executor home state.
-- Every physical transaction returns `success:true` and `verified:true` before
-  its required fresh visual proof and the next transaction.
+- Every PGFR Spine dispatch returns `dispatched:true` and `verified:true`
+  before its required fresh visual proof and the next transaction.
 - Both tote hauls complete without displacing their contents.
 - Final visual verification confirms the loaded totes on the rack.
 - The mission journal contains every action, result, duration, and VLM frame.

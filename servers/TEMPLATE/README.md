@@ -22,7 +22,7 @@ the repository's reference implementation.
 4. Replace the example tools in `src/<package>/server.py`.
 5. Add tests for transport errors, authorization boundaries, and the system
    behind each tool.
-6. Add the completed server to [`servers/README.md`](../README.md).
+6. Document the completed server in the repository [source map](../../STRUCTURE.md).
 
 Every tool should have a concise docstring and accurate `ToolAnnotations`.
 Return structured JSON data. An effectful tool should report whether its result

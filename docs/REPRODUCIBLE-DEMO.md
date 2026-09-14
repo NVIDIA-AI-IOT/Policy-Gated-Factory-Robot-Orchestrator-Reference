@@ -5,12 +5,11 @@ a Jetson control host and an RTX simulation host. It covers PGFR Spine, PGFR
 Console, PGFR Chat/OpenClaw, the perception VLM, two GR00T policy processes, and
 the Isaac Sim reference cell.
 
-This is a source and installation-recipe deployment. Users obtain the official
-Isaac Sim runtime directly from NVIDIA; the launchers mount the prepared PGFR
-code read-only at `/scripts`. No project Isaac image is built or published.
-Writable simulator state remains in separate host directories.
+The launchers run NVIDIA's official Isaac Sim image and mount the prepared
+PGFR code read-only at `/scripts`. Writable simulator state uses separate host
+directories. The project does not build or publish an Isaac Sim image.
 
-The deployment is qualified only for the host configuration in
+Use the reference host configuration and qualification limits in
 [`SUPPORT.md`](SUPPORT.md). Upstream model, container, runtime, and port
 identities are recorded in
 [`../deploy/reproducible-demo.yaml`](../deploy/reproducible-demo.yaml) and the
@@ -76,7 +75,7 @@ Related procedures:
 The learned-motion path runs one user-trained checkpoint in two serving
 processes, one per Franka arm. Both processes load the same model. The shipped
 profile executes six proof-gated moves in series. Mixed-color pairs are an
-explicit post-baseline capability; the three pairs remain sequenced before the
+optional profile enabled after serial acceptance; all three pairs must finish before the
 AMR hauls the totes.
 
 Each long-running component has one owner. Installation prepares files while
@@ -160,11 +159,10 @@ ops/bootstrap-brain.sh --install
 )
 ```
 
-Use the raw Git URL, not Markdown link syntax. An HTTP 403 from `ls-remote` or
-`clone` indicates a GitHub organization or SSO authorization issue. Cloning
-requires Contents read access, not write access. Use an organization-authorized
-SSH key or a fine-grained read-only credential that meets the organization's
-token policy; never put a token in the command line or repository URL.
+Cloning requires read access. If GitHub returns HTTP 403, check repository
+permissions and any organization or SSO restrictions. Use an approved SSH key
+or read-only credential; never put a token in the command line or repository
+URL.
 
 Replace `VALIDATED_COMMIT` with the exact published 40-character release
 commit. Do not substitute a moving branch name or `HEAD`. The fail-fast block
@@ -203,7 +201,8 @@ Export on the training host using the [model export procedure](../reference/poli
 Copy the complete exported directory to Thor, including `pgfr_checkpoint.json`
 and `SHA256SUMS`. The example below uses `my-checkpoint`; use your actual
 export directory consistently in the Thor profiles, bridge, and Isaac contracts.
-The export records artifact integrity and provenance, not measured task success.
+The export records artifact identity and provenance. Task success requires
+separate rollout validation.
 
 Accept the terms for the gated runtime backbone
 [`nvidia/Cosmos-Reason2-2B`](https://huggingface.co/nvidia/Cosmos-Reason2-2B)
@@ -241,7 +240,7 @@ not start or enable them.
 
 ## 3. Prepare the RTX simulation host
 
-The historically exercised two-host GR00T path uses the pinned Isaac Sim
+The historical two-host GR00T deployment used the pinned Isaac Sim
 6.0.0-dev2 image with local X11. It is separate from the standalone scripted
 baseline, which uses stable Isaac Sim 6.0.1 and headless WebRTC. Learned motion
 on 6.0.1 has not been qualified.
@@ -420,8 +419,8 @@ ops/install-groot-cell.sh \
 The bridge installer refuses to replace an active bridge. The cell installer
 checks every active container and refuses to replace a scripts mount in use.
 The launcher also refuses to start while a container using the pinned Isaac
-image is active. Installation completes before simulation starts; no stop
-transition is hidden in the sequence.
+image is active. Complete installation before starting the simulator; these
+commands do not stop an existing instance.
 
 <a id="5-start-and-validate"></a>
 
@@ -473,9 +472,9 @@ ops/thor-deploy.sh --check
 
 `thor-deploy.sh` requires the configured Chat backend to pass `/api/ready`. A
 placeholder model or endpoint that does not advertise the configured model
-fails readiness. The catalog probe does not authenticate an inference request;
-the completion test in [`MODEL-PROVIDERS.md`](MODEL-PROVIDERS.md#test-a-completion)
-is also required.
+fails readiness. Catalog access does not establish permission to run inference;
+also run the completion test in
+[`MODEL-PROVIDERS.md`](MODEL-PROVIDERS.md#test-a-completion).
 
 ## 6. Open and validate the system
 
@@ -500,41 +499,25 @@ flag in the MCP child.
 
 <a id="operator-access-from-another-machine"></a>
 <a id="opt-in-shared-trusted-lan-chat-automatic-access"></a>
-
-### Remote operator access
-
-The access commands formerly in this section are maintained in
-[`REMOTE-ACCESS.md`](REMOTE-ACCESS.md). This heading is retained for links to
-older versions of the guide.
-
+<a id="remote-operator-access"></a>
 <a id="6-run-the-physical-acceptance-workflow"></a>
+<a id="physical-acceptance-workflow"></a>
+<a id="openclaw-acceptance-boundary"></a>
+<a id="optional-mixed-color-concurrent-revalidation"></a>
+<a id="validation-checklist"></a>
 
-### Physical acceptance workflow
-
-The complete serial workflow and its checks are maintained in
-[`VALIDATION.md`](VALIDATION.md#run-the-serial-reference-mission). This heading
-is retained for links to older versions of the guide.
-
-### OpenClaw acceptance boundary
-
-See the [OpenClaw acceptance boundary](VALIDATION.md#openclaw-acceptance-boundary).
-A deterministic workflow pass does not certify OpenClaw.
-
-### Optional mixed-color concurrent revalidation
-
-See the [mixed-color procedure](VALIDATION.md#optional-mixed-color-concurrent-revalidation).
-It is an opt-in revalidation mode, not the default deployment.
-
-## Validation checklist
-
-Use the [acceptance checklist](VALIDATION.md#acceptance-checklist). Only
-measured state, journal, camera, and current-run simulator evidence constitutes
-acceptance; model prose does not.
+Detailed procedures: [remote access](REMOTE-ACCESS.md),
+[serial acceptance](VALIDATION.md#run-the-serial-reference-mission),
+[OpenClaw acceptance](VALIDATION.md#openclaw-acceptance-boundary),
+[optional mixed-color revalidation](VALIDATION.md#optional-mixed-color-concurrent-revalidation),
+and the [acceptance checklist](VALIDATION.md#acceptance-checklist).
+A deterministic workflow pass does not certify OpenClaw; acceptance requires
+measured state, journal, camera, and current-run simulator evidence.
 
 ## Persistence and safeguards
 
-Installation leaves all services disabled. This prevents robot-control
-software from starting at boot without an operator decision. See
+The installers do not enable services. Configure automatic startup separately
+after reviewing the site's requirements. See
 [`../ops/systemd/README.md`](../ops/systemd/README.md) for manual and
 appliance-mode procedures.
 

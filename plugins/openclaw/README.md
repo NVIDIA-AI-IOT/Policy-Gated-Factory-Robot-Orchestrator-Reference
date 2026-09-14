@@ -2,7 +2,7 @@
 
 The reference deployment uses OpenClaw as an agent runtime and connects it to
 the [PGFR floor MCP server](../../servers/policy-gated-factory-robot-orchestrator-reference-mcp/).
-`ops/openclaw.template.json` supplies the generated configuration.
+`ops/openclaw.template.json` is the template for its generated configuration.
 
 ## Deployed MCP tool surface
 
@@ -18,9 +18,9 @@ The MCP server exposes nine PGFR Spine tools:
 - `mission_history`
 - `mission_detail`
 
-The conformance kit checks the MCP handshake, instructions, descriptions, and
-tool annotations. The current contract reports `CERTIFIED: 11/11`. This result
-does not test a model completion or physical mission.
+The conformance kit checks handshake instructions, tool availability,
+descriptions, and annotations. These checks do not test model completions or
+physical missions.
 
 ## Repository-local adapter
 

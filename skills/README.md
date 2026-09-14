@@ -7,10 +7,10 @@ observable completion criteria.
 
 ## Included skills
 
-| Skill | Purpose | Validation |
-|---|---|---|
-| [`policy-gated-factory-robot-orchestrator-reference-orchestrator`](policy-gated-factory-robot-orchestrator-reference-orchestrator/SKILL.md) | Sorts cubes, moves totes, and verifies the final scene through the governed floor tools. | Manifest included. |
-| [`TEMPLATE`](TEMPLATE/SKILL.md) | Starting point for a custom procedure. | Replace all template fields before use. |
+| Skill | Purpose |
+|---|---|
+| [`policy-gated-factory-robot-orchestrator-reference-orchestrator`](policy-gated-factory-robot-orchestrator-reference-orchestrator/SKILL.md) | Sorts objects, moves totes, and checks the final scene with floor tools. |
+| [`TEMPLATE`](TEMPLATE/SKILL.md) | Starting point for a custom procedure. |
 
 ## Validate a manifest
 

@@ -1,8 +1,5 @@
 # Contributing to Policy-Gated Factory Robot Orchestrator Reference
 
-Thank you for contributing to Policy-Gated Factory Robot Orchestrator
-Reference.
-
 ## Development environment
 
 CI uses:
@@ -87,8 +84,8 @@ imports, entry points, dependency consistency, and Console HTTP assets without
 starting host services. Templates and the Thor upstream environment are not
 release distributions.
 
-Every Hatchling build-system declaration pins its backend version. Package-local `LICENSE`,
-`NOTICE`, and `THIRD-PARTY-NOTICES.md` are regular copies so source archives can
+Each package pins Hatchling. Package-local `LICENSE`, `NOTICE`, and
+`THIRD-PARTY-NOTICES.md` are regular copies so source archives can
 be rebuilt without the monorepo. After changing a canonical root legal file,
 refresh the copies with `python3 ops/validate-packages.py --sync-legal`; CI
 rejects missing or stale copies.

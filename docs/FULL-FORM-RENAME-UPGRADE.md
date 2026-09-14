@@ -5,13 +5,14 @@ This guide covers an existing installation that used the former
 name is **Policy-Gated Factory Robot Orchestrator Reference**, abbreviated
 **PGFR** in project-owned interfaces.
 
-This is a maintenance-window upgrade, not an in-place hot reload. The cutover
-has no runtime compatibility alias: `IC_*` becomes `PGFR_*`, `ic-*` becomes
+Schedule a maintenance window for this upgrade. There are no runtime
+compatibility aliases: `IC_*` becomes `PGFR_*`, `ic-*` becomes
 `pgfr-*`, `ic_*` becomes `pgfr_*`, and `/ic/*` becomes `/pgfr/*`. The change
 also covers package names, command-line tools, HTTP headers, OpenClaw IDs,
 readiness markers, schema IDs, persistent paths, and generated configuration.
-Stop both hosts before changing paths or installed files. Never run legacy and
-PGFR services against the same ports or writable state.
+Stop the project services and Isaac Sim on both hosts before changing paths
+or installed files. Never run legacy and PGFR services against the same ports
+or writable state.
 
 The public installation now takes a user-trained local checkpoint. It does
 not fetch a project checkpoint or recorded dataset. Preserve existing model
@@ -37,7 +38,7 @@ bridge contracts. An older mission result does not qualify a newly trained model
 | `~/.local/share/ic-spine/` | `~/.local/share/pgfr-spine/` | Move sessions, GPU history, GR00T state, and readiness records before rerunning installers. |
 | `~/ic-journal/`, `~/ic_gpu_telemetry/`, `~/.ic_chat_sessions/` | The equivalent `pgfr` paths | Preserve mission evidence and history; do not merge old and new trees. |
 | `reference/industrial-claw/` | `reference/policy-gated-factory-robot-orchestrator-reference/` | Use the new checkout; do not retain scripts that point into the old source tree. |
-| `servers/industrial-claw-mcp/` | `servers/policy-gated-factory-robot-orchestrator-reference-mcp/` | Recreate the MCP virtual environment and update MCP client commands. The executable remains `pgfr-mcp`. |
+| `servers/industrial-claw-mcp/` | `servers/policy-gated-factory-robot-orchestrator-reference-mcp/` | Recreate the MCP virtual environment and update MCP client commands. Use the `pgfr-mcp` executable. |
 | `skills/industrial-claw-orchestrator/` | `skills/policy-gated-factory-robot-orchestrator-reference-orchestrator/` | Re-run `ops/sync-playbook.sh` after installation. |
 | `~/.industrial_claw/` | `~/.policy_gated_factory_robot_orchestrator_reference/` | Move CLI run and mock floor-state data if it must be retained. |
 | `~/.industrial-claw/openclaw/` | `~/.policy-gated-factory-robot-orchestrator-reference/openclaw/` | Move the OpenClaw workspace while its services are stopped, then regenerate `openclaw.json` from the new template and reapply reviewed provider settings. |
@@ -45,16 +46,15 @@ bridge contracts. An older mission result does not qualify a newly trained model
 | `~/.local/lib/industrial-claw/` | `~/.local/lib/policy-gated-factory-robot-orchestrator-reference/` | Reinstall the simulation-host bridge; do not copy the generated helper forward. |
 | A checkout such as `~/industrial-claw/` | `~/Policy-Gated-Factory-Robot-Orchestrator-Reference/` | Use a clean checkout of the exact release commit. Rerender every path-bound unit. |
 
-The paths that do not carry the project prefix keep their names, including
-`~/.openclaw/secrets.env`, `~/groot_shadow/Isaac-GR00T/`, official upstream
-model cache identities, and the full-form product paths in the table.
-Their contents still require review: the secrets file can contain `IC_*` keys,
+`~/.openclaw/secrets.env`, `~/groot_shadow/Isaac-GR00T/`, and official upstream
+model caches keep their paths. Migrate project-owned paths according to the
+table. Review the retained files: the secrets file can contain `IC_*` keys,
 and generated OpenClaw configuration can contain old agent, MCP, or executable
 identifiers. The `pgfr-*` units and `pgfr` state paths are new destinations, not
 preserved aliases.
 
 Do not rename an existing Isaac scripts mount while a container is using it.
-Prepare a fresh exact mount with `ops/isaac-sim-workstation.sh --prepare` for
+Prepare a fresh mount with `ops/isaac-sim-workstation.sh --prepare` for
 the scripted baseline, or reinstall the learned-policy cell with
 `ops/install-groot-cell.sh` after Isaac Sim is stopped.
 
@@ -261,7 +261,8 @@ rg -l 'Industrial Claw|industrial_claw|industrial-claw|ic-spine|ic-console|ic-ch
 ```
 
 Update old checkout, import/executable, model, source, patch, OpenClaw, and
-bridge-helper paths. In particular, PGFR Chat and OpenClaw must converge on:
+bridge-helper paths. PGFR Chat and OpenClaw must use the same configuration
+and state paths:
 
 ```dotenv
 PGFR_OPENCLAW_CONFIG=/home/YOUR_USER/.policy-gated-factory-robot-orchestrator-reference/openclaw/openclaw.json
@@ -269,10 +270,9 @@ OPENCLAW_STATE_DIR=/home/YOUR_USER/.policy-gated-factory-robot-orchestrator-refe
 OPENCLAW_CONFIG_PATH=/home/YOUR_USER/.policy-gated-factory-robot-orchestrator-reference/openclaw/openclaw.json
 ```
 
-Do not rename third-party variables or ordinary words that happen to contain
-the same letters. Preserve upstream artifact identities and treat
-any remaining project-owned legacy value as an item for explicit review, not an
-invitation to run an unrestricted repository-wide substitution.
+Preserve third-party variables and upstream artifact identities. Review each
+remaining project-owned legacy value; do not run an unrestricted
+repository-wide substitution.
 
 The migrated OpenClaw `openclaw.json` can contain an absolute command path to
 the former MCP directory. Preserve a copy, then move that one generated config
@@ -368,8 +368,8 @@ ops/install-groot-thor-shared-profiles.sh \
 `bootstrap-brain.sh --install` recreates the repository-owned environments
 and rerenders the user units with the new checkout path, but preserves existing
 `~/.config/pgfr-spine/*.env` values. That is why the environment audit in the
-previous step is mandatory. Recreate the conformance-kit environment
-separately as shown in [`REPRODUCIBLE-DEMO.md`](REPRODUCIBLE-DEMO.md).
+previous step is mandatory. Recreate the conformance-kit environment using
+[the validation guide](VALIDATION.md#run-conformance-checks).
 
 Seed the new OpenClaw configuration, verify it exists, stop the temporary
 Gateway/Seam owners, reapply reviewed provider settings, and synchronize the
@@ -409,8 +409,8 @@ item with the backup and stop; do not delete a file merely to bypass a refusal.
 
 ## 6. Validate both migration paths
 
-A release is not ready for an in-place upgrade until both of these independent gates pass on
-the exact published commit:
+Before claiming upgrade support, validate both paths against the same
+published commit:
 
 1. **Clean installation:** start from clean supported RTX and Thor hosts (or
    clean host state), follow [`REPRODUCIBLE-DEMO.md`](REPRODUCIBLE-DEMO.md),
@@ -421,7 +421,7 @@ the exact published commit:
    conformance, reset, serial mission, journal, VLM, ROS-payload, and current
    Isaac-log checks.
 
-Each gate must exercise the two Isaac surfaces separately. First follow the
+Each gate must exercise both simulator profiles separately. First follow the
 [standalone workstation runbook](../ops/ISAAC-SIM-WORKSTATION.md) through its
 stable 6.0.1 headless launch and scene-destructive
 `accept-isaac-sim-workstation.sh` gate. Preserve the NVIDIA checker and
@@ -446,8 +446,8 @@ the exact old container, capture its inspect record and current logs in the
 restricted backup. Remove only that confirmed stopped container, then launch
 the freshly prepared cell; never select a container solely by image or port.
 
-Retained historical model metadata is not a project configuration alias. Run the
-read-only and live checks in the reproduction guide, including
+Preserve historical model metadata. Run the deployment readiness checks and
+[mission acceptance checks](VALIDATION.md), including
 `ops/thor-deploy.sh --check`, both conformance commands, fresh Fast DDS
 payloads, model/checkpoint verification, bridge-derived readiness, an explicit
 scene reset, and the serial `full-groot-dual-tote` workflow. Confirm the exact

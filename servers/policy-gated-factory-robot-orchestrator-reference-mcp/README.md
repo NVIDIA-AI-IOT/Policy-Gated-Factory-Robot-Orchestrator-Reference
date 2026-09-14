@@ -5,9 +5,10 @@ a thin client of `PGFR_FLOOR_SERVICE`, which defaults to
 `http://127.0.0.1:8766`. Action policy and physical verification remain in PGFR
 Spine.
 
-The server also sends the reference
+When run from this checkout, the server sends the reference
 [`PLAYBOOK.md`](../../skills/policy-gated-factory-robot-orchestrator-reference-orchestrator/PLAYBOOK.md)
-as MCP handshake instructions. Each server process uses one generated mission
+as MCP handshake instructions. A standalone installation without that file
+uses a short fallback instruction. Each server process generates one mission
 ID to group requests in the PGFR Spine journal.
 
 ## Tools

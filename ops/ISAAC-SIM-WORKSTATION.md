@@ -1,7 +1,7 @@
 # Scripted Isaac Sim workstation
 
-`isaac-sim-workstation.sh` prepares, validates, and launches the packaged
-scripted, learned-policy-free baseline on the validated x86_64 Linux RTX host.
+`isaac-sim-workstation.sh` prepares, validates, and launches the scripted
+baseline on an x86_64 Linux RTX workstation. It uses no learned policy.
 The supported default is NVIDIA Isaac Sim 6.0.1 in NVIDIA's official NGC
 container, running headless with the native WebRTC streaming service. The
 repository does not build a custom Isaac Sim image.
@@ -16,7 +16,7 @@ The default external host state is:
     ~/.local/share/policy-gated-factory-robot-orchestrator-reference/isaac-sim
 
 Its `scripts` child is mounted read-only. Writable cache, configuration, data,
-and log leaves serve the image's documented `1234:1234` user; their parent is
+and log directories serve the image's documented `1234:1234` user; their parent is
 mode `0700` and private to the host account.
 
 ## Host prerequisites
@@ -27,20 +27,20 @@ Docker Engine, or NVIDIA Container Toolkit. Follow NVIDIA's
 and
 [technical requirements](https://docs.isaacsim.omniverse.nvidia.com/6.0.1/installation/requirements.html).
 
-This project's qualified x86_64 path requires:
+The host preflight requires:
 
-- Ubuntu 22.04 or 24.04;
+- Ubuntu 22.04 or 24.04 (runtime validation used 24.04);
 - at least 4 available CPU cores and 32 GB RAM;
 - at least 50 GB total capacity on the filesystem holding the state cache;
 - an RTX GPU with at least 16 GiB VRAM;
-- NVIDIA Linux driver 595.58.03 or newer, which this project enforces as the
-  NVIDIA-tested 6.0.1 baseline rather than claiming it is a semantic minimum;
+- NVIDIA Linux driver 595.58.03 or newer, the baseline enforced by this
+  project's preflight;
 - Docker with the NVIDIA runtime; and
 - `python3`, `ip`, and `ss` on the host.
 
-The x86_64 restriction is this repository's tested deployment scope, not a
-claim that NVIDIA's current image supports only x86_64. The default headless
-profile has no X11, `xhost`, `DISPLAY`, or Xauthority prerequisite.
+These checks cover the repository's x86_64 profile; see the
+[support matrix](../docs/SUPPORT.md) for measured configurations and limits.
+The default headless profile needs no X11, `xhost`, `DISPLAY`, or Xauthority.
 
 Verify the unprivileged host account before pulling the large Isaac image:
 
@@ -61,7 +61,7 @@ If Docker group membership was added during installation, log out and back in.
 Do not continue until Docker and `nvidia-smi` work without `sudo`.
 The checker enforces the 50,000,000,000-byte capacity baseline on
 `STATE_ROOT/cache` and reports its currently available bytes separately. It
-does not impose an unsupported free-space minimum.
+does not require 50 GB to be free.
 
 ## Pull, prepare, and validate
 
@@ -102,7 +102,7 @@ assigned to a real host interface.
 
 ## Launch the supported headless/WebRTC profile
 
-The NVIDIA-default, local-only command is:
+Launch for a local client:
 
 ```bash
 ops/isaac-sim-workstation.sh --run --accept-eula
@@ -114,7 +114,7 @@ entrypoint, and explicit user `1234:1234`. The launcher repeats the host and
 official compatibility gates before starting the named application container.
 
 For a native WebRTC client on another trusted machine, select a literal IP
-actually assigned to the workstation:
+assigned to the workstation:
 
 ```bash
 SIM_HOST_IP=REPLACE_WITH_WORKSTATION_INTERFACE_IP
@@ -132,8 +132,8 @@ ops/isaac-sim-workstation.sh --run --accept-eula \
 ```
 
 A successful default-profile launch requires the project marker, NVIDIA's
-streaming-app marker, a running container after the stability window, and an
-actual listening signaling TCP socket. It emits the advertised address and
+streaming-app marker, a running container after the stability window, and a
+listening signaling TCP socket. It emits the advertised address and
 ports:
 
     PGFR_ISAAC_BASELINE_STARTING container=pgfr-isaac-sim-baseline ... profile=headless webrtc_host=... signal_tcp=49100 stream_udp=47998
@@ -176,7 +176,7 @@ install, disable, or reconfigure a firewall blindly on a remote workstation.
 ## Run the scripted-baseline acceptance gate
 
 The acceptance command is scene-destructive. It resets the scene, requires
-fresh payloads on all 15 camera/state streams, issues exactly one real
+fresh payloads on all 15 camera/state streams, issues exactly one simulated
 `franka_left` red-object move, verifies the result, performs a final
 deterministic reset, and scans only the current container run for critical
 errors. It is the non-Thor scripted-baseline gate; it is not GR00T or Thor
@@ -200,8 +200,7 @@ ends with:
 
     PGFR_ISAAC_WORKSTATION_ACCEPTANCE_PASS container=pgfr-isaac-sim-baseline domain=<id> run_id=<id>
 
-This gate intentionally changes simulated state twice. Do not run it while
-another user or workflow controls the same scene.
+Run this gate only while no other operator or workflow is using the scene.
 
 ## Telemetry
 

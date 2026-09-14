@@ -116,12 +116,10 @@ def test_clone_paths_use_the_github_repository_name() -> None:
     assert guide.count(f"cd {checkout}") == 2
     assert "git clone " + "https://github.com/NVIDIA-AI-IOT/" in guide
 
-    checkout_examples = (
-        text("reference/policy-gated-factory-robot-orchestrator-reference/groot/training/README.md"),
-        text("connectors/nemo-gym/resources_servers/pgfr_cell/README.md"),
+    training_guide = text(
+        "reference/policy-gated-factory-robot-orchestrator-reference/groot/training/README.md"
     )
-    expected_example = "/path/to/Policy-Gated-Factory-Robot-Orchestrator-Reference"
-    assert all(expected_example in item for item in checkout_examples)
+    assert "/path/to/Policy-Gated-Factory-Robot-Orchestrator-Reference" in training_guide
 
     mcp_guide = text("servers/policy-gated-factory-robot-orchestrator-reference-mcp/README.md")
     assert f"{checkout}/servers/policy-gated-factory-robot-orchestrator-reference-mcp/.venv/bin/pgfr-mcp" in mcp_guide
@@ -655,7 +653,12 @@ def test_playbook_sync_replaces_a_marker_from_a_previous_source_path(tmp_path: P
     assert previous_begin not in updated
     assert updated.count("<!-- PGFR-PLAYBOOK-BEGIN") == 1
     assert updated.count("<!-- PGFR-PLAYBOOK-END -->") == 1
-    assert "## Floor operating rule (Policy-Gated Factory Robot Orchestrator Reference)" in updated
+    playbook = text(
+        "skills/policy-gated-factory-robot-orchestrator-reference-orchestrator/PLAYBOOK.md"
+    )
+    # Sync omits the document title and maintenance comment.
+    sections = playbook[playbook.index("\n## ") :].strip()
+    assert sections in updated
     assert "## Local notes\n\nKeep this section." in updated
 
 

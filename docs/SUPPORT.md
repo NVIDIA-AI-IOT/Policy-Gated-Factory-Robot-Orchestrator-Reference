@@ -1,9 +1,9 @@
 # Support and validation
 
-This reference project targets one two-host NVIDIA deployment. A platform can
-pass source and hardware-free tests without being accepted for the physical
-mission, so the tables below separate supported configuration from measured
-runtime evidence.
+This project provides a scripted RTX workstation profile and a learned-motion
+Thor/RTX profile. Hardware-free tests do not establish mission success; the
+tables below distinguish reference configurations from measured runtime
+evidence.
 
 The public learned-motion path uses user-created data and a locally trained
 checkpoint; project fine-tuned weights and full recorded datasets are not
@@ -32,8 +32,8 @@ installation.
 |---|---|---|
 | 2026-08-08 | Historical two-host GR00T manifest baseline | Recorded by `validated_on` in [`deploy/reproducible-demo.yaml`](../deploy/reproducible-demo.yaml) |
 | 2026-09-08 | Live Jetson AGX Thor and RTX physical mission using the base revision plus then-uncommitted reproducibility fixes | Complete two-host mission accepted |
-| 2026-09-08 | Standalone Isaac Sim 6.0.1 scripted baseline | Run `953020d69491` passed |
-| 2026-09-09 | Hardened standalone Isaac Sim 6.0.1 candidate | Run `d70ed0c3940f` passed |
+| 2026-09-08 | Standalone Isaac Sim 6.0.1 scripted baseline | Run `953020d69491`: compatibility checker, 15 ROS streams, 1280-pixel rack-camera frame, verified pick-and-place (`off=0.017`), and reset; three commands with clean current-run logs. |
+| 2026-09-09 | Hardened standalone Isaac Sim 6.0.1 candidate | Run `d70ed0c3940f`: 15 streams with encoding, row-stride, and payload checks; verified move (`off=0.001`), two resets, and three clean command logs; `ACCEPT_EULA=Y`, telemetry opt-out, and seven Kit privacy/telemetry/crash-reporting arguments attested. |
 
 These records have different scopes. The manifest date is not evidence for
 later dependency updates, the full-form rename, or the standalone Isaac Sim
@@ -72,34 +72,16 @@ release can claim that scope.
 
 ## Standalone Isaac Sim qualification
 
-The standalone profile uses the official Isaac Sim 6.0.1 amd64 image at digest
-`sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb`.
-It was tested before the prefix rename in the isolated
-`ic-isaac-sim-601-validation` container without modifying the GR00T container.
+The evidence-table runs used the official Isaac Sim 6.0.1 amd64 image at digest
+`sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb`
+in the isolated `ic-isaac-sim-601-validation` container. They predate the
+prefix rename; `IC_CELL_UP` and `/ic` identify historical evidence, not current
+runtime defaults. The GR00T container was not modified.
 
-Run `953020d69491` on 2026-09-08 passed NVIDIA's compatibility checker,
-reported the legacy `IC_CELL_UP` marker, discovered all 15 required legacy
-`/ic` ROS 2 streams, received a real 1280-pixel rack-camera frame, completed
-one left-Franka red-object move at `off=0.017`, and restored the scene with
-exactly three commands and no critical current-run log marker.
-
-The hardened candidate was requalified on 2026-09-09 as run
-`d70ed0c3940f`. All 15 streams passed exact encoding, row-stride, and payload
-checks; the move verified at `off=0.001`; both resets passed; and exactly three
-unique command logs contained no critical marker. The wrapper also attested
-`ACCEPT_EULA=Y`, NVIDIA telemetry opt-out, and the seven Kit privacy,
-telemetry, and crash-reporting arguments before ROS publication.
-
-These runs cover the scripted baseline only. Their legacy names identify the
-recorded evidence; they are not current runtime defaults. They do not validate
-Thor, GR00T, the full two-host workflow, the rename upgrade, or a connected
-WebRTC client.
-Cold-online and warm-cache cloud-asset startup passed; the optional five-part
-local Isaac asset pack has not been qualified.
-
-RealVNC Server 7.12.1 was active on the measured RTX workstation and mirrored
-the local X11 desktop. RealVNC is external workstation infrastructure, not an
-Isaac Sim streaming dependency or a supported repository component.
+These runs qualify the scripted baseline only. They do not validate Thor,
+GR00T, the full two-host workflow, the rename upgrade, or a connected WebRTC
+client. Cold-online and warm-cache cloud-asset startup passed; the optional
+five-part local Isaac asset pack has not been qualified.
 
 ## Open qualification items
 

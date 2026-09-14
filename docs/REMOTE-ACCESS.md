@@ -85,21 +85,21 @@ curl --fail "http://$THOR_IP:8600/api/health"
 # Browser: http://YOUR_THOR_IP:8600
 ```
 
-This profile exposes only Console's read-only views. Keep `8610`, `8620`,
-`8766`, `18790`, `8001`, GR00T policy and relay ports, and the GPU exporter
-private. Use the SSH-tunnel profile for Chat and optional Workflows API access.
+This profile exposes Console's read-only views. Use the SSH-tunnel profile
+for Chat and optional Workflows API access. Keep `8610`, `8620`, `8766`,
+`18790`, `8001`, GR00T policy and relay ports, and the GPU exporter private.
 
 ## Trusted-LAN Console and Chat
 
 Use this profile only when every principal that can reach Console is also
 authorized to command the cell. It has no login, per-user identity, token
 expiry, or TLS. The static Console sends the public `X-PGFR-Chat: console` CSRF
-value automatically. Exact-origin CORS prevents a drive-by web page from
-submitting browser requests, but `console` is not an authentication secret. A
-non-browser client that can reach the admitted Chat listener can reproduce the
+value automatically. The origin check and required header reject browser
+submissions from other origins, but `console` is not an authentication secret.
+A non-browser client that can reach the admitted Chat listener can reproduce the
 request. **Network reachability is actuation authority.**
 
-Use the loopback profile on an untrusted network or a network shared with
+Use the SSH-tunnel profile on an untrusted network or one shared with
 non-operators. A production remote-write deployment requires an authenticated
 TLS endpoint.
 

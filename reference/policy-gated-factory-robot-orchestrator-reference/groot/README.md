@@ -3,8 +3,6 @@
 The learned-action path uses one user-trained NVIDIA Isaac GR00T checkpoint for
 all three object types and both Franka arms. Two policy-server processes load
 the same checkpoint: one serves the left arm and one serves the right arm.
-These are independent serving instances, not separate models or per-color
-experts.
 
 Create your own demonstrations and checkpoint using the
 [dataset-creation guide](groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md),
@@ -51,12 +49,9 @@ Inference completion alone is not treated as action success.
 
 ## Runtime and installation
 
-Thor runs the GR00T policy and relay processes directly in the pinned host
-Python environment. Follow the [bare-metal Thor setup](thor/README.md); the
-project does not provide a Thor GR00T container build. Dataset conversion and
-fine-tuning use the separate workstation workflow linked above. The Thor
-installer selects the FFmpeg 6 shared libraries required by TorchCodec without
-requesting the FFmpeg command-line package.
+Thor runs the GR00T policy and relay processes in the pinned host Python
+environment. Follow the [bare-metal Thor setup](thor/README.md). Dataset
+conversion and fine-tuning use the separate workstation workflow linked above.
 
 The installable action runtime lives in [`runtime/`](runtime/). It contains
 the home-state convergence, two-arm routing, shared-model deployment,
@@ -113,14 +108,15 @@ ops/install-groot-two-host-bridge.sh \
 The installer does not enable or start the bridge. After an operator reviews
 both host configurations and explicitly starts the Thor shared target and the
 simulation-host bridge, the bridge opens four loopback-only SSH forwards.
-It publishes a separate local state pair only while both remote units,
-listeners, checkpoint identities, fingerprints, and relay contracts are
-valid. Tunnel or identity failure removes both local readiness records.
+It publishes a local state pair only while all four policy and relay units,
+listeners, checkpoint identities, fingerprints, and relay contracts are valid.
+Tunnel or identity failure removes both local readiness records.
 
 The Isaac installer then consumes the derived left/right state paths, the
 bridge's local policy/relay ports, and the same local `--checkpoint-metadata`
-file. Its `--checkpoint-path` is the absolute model path on Thor. It does not need network-facing GR00T
-listeners, and the existing executor and relay protocol remain unchanged.
+file. Its `--checkpoint-path` is the absolute model path on Thor. It does not
+need network-facing GR00T listeners, and the existing executor and relay
+protocol remain unchanged.
 For the bridge defaults, render the cell contracts with policy ports
 5792/5793, relay ports 5741/5742, and service-state paths beneath
 `/groot-state`. Launch with:
@@ -130,32 +126,17 @@ export PGFR_GROOT_STATE_ROOT="$HOME/.local/share/pgfr-spine/groot/remote-thor-v3
 ops/launch-groot-isaac.sh --accept-eula /path/to/isaac-scripts
 ```
 
-The development lineage remains in
-[`groot_n1_7_pgfr_pipeline/`](groot_n1_7_pgfr_pipeline/). It includes:
-
-- synchronized simulation capture and native-DROID conversion;
-- the official NVIDIA fine-tuning entry point and single-frame modality;
-- an explicit fine-tuning and optional corrective-continuation recipe;
-- the dataset and model validation contract.
-
-The direct executor lives in [`runtime/`](runtime/), and the serving bridge
-lives in [`relay/`](relay/). Earlier development iterations remain available
-through Git history. The public installer does not checksum normal source
-files: Git versions and behavioral tests cover source, while the model
-artifact checksum validates the user-exported weights at the serving boundary.
+The [runtime guide](runtime/README.md) describes the direct executor,
+[serving relay](runtime/README.md#serving-relay),
+[capture context](runtime/README.md#capture-context), and
+[hardware-free tests](runtime/README.md#validation).
 
 ## Reproduction status
 
-The source packages the controller and the observation/action contract used in
-the development experiment. Both Thor policy instances must load the same
-user-exported checkpoint and publish its recorded identity. The bridge checks
-that identity before exposing readiness to Isaac Sim.
-
 The [model manifest](models/manifest.yaml) records upstream base/runtime
 prerequisites and the local artifact contract. It does not identify a project
-checkpoint or dataset to download. Historical mission evidence does not qualify
-a model trained from new demonstrations. Each checkpoint needs rollout and
-visual-verification acceptance on the matching scene, cameras, and alignment.
+checkpoint or dataset to download. Each checkpoint needs rollout and visual
+verification on the matching scene, cameras, and alignment.
 
 See [the two-host setup](../../../docs/REPRODUCIBLE-DEMO.md) and
 [release scope](../../../docs/RELEASE-SCOPE.md).

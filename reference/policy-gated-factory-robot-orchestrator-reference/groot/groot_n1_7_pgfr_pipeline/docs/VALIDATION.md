@@ -1,9 +1,7 @@
 # Qualify a user-trained policy
 
-Every user-generated dataset and checkpoint needs its own qualification.
-Existing developer demonstrations and offline source tests do not establish
-that a new checkpoint succeeds. No training or simulator run is performed by
-the conversion/export checks.
+Qualify each dataset and checkpoint with the checks below. Conversion and
+export checks do not run training or evaluate the policy in simulation.
 
 1. **Data acceptance:** preserve capture manifests and rejected-attempt records;
    audit camera timing, applied action provenance, episode counts, finite values,
@@ -26,14 +24,12 @@ the conversion/export checks.
    configuration and mixed-color order. Refer to the [runtime guide](../../README.md)
    for the current admitted serial/paired sequences.
 6. **Release evidence:** report sample counts, acceptance/failure criteria,
-   success rates, held-out coverage and limitations for this checkpoint. Do not
-   reuse historical success claims, an exact 768-episode count, or a developer
-   checkpoint label as evidence for new artifacts.
+   success rates, held-out coverage and limitations for this checkpoint.
 
 The model-free `expert_capture` profile is for collecting expert demonstrations.
-Its grasp/camera acceptance must be run on real Isaac before gathering a large
-corpus. It is not the deployed GR00T profile. Successful expert rollouts do not
-prove that a policy learned from them will behave equivalently.
+Validate its grasp physics and camera timing in Isaac Sim before gathering a
+large corpus. It is not the deployed GR00T profile. Successful expert rollouts
+do not prove that a policy learned from them will behave equivalently.
 
 The source license does not grant rights to redistribute third-party model
 weights, downloaded assets, or externally collected data. Follow the

@@ -1,20 +1,17 @@
 # Connectors
 
-Connectors provide typed, read-mostly access to external systems such as video
+SDK connectors provide typed, read-mostly access to external systems such as video
 analytics, manufacturing execution systems, and quality databases. They return
 context and evidence to an orchestrator; they do not dispatch robot actions.
 Physical actions remain subject to PGFR Spine policy and verification.
 
-## Available integrations
+## Create a connector
 
-| Integration | Interface | Purpose |
-|---|---|---|
-| [Connector template](TEMPLATE/README.md) | [`pgfr-connector-sdk`](../packages/connector-sdk/README.md) | Starting point for a custom external-system adapter. |
-| [NeMo Gym](nemo-gym/README.md) | NeMo Gym resource server | Exposes the reference cell as an environment for evaluation and rollout collection. |
+Start with the [connector template](TEMPLATE/README.md), which uses
+[`pgfr-connector-sdk`](../packages/connector-sdk/README.md).
 
-The repository does not provide automatic connector discovery or a connector
-runtime. A deployment must instantiate its connectors and expose the required
-capabilities through its chosen service boundary.
+Instantiate SDK connectors in the service that exposes their capabilities;
+the repository provides no connector discovery or hosting process.
 
 ## Connector contract
 
@@ -26,6 +23,3 @@ An SDK connector implements three methods:
 
 Connector results should include a source identifier and timestamp. Store
 endpoints and credentials in the deployment environment, never in source files.
-
-See the [connector template](TEMPLATE/README.md) for implementation and test
-instructions.

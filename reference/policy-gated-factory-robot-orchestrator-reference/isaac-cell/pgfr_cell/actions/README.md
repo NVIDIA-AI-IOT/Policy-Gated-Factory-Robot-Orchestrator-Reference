@@ -1,8 +1,9 @@
 # Cell action modules
 
-The runtime discovers every public Python module in this package at startup.
-Each module exports a non-empty `ACTION_HANDLERS` iterable, and each handler
-implements the shared action contract from `base.py`.
+At startup, the runtime discovers modules in this package except `base.py`,
+`discovery.py`, and names beginning with `_`. Each discovered module exports a
+non-empty `ACTION_HANDLERS` iterable whose handlers implement the shared action
+contract from `base.py`.
 
 ## Current actions
 
