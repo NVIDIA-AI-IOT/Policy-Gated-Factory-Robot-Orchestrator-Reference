@@ -5,7 +5,7 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SOURCE_ROOT="$REPO/reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell"
+SOURCE_ROOT="$REPO/reference/isaac-cell"
 CHECKER="$REPO/ops/check-sim-host.sh"
 IMAGE="nvcr.io/nvidia/isaac-sim:6.0.1"
 DIGEST="sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb"

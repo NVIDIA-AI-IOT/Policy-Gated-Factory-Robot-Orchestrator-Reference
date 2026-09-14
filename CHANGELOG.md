@@ -10,6 +10,7 @@ than inferring a release from component version strings.
 
 ### Added
 
+- A scene guide with Isaac Sim screenshots and a full demo video/GIF.
 - A source-and-training release path: users capture demonstrations, compute
   native-DROID statistics, fine-tune GR00T, and export a local checkpoint.
 - Local checkpoint metadata and checksum validation shared by Thor profiles,
@@ -29,6 +30,12 @@ than inferring a release from component version strings.
   project-prefix rename, including state migration and clean/upgrade validation.
 
 ### Changed
+
+- Shortened the simulation and GR00T source paths to `reference/isaac-cell/`
+  and `reference/groot/`, with matching installer, CI, and documentation paths.
+  Removed unused scene variants and their standalone preview/debug helpers.
+- Consolidated platform requirements into `INSTALL.md`, distribution scope into
+  `THIRD-PARTY-NOTICES.md`, and validation history into `docs/VALIDATION.md`.
 
 - Reproduction uses directly pulled NVIDIA Isaac Sim images with explicit
   license acceptance and mounted project files; GR00T remains native on Thor.
@@ -128,9 +135,5 @@ than inferring a release from component version strings.
   mission result and concurrent mode remains an explicit post-serial opt-in.
 - Resolve the remaining Thor Python environment metadata conflicts without
   weakening the runtime pins or applying blind upgrades.
-- Replace the provenance-tracked legacy architecture PNG through a controlled
-  title-only source edit that preserves its technical content. Until such an
-  edit is available, the current docs embed the accurate renamed SVG and keep
-  the PNG only as a legacy artifact.
 - Add authenticated, TLS-protected, per-user remote-write access before using
   Chat or Workflow control outside the explicit trusted-LAN lab exception.

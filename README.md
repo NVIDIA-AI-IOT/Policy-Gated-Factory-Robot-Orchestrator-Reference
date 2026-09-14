@@ -16,12 +16,8 @@ The orchestration model is accessed through a configured API endpoint.
 Use the supplied scene or [adapt it to your own robots and tasks](#adapt-the-reference-to-your-own-scene).
 The release includes source, dataset-creation tools, and a GR00T fine-tuning
 recipe. You supply your own demonstration dataset and fine-tuned checkpoint.
-Start with [dataset creation](reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md)
-and [training](reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md).
-
-Setup uses NVIDIA's official Isaac Sim image with mounted project files and a
-native GR00T environment on Thor. Training uses a separate environment. See
-[release scope](docs/RELEASE-SCOPE.md) for upstream software and model requirements.
+Start with [dataset creation](reference/groot/groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md)
+and [training](reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md).
 
 ## Reference capabilities
 
@@ -35,23 +31,22 @@ The default acceptance workflow runs six serial object placements followed by
 two tote transfers. Concurrent arm execution requires a separate opt-in profile.
 Physical dispatches are not retried automatically.
 
-## Full demo
+## Demo
 
-Console-driven sorting and tote delivery in Isaac Sim, shown at **3× speed**.
-The GIF plays the complete 62-second recording without audio.
+Object sorting and tote delivery through the Orchestration Console
+(**3× playback**).
 
 [![Full demo of the Orchestration Console and Isaac Sim at 3× speed](docs/images/pgfr-demo-preview.gif)](docs/videos/pgfr-demo-3x.mp4)
 
-[Watch or download the original MP4](docs/videos/pgfr-demo-3x.mp4)
-(1280×720, with audio, 20.7 MB).
+[Watch the full demo](docs/videos/pgfr-demo-3x.mp4)
 
 ## Isaac Sim reference cell
 
 ![Isaac Sim reference cell with two sorting arms, divided totes, a mobile manipulator, and a receiving rack](docs/images/isaac-sim/cell-overview.jpg)
 
 Two fixed Franka arms sort objects into totes. A mobile manipulator transports
-the totes to the receiving rack. See the [scene guide](docs/ISAAC-SIM-SCENE.md)
-for pictures and explanations of each component.
+the totes to the receiving rack. The [scene guide](docs/ISAAC-SIM-SCENE.md)
+explains the robots, objects, and camera views.
 
 ## Dashboard
 
@@ -72,30 +67,24 @@ and the two-host deployment.
 | [PGFR Workflows](servers/pgfr-workflows/) | Workflow authoring, execution, and scheduling API | HTTP, port 8610 |
 | [MCP server](servers/policy-gated-factory-robot-orchestrator-reference-mcp/) | Agent-facing floor tools and operating instructions | MCP over stdio |
 | [PGFR Spine](pgfr-spine/) | Policy, perception, dispatch, verification, and mission records | HTTP, port 8766 |
-| [Isaac Sim cell](reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/) | Simulated factory equipment, cameras, and ROS 2 endpoints | ROS 2 |
-| [GR00T integration](reference/policy-gated-factory-robot-orchestrator-reference/groot/) | Per-arm policy serving, relays, and the simulation-host bridge | Loopback services and ROS 2 |
+| [Isaac Sim cell](reference/isaac-cell/) | Simulated factory equipment, cameras, and ROS 2 endpoints | ROS 2 |
+| [GR00T integration](reference/groot/) | Per-arm policy serving, relays, and the simulation-host bridge | Loopback services and ROS 2 |
 
 The Default Chat backend calls PGFR Spine over HTTP. The OpenClaw backend uses
 MCP. Both apply the same floor policy and result checks.
 
 ## Reference deployment
 
-| Host | Role | Validated configuration |
-|---|---|---|
-| Jetson control host | PGFR Spine, PGFR Console, Chat, Workflows, perception VLM, and GR00T policy serving | Jetson AGX Thor, aarch64 Ubuntu 24.04, Python 3.12, ROS 2 Jazzy |
-| RTX simulation host | Isaac Sim, cameras, robot executors, and the two-host bridge | x86_64 Ubuntu 24.04, NVIDIA RTX GPU, Docker, NVIDIA Container Runtime |
-| Operator system | Browser or MCP client | Network access to the control host through SSH by default |
-
-The standalone scripted baseline uses the official Isaac Sim 6.0.1 container
-and defaults to headless WebRTC. The learned GR00T deployment remains pinned to
-its validated Isaac Sim 6.0.0-dev2 X11 profile. See
-[validated deployment targets](docs/SUPPORT.md) for the exact scope and open
-qualification items.
+The scripted baseline runs on one RTX workstation using NVIDIA's official
+Isaac Sim 6.0.1 image, with headless WebRTC as the default viewing mode. The
+learned-motion profile uses Isaac Sim 6.0.0-dev2 with X11 on RTX and native
+GR00T serving on Jetson AGX Thor. See [Installation](INSTALL.md) for platform
+requirements and setup.
 
 > [!IMPORTANT]
 > This is a reference implementation, not a certified functional-safety system.
 > A fresh two-host installation under the current package names still needs
-> end-to-end validation. See [supported targets and test evidence](docs/SUPPORT.md).
+> end-to-end validation. See [validation status](docs/VALIDATION.md#validation-status).
 
 ## Quick start
 
@@ -181,8 +170,8 @@ To use your own Isaac Sim scene and dataset:
 1. Define the robots, cameras, objects, and tasks in your scene. Collect or
    import demonstrations with synchronized images, robot states, and executed
    actions that match your setup.
-2. Adapt the [dataset pipeline](reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md#adapt-to-your-own-isaac-sim-scene)
-   to your robot and data, then [fine-tune GR00T](reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md).
+2. Adapt the [dataset pipeline](reference/groot/groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md#adapt-to-your-own-isaac-sim-scene)
+   to your robot and data, then [fine-tune GR00T](reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md).
 3. Connect your scene through the [ROS 2 contract](docs/floor-ros2-contract.md)
    and [endpoint integration](docs/ENDPOINT-INTEGRATION.md). Update the runtime
    mappings, policy rules, and outcome checks for your tasks.
@@ -221,10 +210,9 @@ before changing service bind addresses or firewall rules.
 | Guide | Use it to |
 |---|---|
 | [Installation](INSTALL.md) | Choose and prepare a deployment |
-| [Dataset creation](reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md) | Capture demonstrations for the reference or your own scene |
-| [GR00T fine-tuning](reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md) | Train and export a policy on your data |
+| [Dataset creation](reference/groot/groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md) | Capture demonstrations for the reference or your own scene |
+| [GR00T fine-tuning](reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md) | Train and export a policy on your data |
 | [Deployment validation](docs/VALIDATION.md) | Check services, robot actions, and mission evidence |
-| [Supported targets](docs/SUPPORT.md) | Review tested configurations and remaining qualification work |
 | [Security](SECURITY.md) | Understand access controls and trust boundaries |
 
 See the [documentation index](docs/README.md) for operation, integration, and

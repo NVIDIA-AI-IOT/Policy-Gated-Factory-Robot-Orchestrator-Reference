@@ -74,7 +74,7 @@ groot_serving:
   serving_owner: thor_host
   authoritative_state_owner: thor_host
   source_revision: e5749287857afd97b78f1147166137de29746392
-  artifact_manifest: reference/policy-gated-factory-robot-orchestrator-reference/groot/models/manifest.yaml
+  artifact_manifest: reference/groot/models/manifest.yaml
   checkpoint:
     source: locally_trained_by_user
     required_environment: PGFR_GROOT_MODEL_ROOT
@@ -114,8 +114,8 @@ groot_serving:
       franka_right:
         policy_port: 5793
         relay_port: 5742
-  relay: reference/policy-gated-factory-robot-orchestrator-reference/groot/relay/native_droid_relay_batch2.py
-  executor: reference/policy-gated-factory-robot-orchestrator-reference/groot/runtime/native_droid_work/pgfr_groot_certified_deployment_v36.py
+  relay: reference/groot/relay/native_droid_relay_batch2.py
+  executor: reference/groot/runtime/native_droid_work/pgfr_groot_certified_deployment_v36.py
 
 ports:
   seam: 8766
@@ -133,4 +133,4 @@ dependency_locks:
   console: pgfr-console/uv.lock
   chat: servers/pgfr-chat/uv.lock
   workflows: servers/pgfr-workflows/uv.lock
-  thor: reference/policy-gated-factory-robot-orchestrator-reference/groot/thor/uv.lock
+  thor: reference/groot/thor/uv.lock

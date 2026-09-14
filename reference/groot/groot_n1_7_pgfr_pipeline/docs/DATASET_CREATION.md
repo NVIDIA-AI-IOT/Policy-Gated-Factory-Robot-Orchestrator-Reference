@@ -32,7 +32,7 @@ contracts and must be adapted when those contracts change.
 ## Prerequisites and paths
 
 Use the pinned Isaac Sim development image and external NVIDIA scene assets
-specified by the [two-host guide](../../../../../docs/REPRODUCIBLE-DEMO.md).
+specified by the [two-host guide](../../../../docs/REPRODUCIBLE-DEMO.md).
 Have a CUDA capable GPU, NVIDIA Container Toolkit, Docker, a ROS 2 Jazzy
 environment, and a reviewed CPU FFmpeg build selected using the
 [training environment recipe](FINETUNING_RECIPE.md#select-and-check-the-local-cpu-encoder).
@@ -62,7 +62,7 @@ Set absolute paths for your checkout and new outputs:
 
 ```bash
 export REPO=/absolute/path/Policy-Gated-Factory-Robot-Orchestrator-Reference
-export PIPELINE="$REPO/reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline"
+export PIPELINE="$REPO/reference/groot/groot_n1_7_pgfr_pipeline"
 export DATA_ROOT="$HOME/pgfr-user-data"
 export CAPTURE_MOUNT="$DATA_ROOT/isaac-capture-scripts"
 mkdir -p "$DATA_ROOT"

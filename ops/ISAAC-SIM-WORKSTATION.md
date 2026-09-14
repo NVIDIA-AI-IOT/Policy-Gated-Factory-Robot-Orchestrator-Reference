@@ -39,7 +39,8 @@ The host preflight requires:
 - `python3`, `ip`, and `ss` on the host.
 
 These checks cover the repository's x86_64 profile; see the
-[support matrix](../docs/SUPPORT.md) for measured configurations and limits.
+[platform requirements](../INSTALL.md#platform-requirements) and
+[validation record](../docs/VALIDATION.md#historical-validation) for tested configurations.
 The default headless profile needs no X11, `xhost`, `DISPLAY`, or Xauthority.
 
 Verify the unprivileged host account before pulling the large Isaac image:

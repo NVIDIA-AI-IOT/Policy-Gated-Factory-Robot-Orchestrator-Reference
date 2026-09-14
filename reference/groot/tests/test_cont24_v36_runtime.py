@@ -18,12 +18,12 @@ import tomllib
 import unittest
 
 
-REPO = Path(__file__).resolve().parents[4]
-GROOT = REPO / "reference" / "policy-gated-factory-robot-orchestrator-reference" / "groot"
+REPO = Path(__file__).resolve().parents[3]
+GROOT = REPO / "reference" / "groot"
 RUNTIME = GROOT / "runtime"
 CAPTURE_CONTEXT = GROOT / "capture_context"
 ISAAC_DEPLOYMENT = (
-    REPO / "reference" / "policy-gated-factory-robot-orchestrator-reference" / "isaac-cell" / "deployment"
+    REPO / "reference" / "isaac-cell" / "deployment"
 )
 RENDERER = REPO / "ops" / "render-groot-cont24-contracts.py"
 INSTALLER = REPO / "ops" / "install-groot-cell.sh"
@@ -686,9 +686,9 @@ class PublicRuntimeTests(unittest.TestCase):
         ):
             self.assertIn(option, installer)
         self.assertIn(
-            "reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/deployment", installer
+            "reference/isaac-cell/deployment", installer
         )
-        self.assertIn("reference/policy-gated-factory-robot-orchestrator-reference/groot/capture_context", installer)
+        self.assertIn("reference/groot/capture_context", installer)
         self.assertIn(
             '"$RUNTIME/native_droid_work/pgfr_sync_capture_cell.py"', installer
         )

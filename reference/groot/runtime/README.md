@@ -35,18 +35,18 @@ and verifies the telemetry observer; production-profile reset verifies its absen
 
 ## Installation and reset lifecycle
 
-[`ops/install-groot-cell.sh`](../../../../ops/install-groot-cell.sh) installs
+[`ops/install-groot-cell.sh`](../../../ops/install-groot-cell.sh) installs
 these sources, the [Isaac deployment bundle](../../isaac-cell/README.md#gr00t-cell),
 [capture context](#capture-context), and generated policy contracts into an idle
 scripts mount. Installed `/scripts` paths are part of the contract because the
 reset and loader sources resolve each other there.
 
-[`ops/launch-groot-isaac.sh`](../../../../ops/launch-groot-isaac.sh) exposes the
+[`ops/launch-groot-isaac.sh`](../../../ops/launch-groot-isaac.sh) exposes the
 two host service-state manifests at `/groot-state`. Startup and `reset_scene`
 reload and validate the executor before reporting readiness. Follow the
-[two-host guide](../../../../docs/REPRODUCIBLE-DEMO.md) for the complete sequence,
+[two-host guide](../../../docs/REPRODUCIBLE-DEMO.md) for the complete sequence,
 [model guide](../models/README.md) for checkpoint identity, and
-[contract renderer](../../../../ops/render-groot-cont24-contracts.py) for serial
+[contract renderer](../../../ops/render-groot-cont24-contracts.py) for serial
 and concurrent configuration.
 
 ## Serving relay
@@ -93,9 +93,9 @@ Run from the repository root in an environment with `pytest` and NumPy:
 
 ```bash
 python -m pytest -p no:cacheprovider \
-  reference/policy-gated-factory-robot-orchestrator-reference/groot/tests/test_two_host_bridge.py \
-  reference/policy-gated-factory-robot-orchestrator-reference/groot/tests/test_cont24_v36_runtime.py \
-  reference/policy-gated-factory-robot-orchestrator-reference/groot/tests/test_native_droid_relay_batch2.py \
+  reference/groot/tests/test_two_host_bridge.py \
+  reference/groot/tests/test_cont24_v36_runtime.py \
+  reference/groot/tests/test_native_droid_relay_batch2.py \
   pgfr-spine/tests/unit/test_groot_runtime_contracts.py
 bash -n ops/install-groot-cell.sh
 bash -n ops/launch-groot-isaac.sh
@@ -106,7 +106,7 @@ bash -n ops/launch-groot-isaac.sh
 | [`test_two_host_bridge.py`](../tests/test_two_host_bridge.py) | SSH forwards, endpoint rewriting, model/service identity, paired state invalidation, port collisions, and idle-only installation. |
 | [`test_cont24_v36_runtime.py`](../tests/test_cont24_v36_runtime.py) | Runtime compilation, home and mixed-color contracts, reset restoration, rendering, ports, and installer/launcher guards. |
 | [`test_native_droid_relay_batch2.py`](../tests/test_native_droid_relay_batch2.py) | Framing, arm/seed identity, paired inference, fallback, and service state; uses the test-only [paired transport fixture](../tests/fixtures/pgfr_groot_pair_transport.py). |
-| [`test_groot_runtime_contracts.py`](../../../../pgfr-spine/tests/unit/test_groot_runtime_contracts.py) | Executor, haul, alignment, ordering, cargo, and camera-capture contracts. |
+| [`test_groot_runtime_contracts.py`](../../../pgfr-spine/tests/unit/test_groot_runtime_contracts.py) | Executor, haul, alignment, ordering, cargo, and camera-capture contracts. |
 
 These checks use source inspection and ephemeral loopback sockets without
 installing services, launching Isaac, contacting a policy server, or moving an

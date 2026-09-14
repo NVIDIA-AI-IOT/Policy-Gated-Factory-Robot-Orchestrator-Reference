@@ -14,7 +14,7 @@ from typing import Protocol, cast
 import pytest
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
-ISAAC_CELL = REPOSITORY_ROOT / "reference" / "policy-gated-factory-robot-orchestrator-reference" / "isaac-cell"
+ISAAC_CELL = REPOSITORY_ROOT / "reference" / "isaac-cell"
 if str(ISAAC_CELL) not in sys.path:
     sys.path.insert(0, str(ISAAC_CELL))
 

@@ -33,5 +33,5 @@ do not prove that a policy learned from them will behave equivalently.
 
 The source license does not grant rights to redistribute third-party model
 weights, downloaded assets, or externally collected data. Follow the
-[project release scope](../../../../../docs/RELEASE-SCOPE.md) and applicable
+[distribution scope](../../../../THIRD-PARTY-NOTICES.md#distribution-scope) and applicable
 artifact terms for anything you intend to publish.

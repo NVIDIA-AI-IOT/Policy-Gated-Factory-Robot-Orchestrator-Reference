@@ -62,7 +62,7 @@ AMR defaults.
 ### Add an Isaac Sim action handler
 
 Place a new handler below
-[`pgfr_cell/actions/`](../reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/pgfr_cell/actions/)
+[`pgfr_cell/actions/`](../reference/isaac-cell/pgfr_cell/actions/)
 and export it through `ACTION_HANDLERS`. A handler:
 
 - declares its command names in `action_names`;
@@ -73,7 +73,7 @@ The cell discovers and validates action modules during startup. Validate the
 registry without launching Isaac Sim:
 
 ```bash
-python3 reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/validate_actions.py
+python3 reference/isaac-cell/validate_actions.py
 ```
 
 Registry validation does not create or test the device-specific controller.

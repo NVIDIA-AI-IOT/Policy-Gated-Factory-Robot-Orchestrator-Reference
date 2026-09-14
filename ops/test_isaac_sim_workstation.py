@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "ops" / "isaac-sim-workstation.sh"
 CHECKER = ROOT / "ops" / "check-sim-host.sh"
 RUNBOOK = ROOT / "ops" / "ISAAC-SIM-WORKSTATION.md"
-SOURCE = ROOT / "reference" / "policy-gated-factory-robot-orchestrator-reference" / "isaac-cell"
+SOURCE = ROOT / "reference" / "isaac-cell"
 
 
 def make_fake_docker(tmp_path: Path) -> Path:

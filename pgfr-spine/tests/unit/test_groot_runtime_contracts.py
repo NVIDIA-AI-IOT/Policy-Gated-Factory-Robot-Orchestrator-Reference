@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import TypedDict, cast
 
 REFERENCE_ROOT = (
-    Path(__file__).resolve().parents[3] / "reference" / "policy-gated-factory-robot-orchestrator-reference"
+    Path(__file__).resolve().parents[3] / "reference"
 )
 GROOT_ROOT = REFERENCE_ROOT / "groot"
 RUNTIME_ROOT = GROOT_ROOT / "runtime" / "native_droid_work"

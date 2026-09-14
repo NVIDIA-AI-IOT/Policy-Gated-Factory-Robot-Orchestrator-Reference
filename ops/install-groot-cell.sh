@@ -5,10 +5,10 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ISAAC_DEPLOYMENT="$REPO/reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/deployment"
-CAPTURE_CONTEXT="$REPO/reference/policy-gated-factory-robot-orchestrator-reference/groot/capture_context"
-RUNTIME="$REPO/reference/policy-gated-factory-robot-orchestrator-reference/groot/runtime"
-BATCH_RELAY="$REPO/reference/policy-gated-factory-robot-orchestrator-reference/groot/relay/native_droid_relay_batch2.py"
+ISAAC_DEPLOYMENT="$REPO/reference/isaac-cell/deployment"
+CAPTURE_CONTEXT="$REPO/reference/groot/capture_context"
+RUNTIME="$REPO/reference/groot/runtime"
+BATCH_RELAY="$REPO/reference/groot/relay/native_droid_relay_batch2.py"
 RENDERER="$REPO/ops/render-groot-cont24-contracts.py"
 MOUNT=""
 CHECKPOINT_PATH=""

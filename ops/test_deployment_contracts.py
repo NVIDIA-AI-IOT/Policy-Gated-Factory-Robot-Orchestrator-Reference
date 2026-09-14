@@ -117,7 +117,7 @@ def test_clone_paths_use_the_github_repository_name() -> None:
     assert "git clone " + "https://github.com/NVIDIA-AI-IOT/" in guide
 
     training_guide = text(
-        "reference/policy-gated-factory-robot-orchestrator-reference/groot/training/README.md"
+        "reference/groot/training/README.md"
     )
     assert "/path/to/Policy-Gated-Factory-Robot-Orchestrator-Reference" in training_guide
 
@@ -139,10 +139,10 @@ def test_container_pins_match_manifest_and_launchers() -> None:
     scripted_launcher = text("ops/isaac-sim-workstation.sh")
     scripted_runbook = text("ops/ISAAC-SIM-WORKSTATION.md")
     thor_installer = text(
-        "reference/policy-gated-factory-robot-orchestrator-reference/groot/thor/install_deps.sh"
+        "reference/groot/thor/install_deps.sh"
     )
     thor_lock = text(
-        "reference/policy-gated-factory-robot-orchestrator-reference/groot/thor/uv.lock"
+        "reference/groot/thor/uv.lock"
     )
     notices = text("THIRD-PARTY-NOTICES.md")
     vlm_launcher = text("ops/launch-perception-vlm.sh")
@@ -165,7 +165,7 @@ def test_container_pins_match_manifest_and_launchers() -> None:
     assert scripted["qualified_on"].isoformat() == "2026-09-09"
     assert scripted["qualification_run_id"] == "d70ed0c3940f"
     assert scripted["historical_qualification_run_id"] == "953020d69491"
-    for qualification_record in (text("CHANGELOG.md"), text("docs/SUPPORT.md")):
+    for qualification_record in (text("CHANGELOG.md"), text("docs/VALIDATION.md")):
         assert "2026-09-09" in qualification_record
         assert "`d70ed0c3940f`" in qualification_record
         assert "`953020d69491`" in qualification_record
@@ -240,7 +240,7 @@ def test_brain_host_prereqs_require_all_installable_cuda_candidates() -> None:
 def test_host_and_thor_installers_share_the_verified_uv_pin() -> None:
     host = text("ops/install-brain-host-prereqs.sh")
     thor = text(
-        "reference/policy-gated-factory-robot-orchestrator-reference/groot/thor/install_deps.sh"
+        "reference/groot/thor/install_deps.sh"
     )
 
     for setting in (
@@ -257,7 +257,7 @@ def test_ci_checks_thor_lock_without_syncing_the_arch_specific_environment() -> 
     workflow = text(".github/workflows/ci.yml")
     command = (
         "uv lock --check --project "
-        "reference/policy-gated-factory-robot-orchestrator-reference/groot/thor"
+        "reference/groot/thor"
     )
     assert workflow.count(command) == 1
 
@@ -698,7 +698,7 @@ def test_playbook_sync_replaces_the_centralized_legacy_marker(tmp_path: Path) ->
 
 def test_thor_codec_install_selects_abi6_libraries_without_cli(tmp_path: Path) -> None:
     source = text(
-        "reference/policy-gated-factory-robot-orchestrator-reference/groot/thor/install_deps.sh"
+        "reference/groot/thor/install_deps.sh"
     )
     start = source.index("TORCHCODEC_FFMPEG6_RUNTIME=(")
     end = source.index('echo "Installing torchcodec from validated wheel:', start)

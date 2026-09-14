@@ -44,5 +44,5 @@ result publication.
 Run the registry validator after adding a module:
 
 ```bash
-python reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/validate_actions.py
+python reference/isaac-cell/validate_actions.py
 ```

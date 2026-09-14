@@ -73,7 +73,7 @@ ops/install-groot-thor-shared-profiles.sh --checkpoint-path "$PGFR_GROOT_MODEL_R
 ```
 
 Prepare the Thor runtime and generic service templates first as described in
-the [deployment guide](../../../../docs/REPRODUCIBLE-DEMO.md).
+the [deployment guide](../../../docs/REPRODUCIBLE-DEMO.md).
 `fetch-groot-models.sh` downloads only the pinned official
 `nvidia/Cosmos-Reason2-2B` runtime backbone. Accept NVIDIA's applicable model terms
 and authenticate the runtime user first. Its cache defaults to `hf-home` beside

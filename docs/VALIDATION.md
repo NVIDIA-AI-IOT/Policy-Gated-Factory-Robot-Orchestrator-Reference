@@ -33,6 +33,8 @@ result must be reconciled before an operator or agent requests another action.
 - [OpenClaw acceptance boundary](#openclaw-acceptance-boundary)
 - [Optional mixed-color concurrent revalidation](#optional-mixed-color-concurrent-revalidation)
 - [Acceptance checklist](#acceptance-checklist)
+- [Validation status](#validation-status)
+- [Historical validation](#historical-validation)
 
 ## Check the ROS graph
 
@@ -347,3 +349,67 @@ assertions above do not apply.
 The expected serial acceptance flow is reset and visual inspection, six
 certified serial placements with proof after each, sequential tote hauls, rack
 verification, and retention of the complete journal.
+
+## Validation status
+
+Hardware-free tests check software contracts; mission acceptance requires the
+live checks above. The historical results below predate the namespace rename
+and do not qualify the current source or a user-trained checkpoint. See
+[Installation](../INSTALL.md) for reference configurations.
+
+The following work remains:
+
+- Run a clean two-host installation and full mission from one immutable
+  post-rename commit, including explicit Isaac license acceptance and the
+  native Thor dependency installation. Repeat acceptance after the
+  [stopped-service namespace upgrade](FULL-FORM-RENAME-UPGRADE.md).
+- Validate fresh dataset capture, conversion, and training; measure training
+  time and VRAM use, and evaluate each user-trained checkpoint. Codec preflight
+  checks build identity and features, not legal approval; artifact checksums
+  establish integrity, not model performance.
+- Complete acceptance with NVIDIA's native Isaac Sim WebRTC Streaming Client
+  and qualify local asset-pack startup before claiming offline operation.
+- Qualify the learned GR00T path on Isaac Sim 6.0.1 or WebRTC; existing 6.0.1
+  results cover the scripted profile only.
+- Resolve the Thor post-lock TorchCodec overlay before claiming a fully
+  lock-resolved environment. New operating systems, GPUs, Jetson products,
+  serving topologies, and Chat or agent/model combinations need their own
+  acceptance evidence.
+
+## Historical validation
+
+<a id="two-host-mission-evidence"></a>
+
+<details>
+<summary>Recorded runs, hardware, and runtime versions</summary>
+
+| Date | Configuration | Recorded result |
+|---|---|---|
+| 2026-08-08 | Two-host GR00T manifest baseline | Historical `validated_on` date in the [deployment manifest](../deploy/reproducible-demo.yaml); it does not cover later dependency changes, the rename, or Isaac Sim 6.0.1. |
+| 2026-09-08 | Jetson AGX Thor and RTX; learned Isaac Sim 6.0.0-dev2 profile | Complete deterministic two-host mission accepted from `c985be23d56eaae5a2beea2f8893387c120a849f` plus then-uncommitted reproducibility fixes on both hosts. Evidence included floor state, journal, simulator logs, and camera frames. |
+| 2026-09-08 | Standalone scripted Isaac Sim 6.0.1 | Run `953020d69491`: compatibility checker, 15 ROS streams, 1280-pixel rack-camera frame, verified pick-and-place (`off=0.017`), reset, and three commands with clean current-run logs. |
+| 2026-09-09 | Hardened standalone scripted Isaac Sim 6.0.1 | Run `d70ed0c3940f`: 15 streams with encoding, row-stride, and payload checks; verified move (`off=0.001`), two resets, and three clean command logs. Attested `ACCEPT_EULA=Y`, telemetry opt-out, and seven Kit privacy/telemetry/crash-reporting arguments. |
+
+The standalone runs covered cold-online and warm-cache cloud-asset startup;
+they did not qualify the optional five-part local asset pack, a connected
+WebRTC client, Thor/GR00T, or the full two-host workflow.
+
+### Recorded hardware and runtime
+
+| Component | Measured environment |
+|---|---|
+| Jetson control host | NVIDIA Jetson AGX Thor; aarch64 Ubuntu 24.04; L4T 39.2.1; kernel `6.8.12-1021-tegra`; NVIDIA driver `595.78`; CUDA 13.0 and 13.2 runtime packages; Python 3.12.3; ROS 2 Jazzy; Docker 29.7.2 |
+| RTX simulation host | NVIDIA RTX PRO 6000 Blackwell Workstation Edition; x86_64 Ubuntu 24.04; kernel `7.0.0-31-generic`; NVIDIA driver `610.43.02`; Docker 29.8.0; NVIDIA Container Toolkit 1.20.0; local X11 display `:1` |
+| Learned simulator | `nvcr.io/nvidia/isaac-sim:6.0.0-dev2@sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9` |
+| Scripted simulator | Official Isaac Sim 6.0.1 amd64 image at `sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb` |
+
+The accepted GR00T services ran bare metal from the frozen uv environment at
+`~/groot_shadow/Isaac-GR00T/`, followed by the checksum-attested TorchCodec
+`0.10.0a0` LFS-wheel overlay. This post-lock installation means the final
+environment was not entirely lock-resolved.
+
+The standalone runs used the isolated `ic-isaac-sim-601-validation` container
+without modifying the GR00T container. Its `IC_CELL_UP` marker and `/ic` topics
+are historical evidence identifiers, not current runtime defaults.
+
+</details>

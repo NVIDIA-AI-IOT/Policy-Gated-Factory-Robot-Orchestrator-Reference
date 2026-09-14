@@ -5,6 +5,9 @@ This guide covers an existing installation that used the former
 name is **Policy-Gated Factory Robot Orchestrator Reference**, abbreviated
 **PGFR** in project-owned interfaces.
 
+For an existing PGFR installation affected only by the flattened `reference/`
+source tree, use [Reference source layout update](#reference-source-layout-update).
+
 Schedule a maintenance window for this upgrade. There are no runtime
 compatibility aliases: `IC_*` becomes `PGFR_*`, `ic-*` becomes
 `pgfr-*`, `ic_*` becomes `pgfr_*`, and `/ic/*` becomes `/pgfr/*`. The change
@@ -17,7 +20,7 @@ or writable state.
 The public installation now takes a user-trained local checkpoint. It does
 not fetch a project checkpoint or recorded dataset. Preserve existing model
 files and caches during migration; do not rewrite third-party snapshot metadata.
-Export the selected local checkpoint using the [model guide](../reference/policy-gated-factory-robot-orchestrator-reference/groot/models/README.md)
+Export the selected local checkpoint using the [model guide](../reference/groot/models/README.md)
 and use its new metadata/identity consistently when regenerating profiles and
 bridge contracts. An older mission result does not qualify a newly trained model.
 
@@ -37,7 +40,7 @@ bridge contracts. An older mission result does not qualify a newly trained model
 | `~/.config/ic-spine/` | `~/.config/pgfr-spine/` | Move the stopped configuration tree, then rename every project-owned environment key. |
 | `~/.local/share/ic-spine/` | `~/.local/share/pgfr-spine/` | Move sessions, GPU history, GR00T state, and readiness records before rerunning installers. |
 | `~/ic-journal/`, `~/ic_gpu_telemetry/`, `~/.ic_chat_sessions/` | The equivalent `pgfr` paths | Preserve mission evidence and history; do not merge old and new trees. |
-| `reference/industrial-claw/` | `reference/policy-gated-factory-robot-orchestrator-reference/` | Use the new checkout; do not retain scripts that point into the old source tree. |
+| `reference/industrial-claw/` | `reference/` | Use the new checkout; do not retain scripts that point into the old source tree. |
 | `servers/industrial-claw-mcp/` | `servers/policy-gated-factory-robot-orchestrator-reference-mcp/` | Recreate the MCP virtual environment and update MCP client commands. Use the `pgfr-mcp` executable. |
 | `skills/industrial-claw-orchestrator/` | `skills/policy-gated-factory-robot-orchestrator-reference-orchestrator/` | Re-run `ops/sync-playbook.sh` after installation. |
 | `~/.industrial_claw/` | `~/.policy_gated_factory_robot_orchestrator_reference/` | Move CLI run and mock floor-state data if it must be retained. |
@@ -467,6 +470,39 @@ Do not change the deployment manifest's historical `validated_on` date or
 describe the earlier live run as post-rename validation. Record a new evidence
 date and immutable commit only after the corresponding clean and upgrade gates
 actually pass.
+
+## Reference source layout update
+
+This source-only cleanup moves `groot/` and `isaac-cell/` directly under
+`reference/`. It does not change service names, model/cache paths, installed
+Isaac mounts, or persistent state. Existing PGFR installations need only the
+relay path update below; do not repeat the earlier namespace migration.
+
+On Thor, confirm that no mission, reset, or model request is in flight. Back up
+`~/.config/pgfr-spine/groot/shared-{left,right}.env`, then stop both relays and
+open their installed configuration:
+
+```bash
+systemctl --user stop \
+  pgfr-groot-relay@shared-left.service pgfr-groot-relay@shared-right.service
+${EDITOR:-vi} \
+  "$HOME/.config/pgfr-spine/groot/shared-left.env" \
+  "$HOME/.config/pgfr-spine/groot/shared-right.env"
+```
+
+In each `RELAY_SCRIPT` value, replace
+`reference/policy-gated-factory-robot-orchestrator-reference/groot/` with
+`reference/groot/`. Preserve the checkout prefix, quoting, and every other
+setting. Leave custom relay overrides unchanged unless they point into the
+moved directory. Verify that each resulting script path exists in the new
+checkout. The profile installer refuses differing existing files; rerunning it
+does not migrate these saved settings.
+
+Restart the two relay units after checking both files, then run
+`ops/thor-deploy.sh --check` and the [startup checks](VALIDATION.md#check-the-ros-graph)
+before resuming missions. Update any operator scripts that use the old source
+layout. Existing copied Isaac mounts and the prepared upstream GR00T checkout
+retain their paths; future staging uses the updated installers.
 
 ## Rollback
 

@@ -21,7 +21,7 @@ Run from the prepared Isaac-GR00T source root. Point
 export PGFR_GROOT_BASE_MODEL_PATH=/path/to/GR00T-N1.7-DROID
 export PGFR_GROOT_PYTHON=/path/to/Isaac-GR00T/.venv/bin/python
 
-/path/to/Policy-Gated-Factory-Robot-Orchestrator-Reference/reference/policy-gated-factory-robot-orchestrator-reference/groot/training/finetune-specialist.sh \
+/path/to/Policy-Gated-Factory-Robot-Orchestrator-Reference/reference/groot/training/finetune-specialist.sh \
   red \
   /data/left/red:/data/right/red \
   /output/red-specialist

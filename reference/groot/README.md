@@ -58,7 +58,7 @@ the home-state convergence, two-arm routing, shared-model deployment,
 mixed-color pair execution, and scene-reset implementation. Reset restores the
 complete action runtime; no separate runtime staging command is required.
 
-Follow the [two-host installation sequence](../../../docs/REPRODUCIBLE-DEMO.md):
+Follow the [two-host installation sequence](../../docs/REPRODUCIBLE-DEMO.md):
 prepare Thor's runtime, export and verify your model, install its profiles, then
 install the RTX bridge and cell while services are stopped. The bootstrap does
 not select a model or generate the shared profiles. Start services only after
@@ -138,5 +138,5 @@ prerequisites and the local artifact contract. It does not identify a project
 checkpoint or dataset to download. Each checkpoint needs rollout and visual
 verification on the matching scene, cameras, and alignment.
 
-See [the two-host setup](../../../docs/REPRODUCIBLE-DEMO.md) and
-[release scope](../../../docs/RELEASE-SCOPE.md).
+See [the two-host setup](../../docs/REPRODUCIBLE-DEMO.md) and
+[validation status](../../docs/VALIDATION.md#validation-status).

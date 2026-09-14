@@ -9,44 +9,36 @@ The launchers run NVIDIA's official Isaac Sim image and mount the prepared
 PGFR code read-only at `/scripts`. Writable simulator state uses separate host
 directories. The project does not build or publish an Isaac Sim image.
 
-Use the reference host configuration and qualification limits in
-[`SUPPORT.md`](SUPPORT.md). Upstream model, container, runtime, and port
-identities are recorded in
+Review the [platform requirements](../INSTALL.md#platform-requirements) and
+[validation status](VALIDATION.md#validation-status). Upstream model,
+container, runtime, and port identities are recorded in
 [`../deploy/reproducible-demo.yaml`](../deploy/reproducible-demo.yaml) and the
-[GR00T model manifest](../reference/policy-gated-factory-robot-orchestrator-reference/groot/models/manifest.yaml).
+[GR00T model manifest](../reference/groot/models/manifest.yaml).
 Your fine-tuned checkpoint and generated data are local inputs. Follow
-[dataset creation](../reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md),
-[fine-tuning](../reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md),
-and [checkpoint export](../reference/policy-gated-factory-robot-orchestrator-reference/groot/models/README.md)
+[dataset creation](../reference/groot/groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md),
+[fine-tuning](../reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md),
+and [checkpoint export](../reference/groot/models/README.md)
 before this learned-motion installation. No project weights or recorded
-training dataset are supplied; see [release scope](RELEASE-SCOPE.md).
+training dataset are supplied.
 
-> **Acceptance boundary:** the 2026-09-08 two-host acceptance used the base
-> revision plus the then-uncommitted reproducibility fixes. Those fixes and the
-> full-form rename were later committed, but the renamed tree has not completed
-> a clean-clone two-host acceptance run. Do not present the historical base
-> revision, date, or deployment-manifest `validated_on` value as post-rename
-> release evidence. Replace the commit placeholder below only after the exact
-> published candidate passes. See
-> [`SUPPORT.md`](SUPPORT.md#two-host-mission-evidence) and the
-> [rename upgrade guide](FULL-FORM-RENAME-UPGRADE.md).
+> The historical two-host acceptance predates the PGFR migration. A fresh
+> installation and upgrade still need acceptance on the candidate commit.
+> Replace the commit placeholder below only after that candidate passes. See
+> [recorded results](VALIDATION.md#historical-validation) and the
+> [upgrade guide](FULL-FORM-RENAME-UPGRADE.md).
 
 ## Requirements
 
-| Item | Requirement |
-|---|---|
-| Jetson control host | NVIDIA Jetson AGX Thor; aarch64 Ubuntu 24.04; Python 3.12; CUDA; ROS 2 Jazzy; Docker and NVIDIA Container Runtime; user systemd |
-| RTX simulation host | x86_64 Linux workstation; NVIDIA RTX GPU; Docker and NVIDIA Container Runtime; X11 and `xauth` |
-| Operator access | Local access or SSH to the Jetson control host; local X11 session on the RTX simulation host for the qualified GR00T path |
-| Repository | Contents read access and one published 40-character commit ID |
-| Models | A locally trained, exported GR00T checkpoint; access to the official gated backbone and pinned perception model |
-| Credentials | A key for the selected NVIDIA or OpenAI-compatible Chat endpoint; separate Hugging Face and registry credentials where required |
-| Network | Passwordless SSH from the RTX simulation host to the Jetson control host; peer-scoped Fast DDS UDP traffic |
-| License | Acceptance of the NVIDIA Isaac Sim license before pulling or starting Isaac Sim |
+Complete the [hardware and software prerequisites](../INSTALL.md) on both
+hosts before running these commands. You also need:
 
-Complete the supported NVIDIA GPU-driver, Docker, and NVIDIA Container Toolkit
-installation on each host before using repository scripts. The repository
-checks those dependencies; it does not replace them.
+- Read access to the repository and the same published 40-character commit ID
+  on both hosts.
+- A locally trained and exported GR00T checkpoint, with access to its gated
+  runtime backbone and the pinned perception model.
+- Credentials for the selected Chat endpoint, Hugging Face, and registry where
+  required; see [model providers](MODEL-PROVIDERS.md).
+- Passwordless SSH from RTX to Thor and peer-scoped Fast DDS UDP access.
 
 ## Contents
 
@@ -197,7 +189,7 @@ required completion smoke test.
 
 ## 2. Prepare the local checkpoint and upstream backbone
 
-Export on the training host using the [model export procedure](../reference/policy-gated-factory-robot-orchestrator-reference/groot/models/README.md).
+Export on the training host using the [model export procedure](../reference/groot/models/README.md).
 Copy the complete exported directory to Thor, including `pgfr_checkpoint.json`
 and `SHA256SUMS`. The example below uses `my-checkpoint`; use your actual
 export directory consistently in the Thor profiles, bridge, and Isaac contracts.

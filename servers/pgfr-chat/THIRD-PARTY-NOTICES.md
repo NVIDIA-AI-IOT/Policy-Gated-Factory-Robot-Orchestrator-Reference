@@ -26,21 +26,36 @@ The dependency tables are derived from the committed
 Package links are the attribution and license-detail entry points; installed
 distributions remain authoritative for complete copyright and license text.
 
+## Distribution scope
+
+Project fine-tuned weights and full recorded training datasets are not supplied
+or retrieved by the public installation path. Users create demonstrations and
+train their own checkpoints; see `INSTALL.md` in the source repository.
+
+The tracked arm-alignment state files remain reference runtime inputs; their
+provenance and applicable scene asset terms remain part of release review.
+Their inclusion does not establish new distribution rights.
+
+No container image, OS package, model weight, dataset payload, FFmpeg binary,
+or remote Isaac asset binary is embedded in this source-tree inventory unless
+a separately listed tracked file says otherwise.
+
+Documentation screenshots and the demo video/GIF are listed in
+`docs/ASSET-PROVENANCE.md` in the source repository. Other runtime recordings,
+installed virtual environments, package caches, and container exports are
+excluded from public artifacts. Redistribution of excluded artifacts requires
+a separate release review. Source, dependency, asset, and codec review remains
+required for release.
+
 ## Upstream source and model prerequisites
 
 | Component | Immutable identity | Terms | Distribution role |
 |---|---|---|---|
-| [NVIDIA Isaac-GR00T](https://github.com/NVIDIA/Isaac-GR00T) | <code>e5749287857afd97b78f1147166137de29746392</code> | Apache-2.0; repository copy: <code>reference/policy-gated-factory-robot-orchestrator-reference/groot/LICENSE.NVIDIA-ISAAC-GROOT</code> | Upstream source patched by this repository |
+| [NVIDIA Isaac-GR00T](https://github.com/NVIDIA/Isaac-GR00T) | <code>e5749287857afd97b78f1147166137de29746392</code> | Apache-2.0; repository copy: <code>reference/groot/LICENSE.NVIDIA-ISAAC-GROOT</code> | Upstream source patched by this repository |
 | [NVIDIA GR00T-N1.7-DROID](https://huggingface.co/nvidia/GR00T-N1.7-DROID) | <code>05e7cc97e40dbd33b0890c35cc0214fcb0547ab5</code> | NVIDIA Open Model License | Base checkpoint lineage |
 | [NVIDIA Cosmos-Reason2-2B](https://huggingface.co/nvidia/Cosmos-Reason2-2B) | <code>9ce19a195e423419c349abfc86fd07178b230561</code> | NVIDIA Open Model License | GR00T runtime backbone retrieved at runtime |
 | [Qwen3-VL-2B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct) | Upstream identity declared by Cosmos model card | Apache-2.0 | Nested Cosmos base-model attribution |
 | [NVIDIA Nemotron Nano 12B VL NVFP4](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-12B-v2-VL-NVFP4-QAD) | <code>312eb94f6d36209f7c6a82eda896e27200d152ee</code> | NVIDIA Open Model License | VLM retrieved at runtime |
-
-Project fine-tuned weights and full recorded training datasets are not supplied
-or retrieved by the public installation path. Users create demonstrations and
-train their own checkpoints. The tracked arm-alignment state files remain
-reference runtime inputs; this change does not remove their provenance or
-establish new distribution rights. See `docs/RELEASE-SCOPE.md` in the source repository.
 
 The GR00T bundle includes a Policy-Gated Factory Robot Orchestrator Reference patch against the pinned
 Isaac-GR00T source. The patch identifies modified upstream files; the
@@ -63,11 +78,7 @@ separately authored integration code.
 | Thor FFmpeg 6 decoder libraries | Observed Ubuntu <code>7:6.1.1-3ubuntu5</code>: <code>libavcodec60</code>, <code>libavformat60</code>, <code>libavutil58</code>, <code>libavfilter9</code>, <code>libswscale7</code>, <code>libswresample4</code> | Identified as GPL-2.0-or-later; retrieved by the user for the pinned TorchCodec native adapters. Separate from the observed FFmpeg 8 executable. Retain upstream notices; any binary redistribution requires corresponding-source and linkage review. |
 | OpenCV bundled video libraries | Observed <code>opencv-python-headless==4.11.0.86</code> wheel includes FFmpeg 5 libraries, loaded by the GR00T policy processes | Bundled FFmpeg identified as LGPL-2.1-or-later; headless OpenCV is not FFmpeg-free. Runtime retrieval only; preserve [bundled third-party notices](https://github.com/opencv/opencv-python/blob/86/LICENSE-3RD-PARTY.txt). Identifying the license is not complete binary redistribution clearance. |
 | Dataset conversion and H.264 | User-selected FFmpeg executable with CPU <code>scale</code>, <code>libx264</code>, and MP4 support | Separate local training prerequisite. Preflight rejects a reported nonfree build and checks required encoding behavior; GPL is not rejected. H.264/ARB review remains open for project media and codec use. [FFmpeg legal guidance](https://ffmpeg.org/legal.html) |
-| Remotely referenced Isaac 6.0 assets | Ten HTTPS assets referenced by five ASCII USDA compositions | NVIDIA Isaac asset terms; per-path provenance and rights state in the source repository's <code>docs/ASSET-PROVENANCE.md</code>; owner/OSRB confirmation pending |
-
-No container image, OS package, model weight, dataset payload, FFmpeg binary,
-or remote Isaac asset binary is embedded in this source-tree inventory unless
-a separately listed tracked file says otherwise.
+| Remotely referenced Isaac 6.0 assets | Seven HTTPS assets referenced by two ASCII USDA compositions | NVIDIA Isaac asset terms; per-path provenance and rights state in the source repository's <code>docs/ASSET-PROVENANCE.md</code>; owner/OSRB confirmation pending |
 
 The release uses official Isaac Sim images pulled directly by the operator,
 with project files mounted from the host. GR00T serving remains native on Thor;

@@ -24,7 +24,7 @@ object at a time.
 
 The dark **conveyor area** behind the arms is a stationary staging surface in
 this layout. The arms can use scripted control or a user-trained GR00T policy;
-see [deployment profiles](SUPPORT.md).
+see [deployment profiles](../INSTALL.md).
 
 ## Left arm close-up
 
@@ -74,4 +74,4 @@ from the cameras listed above, with their configured crops.
 
 For setup, see [Installation](../INSTALL.md). For service and model connections,
 see [Architecture](ARCHITECTURE.md). To adapt the scene, start with
-[the reference cell source](../reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/).
+[the reference cell source](../reference/isaac-cell/).

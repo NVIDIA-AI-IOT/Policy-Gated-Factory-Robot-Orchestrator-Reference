@@ -6,7 +6,6 @@
 - [Isaac Sim scene guide](ISAAC-SIM-SCENE.md) — pictures of the robots, conveyor, totes, and rack.
 - [RTX workstation runbook](../ops/ISAAC-SIM-WORKSTATION.md) — launch and validate the scripted cell.
 - [Two-host deployment](REPRODUCIBLE-DEMO.md) — install and start GR00T, perception, and orchestration.
-- [Supported targets](SUPPORT.md) — tested configurations, evidence, and remaining qualification work.
 
 ## Operate and troubleshoot
 
@@ -14,7 +13,7 @@
 - [Model providers](MODEL-PROVIDERS.md) — configure Chat endpoints, credentials, and OpenClaw.
 - [Remote access](REMOTE-ACCESS.md) — connect to Console, Chat, and Isaac Sim.
 - [User services](../ops/systemd/README.md) — service ownership, configuration, and startup.
-- [Deployment validation](VALIDATION.md) — check ROS 2, API contracts, and complete missions.
+- [Deployment validation](VALIDATION.md) — check ROS 2, API contracts, complete missions, and validation status.
 - [Rename upgrade](FULL-FORM-RENAME-UPGRADE.md) — migrate an existing installation from the former names.
 
 ## Create data and train
@@ -22,11 +21,11 @@
 Use your own demonstrations and checkpoint; this release includes the tools and
 instructions. Adapt the camera, state, and action mappings for a custom scene.
 
-1. [Create a dataset](../reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md).
-2. [Fine-tune GR00T](../reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md).
-3. [Prepare your checkpoint for serving](../reference/policy-gated-factory-robot-orchestrator-reference/groot/models/README.md).
+1. [Create a dataset](../reference/groot/groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md).
+2. [Fine-tune GR00T](../reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md).
+3. [Prepare your checkpoint for serving](../reference/groot/models/README.md).
 
-The [GR00T integration guide](../reference/policy-gated-factory-robot-orchestrator-reference/groot/README.md)
+The [GR00T integration guide](../reference/groot/README.md)
 links the Thor runtime, simulator executor, and pipeline validation instructions.
 
 ## Develop and integrate
@@ -37,9 +36,8 @@ links the Thor runtime, simulator executor, and pipeline validation instructions
 - [Endpoint integration](ENDPOINT-INTEGRATION.md) — add robot actions, models, or agent harnesses.
 - [Contributing](../CONTRIBUTING.md) — development setup, tests, and contribution requirements.
 
-## Release and security
+## Licensing and security
 
-- [Release scope](RELEASE-SCOPE.md) — source delivery, upstream prerequisites, and separate training.
 - [Deployment manifest](../deploy/reproducible-demo.yaml) — pinned runtimes, model identities, and ports.
 - [Security](../SECURITY.md) — trust boundaries and reporting.
 - [Asset provenance](ASSET-PROVENANCE.md) and [third-party notices](../THIRD-PARTY-NOTICES.md) — attribution and release review.

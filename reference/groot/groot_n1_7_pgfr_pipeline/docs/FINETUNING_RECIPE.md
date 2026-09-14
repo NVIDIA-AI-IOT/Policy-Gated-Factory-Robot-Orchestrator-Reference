@@ -24,13 +24,13 @@ the CPU FFmpeg executable and compatible TorchCodec libraries described below.
 
 ```bash
 export REPO=/absolute/path/Policy-Gated-Factory-Robot-Orchestrator-Reference
-export PIPELINE="$REPO/reference/policy-gated-factory-robot-orchestrator-reference/groot/groot_n1_7_pgfr_pipeline"
+export PIPELINE="$REPO/reference/groot/groot_n1_7_pgfr_pipeline"
 export ISAAC_GROOT_ROOT="$HOME/pgfr-training/Isaac-GR00T"
 GIT_LFS_SKIP_SMUDGE=1 git clone --no-checkout https://github.com/NVIDIA/Isaac-GR00T.git "$ISAAC_GROOT_ROOT"
 git -C "$ISAAC_GROOT_ROOT" checkout e5749287857afd97b78f1147166137de29746392
 git -C "$ISAAC_GROOT_ROOT" submodule update --init --recursive
-git -C "$ISAAC_GROOT_ROOT" apply --check "$REPO/reference/policy-gated-factory-robot-orchestrator-reference/groot/patches/isaac-groot-e574-policy-gated-factory-robot-orchestrator-reference.patch"
-git -C "$ISAAC_GROOT_ROOT" apply "$REPO/reference/policy-gated-factory-robot-orchestrator-reference/groot/patches/isaac-groot-e574-policy-gated-factory-robot-orchestrator-reference.patch"
+git -C "$ISAAC_GROOT_ROOT" apply --check "$REPO/reference/groot/patches/isaac-groot-e574-policy-gated-factory-robot-orchestrator-reference.patch"
+git -C "$ISAAC_GROOT_ROOT" apply "$REPO/reference/groot/patches/isaac-groot-e574-policy-gated-factory-robot-orchestrator-reference.patch"
 cd "$ISAAC_GROOT_ROOT"
 uv sync --frozen --python 3.10
 export GROOT_PYTHON="$ISAAC_GROOT_ROOT/.venv/bin/python"

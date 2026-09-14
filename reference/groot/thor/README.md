@@ -13,7 +13,7 @@ project weights or a training dataset.
 
 ## Prepare and install
 
-Follow the [two-host prerequisites](../../../../docs/REPRODUCIBLE-DEMO.md) first.
+Follow the [two-host prerequisites](../../../docs/REPRODUCIBLE-DEMO.md) first.
 On Thor, from this repository's root, with the GR00T policy and relay services
 inactive and a new destination directory:
 
@@ -50,7 +50,7 @@ installer; it does not support a different `UV_PROJECT_ENVIRONMENT`.
 
 After dependency installation, continue with checkpoint export/verification,
 profile installation, and service startup in the
-[two-host guide](../../../../docs/REPRODUCIBLE-DEMO.md).
+[two-host guide](../../../docs/REPRODUCIBLE-DEMO.md).
 
 The patch covers configuration, fine-tuning, model, evaluation, policy, and
 inference-server changes used by training and serving. Apply it through the
@@ -78,7 +78,7 @@ package removals.
 The measured Ubuntu 24.04 FFmpeg 6 packages are GPL builds. The pinned OpenCV
 headless wheel also bundles separate LGPL FFmpeg libraries. Their obligations
 remain separate from the TorchCodec wheel's BSD license and the project's
-source license; see [third-party notices](../../../../THIRD-PARTY-NOTICES.md).
+source license; see [third-party notices](../../../THIRD-PARTY-NOTICES.md).
 Omitting the command-line package does not remove these library dependencies.
 
 You can inspect the selected package versions and origins without running a
@@ -107,4 +107,4 @@ inventory, or checksum mismatch before package installation. This identifies
 the tested artifact; it does not supply a complete reproducible source/build
 recipe for the custom wheel. The public reference's remaining artifact and
 qualification limits are recorded in the
-[release scope](../../../../docs/RELEASE-SCOPE.md).
+[validation status](../../../docs/VALIDATION.md#validation-status).

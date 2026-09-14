@@ -6,19 +6,19 @@ GR00T deployment share the ROS contract but use separate Isaac Sim
 profiles and asset bundles. Both use NVIDIA's official image with mounted
 project code; no project image is built or published.
 
-See the [scene guide](../../../docs/ISAAC-SIM-SCENE.md) for pictures and component
+See the [scene guide](../../docs/ISAAC-SIM-SCENE.md) for pictures and component
 descriptions.
 
 ## Deployment paths
 
 | Path | Runtime | Purpose | Entry point |
 |---|---|---|---|
-| Scripted baseline | Isaac Sim 6.0.1 | Validate the scene, ROS 2 streams, reset, and scripted actions on one RTX workstation | [`ops/isaac-sim-workstation.sh`](../../../ops/isaac-sim-workstation.sh) |
-| GR00T cell | Isaac Sim 6.0.0-dev2 compatibility profile | Run the learned two-arm action path with Jetson AGX Thor serving | [`ops/install-groot-cell.sh`](../../../ops/install-groot-cell.sh) |
+| Scripted baseline | Isaac Sim 6.0.1 | Validate the scene, ROS 2 streams, reset, and scripted actions on one RTX workstation | [`ops/isaac-sim-workstation.sh`](../../ops/isaac-sim-workstation.sh) |
+| GR00T cell | Isaac Sim 6.0.0-dev2 compatibility profile | Run the learned two-arm action path with Jetson AGX Thor serving | [`ops/install-groot-cell.sh`](../../ops/install-groot-cell.sh) |
 
 ### Scripted baseline
 
-Complete the [workstation host prerequisites](../../../ops/ISAAC-SIM-WORKSTATION.md#host-prerequisites)
+Complete the [workstation host prerequisites](../../ops/ISAAC-SIM-WORKSTATION.md#host-prerequisites)
 and review NVIDIA's [Isaac Sim Additional Software and Materials License](https://www.nvidia.com/en-us/agreements/enterprise-software/isaac-sim-additional-software-and-materials-license/).
 Then pull NVIDIA's image and run the launcher from the repository root:
 
@@ -34,7 +34,7 @@ ops/isaac-sim-workstation.sh --run --accept-eula
 complete scripts mount containing [`pgfr_cell/`](pgfr_cell/),
 [`pgfr_boot.py`](pgfr_boot.py), and [`our_factory.usda`](our_factory.usda). Do not
 copy or replace individual files in an active mount. See the
-[RTX workstation runbook](../../../ops/ISAAC-SIM-WORKSTATION.md) for container,
+[RTX workstation runbook](../../ops/ISAAC-SIM-WORKSTATION.md) for container,
 streaming, and acceptance instructions. The package uses scripted controllers
 and RMPflow without loading a learned policy. Successful startup emits
 `PGFR_CELL_UP markers=all`.
@@ -50,7 +50,7 @@ The repository installer combines it with the GR00T runtime, generated
 contracts, and capture context. The installer refuses to modify a scripts
 mount used by a running container.
 
-Follow the [two-host deployment guide](../../../docs/REPRODUCIBLE-DEMO.md) for
+Follow the [two-host deployment guide](../../docs/REPRODUCIBLE-DEMO.md) for
 the complete install command and host-specific paths. Its launcher requires
 explicit `--accept-eula` before starting the pinned NVIDIA runtime. Learned
 motion on Isaac Sim 6.0.1 is not qualified. Do not merge this bundle with the
@@ -88,7 +88,7 @@ scripts.
 This check does not require Isaac Sim:
 
 ```bash
-python3 reference/policy-gated-factory-robot-orchestrator-reference/isaac-cell/validate_actions.py
+python3 reference/isaac-cell/validate_actions.py
 ```
 
 The expected action names are `haul`, `inspect`, `move`, `pick_and_place`,

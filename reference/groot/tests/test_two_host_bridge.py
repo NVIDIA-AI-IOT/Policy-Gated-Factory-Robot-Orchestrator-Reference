@@ -17,7 +17,7 @@ import unittest
 from unittest import mock
 
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).resolve().parents[3]
 BRIDGE_PATH = ROOT / "ops" / "groot-two-host-bridge.py"
 INSTALLER_PATH = ROOT / "ops" / "install-groot-two-host-bridge.sh"
 THOR_INSTALLER_PATH = ROOT / "ops" / "install-groot-thor-shared-profiles.sh"

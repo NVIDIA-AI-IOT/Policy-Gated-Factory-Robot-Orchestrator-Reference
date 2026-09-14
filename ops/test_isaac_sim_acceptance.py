@@ -21,7 +21,6 @@ SCRIPT = ROOT / "ops" / "accept-isaac-sim-workstation.sh"
 SOURCE = (
     ROOT
     / "reference"
-    / "policy-gated-factory-robot-orchestrator-reference"
     / "isaac-cell"
 )
 ROS_DIGEST = (

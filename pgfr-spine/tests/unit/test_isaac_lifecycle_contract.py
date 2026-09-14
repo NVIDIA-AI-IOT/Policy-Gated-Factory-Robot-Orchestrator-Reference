@@ -9,7 +9,7 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 ISAAC_CELL = (
-    REPOSITORY_ROOT / "reference" / "policy-gated-factory-robot-orchestrator-reference" / "isaac-cell" / "pgfr_cell"
+    REPOSITORY_ROOT / "reference" / "isaac-cell" / "pgfr_cell"
 )
 BOOT = ISAAC_CELL / "boot.py"
 CAMERAS = ISAAC_CELL / "cameras.py"
