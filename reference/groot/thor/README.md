@@ -105,6 +105,6 @@ SHA-256 `1421de7e6248cc33398c16b2d7ba5ada4bf5c2a38af7cc44a003f3b0c36eb314`.
 The installer rejects a Git LFS pointer, invalid archive, unexpected wheel
 inventory, or checksum mismatch before package installation. This identifies
 the tested artifact; it does not supply a complete reproducible source/build
-recipe for the custom wheel. The public reference's remaining artifact and
-qualification limits are recorded in the
-[validation status](../../../docs/VALIDATION.md#validation-status).
+recipe for the custom wheel. See
+[Validation](../../../docs/VALIDATION.md#validation-status) for artifact and
+runtime limitations.

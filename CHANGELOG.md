@@ -10,7 +10,7 @@ than inferring a release from component version strings.
 
 ### Added
 
-- A scene guide with Isaac Sim screenshots and a full demo video/GIF.
+- An architecture diagram, a scene guide with Isaac Sim screenshots, and a project video.
 - A source-and-training release path: users capture demonstrations, compute
   native-DROID statistics, fine-tune GR00T, and export a local checkpoint.
 - Local checkpoint metadata and checksum validation shared by Thor profiles,
@@ -94,11 +94,10 @@ than inferring a release from component version strings.
   legacy artifact metadata is preserved rather than rewritten in place.
 - The public capture/training path requires its own hardware acceptance; prior
   development results do not qualify a user-generated dataset or checkpoint.
-- The 2026-09-08 live RTX/Thor acceptance used the pre-rename source snapshot
-  (the base revision plus then-uncommitted reproducibility fixes). The renamed
-  tree has passed its documented hardware-free checks but has not yet completed
-  a post-rename clean-clone and upgrade acceptance on both live hosts. Do not
-  treat the historical date as that missing evidence.
+- The 2026-09-08 live RTX/Thor acceptance applies to the source snapshot
+  recorded in [Validation](docs/VALIDATION.md#historical-validation). Current
+  installation coverage and limitations are listed in
+  [validation status](docs/VALIDATION.md#validation-status).
 - GR00T serving in the accepted topology is bare metal on Thor from the pinned
   uv environment. The former Thor container path was dependency-qualification only,
   not a canonical or mission-accepted serving topology.
@@ -117,23 +116,19 @@ than inferring a release from component version strings.
   contained no critical marker. Before ROS publication, the wrapper also
   attested `ACCEPT_EULA=Y`, the NVIDIA telemetry opt-out, and all seven Kit
   privacy, telemetry, and crash-reporting arguments.
-  Neither run proves a post-rename clean clone, a Thor/GR00T path, or a
-  connected WebRTC client. Those legacy names are retained here only to
-  identify the historical evidence accurately.
+  These runs cover the standalone scripted profile. They do not cover
+  Thor/GR00T or a connected WebRTC client. Recorded names and run IDs identify
+  the tested configurations.
 - OpenClaw `2026.9.2` was reconciled after the historical deployment record.
   The manifest's `validated_on: 2026-08-08` remains unchanged and is not live
   acceptance evidence for that upgraded OpenClaw version.
 
-### Known release work
+### Known limitations
 
-- Connect and acceptance-test NVIDIA's native WebRTC Streaming Client; current
-  evidence covers the headless service, readiness marker, and signaling
-  listener, not a completed client session or browser-viewer deployment.
-- Repeat the full two-host mixed-mode acceptance against the candidate commit.
-  The Seam, workflow, MCP state machine, prompts, and tests now enforce the
-  accepted Order744 pair order, but source-level enforcement is not a new live
-  mission result and concurrent mode remains an explicit post-serial opt-in.
-- Resolve the remaining Thor Python environment metadata conflicts without
-  weakening the runtime pins or applying blind upgrades.
-- Add authenticated, TLS-protected, per-user remote-write access before using
-  Chat or Workflow control outside the explicit trusted-LAN lab exception.
+- [Validation](docs/VALIDATION.md#validation-status) records coverage for
+  two-host installation and upgrades, WebRTC, and the Thor Python environment.
+- Concurrent arm execution requires explicit opt-in and acceptance after the
+  serial mission. Software ordering checks alone do not validate a live run.
+- Chat and Workflow control outside the documented trusted-LAN exception
+  requires deployment-provided authentication, TLS, and per-user access controls.
+  See [remote access](docs/REMOTE-ACCESS.md).

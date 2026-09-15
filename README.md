@@ -7,55 +7,27 @@
   <img src="https://img.shields.io/badge/Isaac%20Sim-6.0.1-76B900.svg" alt="Isaac Sim 6.0.1">
 </p>
 
-A reference application for controlling an Isaac Sim factory cell through
-Chat or an agent client. PGFR Spine checks action policy, sends commands over
-ROS 2, verifies results, and records mission evidence. Isaac Sim runs on an RTX
-workstation; agent services, vision, and GR00T inference run on Jetson AGX Thor.
-The orchestration model is accessed through a configured API endpoint.
+A reference application for goal-driven, closed-loop agentic orchestration of industrial robots, AGVs/AMRs, and conveyors through an agent client. The
+reference demonstrates this workflow in an NVIDIA Isaac Sim factory cell, where an agent uses perception and execution feedback to coordinate tasks.
+
+PGFR Spine checks action policy, sends commands over ROS 2, verifies results, and records mission evidence. Isaac Sim runs on an RTX workstation whereas agent services, vision, and GR00T inference run on Jetson AGX Thor. The orchestration model is accessed through a configured API endpoint.
 
 Use the supplied scene or [adapt it to your own robots and tasks](#adapt-the-reference-to-your-own-scene).
-The release includes source, dataset-creation tools, and a GR00T fine-tuning
-recipe. You supply your own demonstration dataset and fine-tuned checkpoint.
-Start with [dataset creation](reference/groot/groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md)
-and [training](reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md).
+The release includes source, dataset-creation tools, and a GR00T fine-tuning recipe. You supply your own demonstration dataset and fine-tuned checkpoint.
+Start with [dataset creation](reference/groot/groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md) and [training](reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md).
 
-## Reference capabilities
-
-- **Object sorting:** two fixed Franka arms use one user-trained GR00T checkpoint,
-  served by a separate process for each arm.
-- **Tote delivery:** an AMR uses scripted control to move both totes to the rack.
-- **Verification:** the service checks simulator results and camera evidence
-  after each action and records them in the mission journal.
-
-The default acceptance workflow runs six serial object placements followed by
-two tote transfers. Concurrent arm execution requires a separate opt-in profile.
-Physical dispatches are not retried automatically.
-
-## Demo
+## Project video
 
 Object sorting and tote delivery through the Orchestration Console
 (**3× playback**).
 
-[![Full demo of the Orchestration Console and Isaac Sim at 3× speed](docs/images/pgfr-demo-preview.gif)](docs/videos/pgfr-demo-3x.mp4)
+[![Project video showing the Orchestration Console and Isaac Sim at 3× speed](docs/images/pgfr-project-video-preview.gif)](docs/videos/pgfr-project-video.mp4)
 
-[Watch the full demo](docs/videos/pgfr-demo-3x.mp4)
-
-## Isaac Sim reference cell
-
-![Isaac Sim reference cell with two sorting arms, divided totes, a mobile manipulator, and a receiving rack](docs/images/isaac-sim/cell-overview.jpg)
-
-Two fixed Franka arms sort objects into totes. A mobile manipulator transports
-the totes to the receiving rack. The [scene guide](docs/ISAAC-SIM-SCENE.md)
-explains the robots, objects, and camera views.
-
-## Dashboard
-
-The Orchestration Console opens in Chat, with topology, inspection, and GPU
-views available from the header.
-
-![Orchestration Console dashboard with Chat selected, example prompts, conversation history, and Reset Scene](docs/images/orchestration-console.png)
+[Watch the project video](docs/videos/pgfr-project-video.mp4)
 
 ## Architecture
+
+![Reference architecture showing orchestration and inference on Jetson AGX Thor connected to Isaac Sim on an RTX workstation](docs/images/reference-architecture.png)
 
 See [Architecture details](docs/ARCHITECTURE.md) for component responsibilities
 and the two-host deployment.
@@ -73,6 +45,32 @@ and the two-host deployment.
 The Default Chat backend calls PGFR Spine over HTTP. The OpenClaw backend uses
 MCP. Both apply the same floor policy and result checks.
 
+## Reference capabilities
+
+- **Object sorting:** two fixed Franka arms use one user-trained GR00T checkpoint,
+  served by a separate process for each arm.
+- **Tote delivery:** an AMR uses scripted control to move both totes to the rack.
+- **Verification:** the service checks simulator results and camera evidence
+  after each action and records them in the mission journal.
+
+The default acceptance workflow runs six serial object placements followed by
+two tote transfers. Concurrent arm execution requires a separate opt-in profile.
+
+
+## Isaac Sim reference cell
+
+![Isaac Sim reference cell with two sorting arms, divided totes, a mobile manipulator, and a receiving rack](docs/images/isaac-sim/cell-overview.jpg)
+
+Two fixed Franka arms sort objects into totes. A mobile manipulator transports
+the totes to the receiving rack. The [scene guide](docs/ISAAC-SIM-SCENE.md)
+explains the robots, objects, and camera views.
+
+## Dashboard
+
+The Orchestration Console opens in Chat, with topology, inspection, and GPU views available from the header.
+
+![Orchestration Console dashboard with Chat selected, example prompts, conversation history, and Reset Scene](docs/images/orchestration-console.png)
+
 ## Reference deployment
 
 The scripted baseline runs on one RTX workstation using NVIDIA's official
@@ -83,8 +81,8 @@ requirements and setup.
 
 > [!IMPORTANT]
 > This is a reference implementation, not a certified functional-safety system.
-> A fresh two-host installation under the current package names still needs
-> end-to-end validation. See [validation status](docs/VALIDATION.md#validation-status).
+> See [Validation](docs/VALIDATION.md) for tested configurations, known limitations,
+> and deployment checks.
 
 ## Quick start
 
@@ -220,13 +218,14 @@ release guides.
 
 ## Development
 
-Hardware-free validation runs in CI on Ubuntu 24.04 with Python 3.12.3, Node.js
-22.22.3, and uv 0.11.32. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
-component test commands and DCO requirements.
+Hardware-free checks and package builds are configured in [CI](.github/workflows/ci.yml)
+for Ubuntu 24.04 with Python 3.12.3, Node.js 22.22.3, and uv 0.11.32. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for component test commands and DCO requirements.
 
-Repository layout is documented in [STRUCTURE.md](STRUCTURE.md). Exact runtime,
-container, model, and port identities are recorded in
-[deploy/reproducible-demo.yaml](deploy/reproducible-demo.yaml).
+[STRUCTURE.md](STRUCTURE.md) describes the repository layout. The
+[deployment manifest](deploy/reproducible-demo.yaml) records runtime versions,
+container digests, upstream model revisions, default ports, and requirements
+for user-trained checkpoints.
 
 ## License
 

@@ -21,11 +21,10 @@ and [checkpoint export](../reference/groot/models/README.md)
 before this learned-motion installation. No project weights or recorded
 training dataset are supplied.
 
-> The historical two-host acceptance predates the PGFR migration. A fresh
-> installation and upgrade still need acceptance on the candidate commit.
-> Replace the commit placeholder below only after that candidate passes. See
-> [recorded results](VALIDATION.md#historical-validation) and the
-> [upgrade guide](FULL-FORM-RENAME-UPGRADE.md).
+Use the same Git commit on both hosts and run the [deployment checks](VALIDATION.md)
+with your checkpoint. See [validation coverage](VALIDATION.md#validation-status)
+for tested configurations and known limitations. For an existing installation,
+follow the [upgrade guide](FULL-FORM-RENAME-UPGRADE.md).
 
 ## Requirements
 

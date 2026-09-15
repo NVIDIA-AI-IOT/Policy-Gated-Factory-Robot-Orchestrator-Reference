@@ -25,8 +25,8 @@ RAM, VRAM, and driver checks. The installers do not install the NVIDIA driver,
 Docker Engine, or NVIDIA Container Toolkit.
 
 The learned-motion profile has not been validated on Isaac Sim 6.0.1 or with
-WebRTC. See [validation status](docs/VALIDATION.md#validation-status) for current
-coverage and remaining checks.
+WebRTC. See [Validation](docs/VALIDATION.md#validation-status) for tested
+configurations and known limitations.
 
 ## Software and model prerequisites
 
@@ -61,8 +61,8 @@ and fine-tuned checkpoint. Complete these steps in order:
 5. [Validate service readiness and complete missions](docs/VALIDATION.md) with your checkpoint.
 
 The learned-motion profile uses a different Isaac Sim version from the scripted
-baseline. Follow its pinned configuration and validate your own deployment;
-historical development runs do not qualify a newly trained model.
+baseline. Follow its pinned configuration and validate your checkpoint on the
+matching scene, cameras, and robot configuration.
 
 For an existing installation using the former project names, follow the
 [rename upgrade procedure](docs/FULL-FORM-RENAME-UPGRADE.md) before installing.

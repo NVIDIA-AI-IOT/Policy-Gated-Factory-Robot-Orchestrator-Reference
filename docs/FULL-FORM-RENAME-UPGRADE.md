@@ -63,10 +63,10 @@ the scripted baseline, or reinstall the learned-policy cell with
 
 ## 1. Record the deployment and stop both hosts
 
-Choose and record the exact published commit or tag before starting. The
-historical 2026-09-08 mission accepted the pre-rename tree; it is evidence for
-that snapshot, not live acceptance of the renamed tree. The renamed release
-candidate requires the clean-install and upgrade validation below.
+Choose and record the target Git commit before starting. Validate both the
+clean installation and upgrade paths below against that revision. See
+[Validation](VALIDATION.md#validation-status) for tested configurations and
+known limitations.
 
 Record the enabled state and current revisions on each host:
 
@@ -466,10 +466,9 @@ pgfr-spine/.venv/bin/python -c \
   'import policy_gated_factory_robot_orchestrator_reference'
 ```
 
-Do not change the deployment manifest's historical `validated_on` date or
-describe the earlier live run as post-rename validation. Record a new evidence
-date and immutable commit only after the corresponding clean and upgrade gates
-actually pass.
+Preserve existing validation records. After both installation paths pass,
+record the Git commit, checkpoint identity, test date, and results for the
+upgraded deployment.
 
 ## Reference source layout update
 

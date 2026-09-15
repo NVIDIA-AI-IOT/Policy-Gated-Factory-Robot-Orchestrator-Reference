@@ -54,7 +54,9 @@ npm audit --audit-level=high
 Validate shell and documentation changes with the relevant contract tests:
 
 ```bash
-bash -n ops/*.sh
+for script in ops/*.sh reference/groot/thor/install_deps.sh; do
+  bash -n "$script" || exit 1
+done
 uv run --frozen --project servers/pgfr-workflows pytest -q \
   ops/test_deployment_contracts.py \
   ops/test_groot_sim_host_contract.py \

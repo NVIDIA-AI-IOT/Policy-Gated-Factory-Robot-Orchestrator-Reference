@@ -352,29 +352,29 @@ verification, and retention of the complete journal.
 
 ## Validation status
 
-Hardware-free tests check software contracts; mission acceptance requires the
-live checks above. The historical results below predate the namespace rename
-and do not qualify the current source or a user-trained checkpoint. See
-[Installation](../INSTALL.md) for reference configurations.
+Automated checks cover software contracts and package installation. Live results
+apply to the hardware, source revision, simulator profile, and checkpoint used
+in each [recorded run](#historical-validation). See [Installation](../INSTALL.md)
+for the reference configurations.
 
-The following work remains:
+| Area | Coverage and limitations |
+|---|---|
+| Two-host installation and upgrade | A complete mission is recorded for an earlier source snapshot. End-to-end acceptance of a clean RTX/Thor installation and an upgraded installation is not recorded for the current release. Both paths require the checks above against the same Git commit and checkpoint. |
+| Dataset capture and training | Fresh capture, conversion, training, and checkpoint evaluation require validation on the target scene. Training time and VRAM requirements have not been benchmarked for the public training path. |
+| Isaac Sim profiles | Recorded GR00T runs use 6.0.0-dev2 with X11. The 6.0.1 results cover the scripted baseline; learned motion on 6.0.1 or WebRTC is unvalidated. |
+| Streaming and offline assets | Server startup is covered; a connected WebRTC client and local asset-pack startup are not. Recorded asset-loading tests cover online retrieval and a warm cache. |
+| Thor environment | The native installer applies an explicit TorchCodec overlay after the frozen dependency sync. The uv lock alone does not describe the complete installed environment; a reproducible source/build recipe for the custom wheel is not supplied. |
+| Runtime image availability | A fresh registry pull of the pinned 6.0.0-dev2 image is not covered by the recorded validation. |
 
-- Run a clean two-host installation and full mission from one immutable
-  post-rename commit, including explicit Isaac license acceptance and the
-  native Thor dependency installation. Repeat acceptance after the
-  [stopped-service namespace upgrade](FULL-FORM-RENAME-UPGRADE.md).
-- Validate fresh dataset capture, conversion, and training; measure training
-  time and VRAM use, and evaluate each user-trained checkpoint. Codec preflight
-  checks build identity and features, not legal approval; artifact checksums
-  establish integrity, not model performance.
-- Complete acceptance with NVIDIA's native Isaac Sim WebRTC Streaming Client
-  and qualify local asset-pack startup before claiming offline operation.
-- Qualify the learned GR00T path on Isaac Sim 6.0.1 or WebRTC; existing 6.0.1
-  results cover the scripted profile only.
-- Resolve the Thor post-lock TorchCodec overlay before claiming a fully
-  lock-resolved environment. New operating systems, GPUs, Jetson products,
-  serving topologies, and Chat or agent/model combinations need their own
-  acceptance evidence.
+Run installation acceptance with explicit Isaac Sim license acceptance and the
+native Thor dependency installation. Existing deployments also need the
+[stopped-service upgrade checks](FULL-FORM-RENAME-UPGRADE.md). Other operating
+systems, GPUs, Jetson products, serving topologies, and Chat or agent/model
+combinations require acceptance on their own configuration.
+
+Codec preflight checks build identity and features; it does not grant legal
+approval. Checkpoint checksums establish integrity; rollout and visual
+verification establish performance on the target scene.
 
 ## Historical validation
 

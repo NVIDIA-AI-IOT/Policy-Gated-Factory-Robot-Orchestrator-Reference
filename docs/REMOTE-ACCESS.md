@@ -172,6 +172,7 @@ encrypted, and firewalled to the operator address.
 
 The separate standalone launcher defaults to NVIDIA's native headless WebRTC
 service on `49100/tcp` and `47998/udp`. It does not include the browser-viewer
-Compose service or port `8210`. A WebRTC client session has not yet been
-acceptance-tested. See the
-[workstation WebRTC procedure](../ops/ISAAC-SIM-WORKSTATION.md#launch-the-supported-headlesswebrtc-profile).
+Compose service or port `8210`. Recorded tests cover server startup; client
+connectivity is outside that coverage. See the
+[workstation WebRTC procedure](../ops/ISAAC-SIM-WORKSTATION.md#launch-the-supported-headlesswebrtc-profile)
+and [validation coverage](VALIDATION.md#validation-status).

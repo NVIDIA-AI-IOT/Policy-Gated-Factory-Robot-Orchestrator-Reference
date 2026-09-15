@@ -40,7 +40,7 @@ No container image, OS package, model weight, dataset payload, FFmpeg binary,
 or remote Isaac asset binary is embedded in this source-tree inventory unless
 a separately listed tracked file says otherwise.
 
-Documentation screenshots and the demo video/GIF are listed in
+The architecture diagram, screenshots, and project video are listed in
 `docs/ASSET-PROVENANCE.md` in the source repository. Other runtime recordings,
 installed virtual environments, package caches, and container exports are
 excluded from public artifacts. Redistribution of excluded artifacts requires
