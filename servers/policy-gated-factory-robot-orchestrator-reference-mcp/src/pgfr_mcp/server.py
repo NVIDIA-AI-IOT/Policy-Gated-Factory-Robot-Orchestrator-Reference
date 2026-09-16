@@ -66,6 +66,58 @@ _STATE_LOCK = RLock()
 _PENDING_PROOF: dict | None = None
 _DISPATCH_ATTEMPTS: dict[tuple, int] = {}
 _LAST_CERTIFIED_PREFIX: int | None = None
+_SCENE_RESET_ID: str | None = None
+_SCENE_RESET_KNOWN = False
+
+
+def _clear_policy_state() -> None:
+    global _PENDING_PROOF, _LAST_CERTIFIED_PREFIX
+    _PENDING_PROOF = None
+    _DISPATCH_ATTEMPTS.clear()
+    _LAST_CERTIFIED_PREFIX = None
+
+
+def _sync_scene_reset(outcome: dict) -> bool:
+    """Observe Spine's verified-reset marker while holding _STATE_LOCK.
+
+    A missing marker or service restart is not reset evidence. The first
+    observation establishes a baseline; only a subsequent nonempty change
+    invalidates proof and retries belonging to the previous scene.
+    """
+    global _SCENE_RESET_ID, _SCENE_RESET_KNOWN
+    meta = outcome.get("_meta")
+    if not isinstance(meta, dict) or "scene_reset_id" not in meta:
+        return False
+    reset_id = meta["scene_reset_id"]
+    if reset_id is None:
+        _SCENE_RESET_KNOWN = True
+        return False
+    if not isinstance(reset_id, str) or not reset_id.strip():
+        return False
+    changed = _SCENE_RESET_KNOWN and reset_id != _SCENE_RESET_ID
+    _SCENE_RESET_ID = reset_id
+    _SCENE_RESET_KNOWN = True
+    if changed:
+        _clear_policy_state()
+    return changed
+
+
+def _scene_state() -> dict:
+    state = _json_object(_post("/v1/floor-state", {}))
+    if not state.get("error") and not state.get("transport_error"):
+        _sync_scene_reset(state)
+    return state
+
+
+def _reset_verified(outcome: dict) -> bool:
+    return (
+        outcome.get("dispatched") is True
+        and outcome.get("verified") is True
+        and outcome.get("status") in (None, "verified", "done", "completed", "ok", "success")
+        and not outcome.get("error")
+        and not outcome.get("transport_error")
+        and not outcome.get("delivery_uncertain")
+    )
 
 
 def _certified_order_enabled() -> bool:
@@ -226,8 +278,15 @@ def _post(route: str, payload: dict, *, role: str | None = None) -> str:
     except urllib.error.HTTPError as e:
         # the seam answers 400 with a JSON body for unverified dispatches —
         # that body IS the result the model needs to see
-        body = e.read().decode()
-        return body or json.dumps({"error": f"HTTP {e.code} from the floor service"})
+        raw = e.read().decode()
+        body = _json_object(raw) if raw else {"error": f"HTTP {e.code} from the floor service"}
+        # HTTP failures cannot establish a verified reset generation.
+        meta = body.get("_meta")
+        if isinstance(meta, dict):
+            meta.pop("scene_reset_id", None)
+        if payload.get("action") == "reset_scene":
+            body.update(verified=False, transport_error=True, http_status=e.code)
+        return _result(body)
     except OSError as e:
         return json.dumps({"error": f"floor service unreachable at {_seam()}: {e}"})
 
@@ -272,7 +331,6 @@ def reset_scene() -> str:
     """Reset the current hardened Isaac scene and wait for its verified result.
     Call only after an explicit operator request. The floor refuses the reset
     while another task is active; no scene implementation is duplicated here."""
-    global _LAST_CERTIFIED_PREFIX, _PENDING_PROOF
     with _STATE_LOCK:
         raw = _post(
             "/v1/dispatch",
@@ -289,10 +347,9 @@ def reset_scene() -> str:
             role="operator",
         )
         outcome = _json_object(raw)
-        if outcome.get("verified") is True:
-            _PENDING_PROOF = None
-            _DISPATCH_ATTEMPTS.clear()
-            _LAST_CERTIFIED_PREFIX = None
+        if _reset_verified(outcome):
+            _sync_scene_reset(outcome)
+            _clear_policy_state()
         return raw
 
 
@@ -354,6 +411,7 @@ def dispatch_task(
         if proof_gated:
             if wait is False:
                 return _refused("proof-gated GR00T actions must use wait=true")
+            state = _scene_state()
             if _PENDING_PROOF is not None:
                 return _refused(
                     "fresh visual proof must clear before another physical dispatch",
@@ -363,17 +421,10 @@ def dispatch_task(
                     },
                 )
         if certified_mixed and action in {"move", "pick_and_place"}:
-            state = _json_object(_post("/v1/floor-state", {}))
             pair_prefix, conflict = _completed_certified_pair_prefix(state)
             if conflict:
                 return _refused(conflict, certified_pair_prefix=pair_prefix)
             move_prefix = pair_prefix * 2
-            if (
-                move_prefix == 0
-                and _LAST_CERTIFIED_PREFIX is not None
-                and _LAST_CERTIFIED_PREFIX > 0
-            ):
-                _DISPATCH_ATTEMPTS.clear()
             _LAST_CERTIFIED_PREFIX = move_prefix
             if action == "move":
                 return _refused(
@@ -389,16 +440,9 @@ def dispatch_task(
                     certified_pair_prefix=pair_prefix,
                 )
         elif certified:
-            state = _json_object(_post("/v1/floor-state", {}))
             prefix, conflict = _completed_certified_prefix(state)
             if conflict:
                 return _refused(conflict, certified_prefix=prefix)
-            if (
-                prefix == 0
-                and _LAST_CERTIFIED_PREFIX is not None
-                and _LAST_CERTIFIED_PREFIX > 0
-            ):
-                _DISPATCH_ATTEMPTS.clear()
             _LAST_CERTIFIED_PREFIX = prefix
             if action == "move":
                 if prefix >= len(CERTIFIED_GROOT_SERIAL_ORDER):
@@ -437,8 +481,11 @@ def dispatch_task(
         if not proof_gated or action not in {"move", "pick_and_place"}:
             return raw
 
-        _DISPATCH_ATTEMPTS[attempt_key] = _DISPATCH_ATTEMPTS.get(attempt_key, 0) + 1
         outcome = _json_object(raw)
+        # Bind the new proof to the generation of this result, including a
+        # reset that completed between the preflight read and dispatch.
+        _sync_scene_reset(outcome)
+        _DISPATCH_ATTEMPTS[attempt_key] = _DISPATCH_ATTEMPTS.get(attempt_key, 0) + 1
         verified = outcome.get("verified") is True
         if action == "move":
             destination_region = "tote_r" if endpoint == "franka_right" else "tote"
@@ -525,6 +572,7 @@ def dispatch_parallel(left_color: str, right_color: str | None = None) -> str:
                 "the certified concurrent route requires one mixed-color "
                 "Order744 pair; same-color pairs are not qualified"
             )
+        state = _scene_state()
         if _PENDING_PROOF is not None:
             return _refused(
                 "fresh visual proof must clear before another physical dispatch",
@@ -537,17 +585,10 @@ def dispatch_parallel(left_color: str, right_color: str | None = None) -> str:
         move_prefix = 0
         pair_prefix = 0
         if certified_mixed:
-            state = _json_object(_post("/v1/floor-state", {}))
             pair_prefix, conflict = _completed_certified_pair_prefix(state)
             if conflict:
                 return _refused(conflict, certified_pair_prefix=pair_prefix)
             move_prefix = pair_prefix * 2
-            if (
-                move_prefix == 0
-                and _LAST_CERTIFIED_PREFIX is not None
-                and _LAST_CERTIFIED_PREFIX > 0
-            ):
-                _DISPATCH_ATTEMPTS.clear()
             _LAST_CERTIFIED_PREFIX = move_prefix
             if pair_prefix >= len(CERTIFIED_GROOT_MIXED_PAIRS):
                 return _refused("all six certified arm moves are already complete")
@@ -594,6 +635,7 @@ def dispatch_parallel(left_color: str, right_color: str | None = None) -> str:
         ]
         raw = _post("/v1/dispatch-parallel", {"moves": moves})
         outcome = _json_object(raw)
+        _sync_scene_reset(outcome)
         pre_dispatch_error = _pre_dispatch_error(outcome)
         if pre_dispatch_error is not None:
             return _refused(
@@ -743,6 +785,8 @@ def verify(predicate: str, region: str | None = None) -> str:
         payload: dict = {"predicate": predicate}
         if region is not None:
             payload["region"] = region
+        if _proof_gate_enabled():
+            _scene_state()
         pending = _PENDING_PROOF if _proof_gate_enabled() else None
         if pending is not None:
             allowed = pending.get("allowed_regions") or []
@@ -771,6 +815,9 @@ def verify(predicate: str, region: str | None = None) -> str:
                 })
 
         outcome = _json_object(_post("/v1/verify", payload))
+        if _sync_scene_reset(outcome):
+            # This evidence belongs to a reset scene, not the pending action.
+            return _result(outcome)
         if pending is None:
             return _result(outcome)
         if str(outcome.get("answer") or "").strip().lower() == "yes":

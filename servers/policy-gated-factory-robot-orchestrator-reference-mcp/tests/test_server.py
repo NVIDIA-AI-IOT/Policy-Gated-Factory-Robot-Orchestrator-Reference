@@ -19,6 +19,7 @@ class _FakeSeam(BaseHTTPRequestHandler):
     floor_state_response: dict | None = None
     dispatch_response: dict | None = None
     verify_response: dict | None = None
+    status_code: int = 200
 
     def log_message(self, *_a: object) -> None:
         return
@@ -28,7 +29,7 @@ class _FakeSeam(BaseHTTPRequestHandler):
         params = json.loads(self.rfile.read(n) or b"{}")
         _FakeSeam.calls.append((self.path, params))
         _FakeSeam.roles.append(self.headers.get("x-role"))
-        code = 400 if params.get("action") == "fail_me" else 200
+        code = 400 if params.get("action") == "fail_me" else _FakeSeam.status_code
         configured = None
         if self.path == "/v1/floor-state":
             configured = _FakeSeam.floor_state_response
@@ -64,9 +65,12 @@ def seam(monkeypatch):
     _FakeSeam.floor_state_response = None
     _FakeSeam.dispatch_response = None
     _FakeSeam.verify_response = None
+    _FakeSeam.status_code = 200
     server._PENDING_PROOF = None
     server._DISPATCH_ATTEMPTS.clear()
     server._LAST_CERTIFIED_PREFIX = None
+    server._SCENE_RESET_ID = None
+    server._SCENE_RESET_KNOWN = False
     yield httpd
     httpd.shutdown()
 
@@ -537,3 +541,191 @@ def test_dispatch_forwards_device_specific_args(seam, monkeypatch):
 def test_instructions_carry_the_playbook():
     text = server._playbook()
     assert "ONE action at a time" in text or "one at a time" in text.lower()
+
+
+def _first_move():
+    return json.loads(server.dispatch_task(
+        action="move", endpoint="franka_right", color="green",
+        source="conveyor_2", destination="tote_green",
+    ))
+
+
+def _seed_pending_reset_scene(monkeypatch, reset_id="before"):
+    _enable_certified(monkeypatch)
+    _FakeSeam.floor_state_response["_meta"] = {"scene_reset_id": reset_id}
+    _FakeSeam.dispatch_response = {
+        "dispatched": True, "verified": True,
+        "_meta": {"scene_reset_id": reset_id},
+    }
+    assert _first_move()["pending_visual_proof"]["attempt"] == 1
+
+
+@pytest.mark.parametrize("initial_reset_id", [None, "before"])
+def test_external_verified_reset_restarts_serial_proof_and_retry_state(
+    seam, monkeypatch, initial_reset_id,
+):
+    _seed_pending_reset_scene(monkeypatch, initial_reset_id)
+    previous_attempt = next(iter(server._DISPATCH_ATTEMPTS))
+    server._DISPATCH_ATTEMPTS[previous_attempt] = 2
+    _FakeSeam.floor_state_response["_meta"] = {"scene_reset_id": "after"}
+    _FakeSeam.dispatch_response["_meta"] = {"scene_reset_id": "after"}
+
+    result = _first_move()
+
+    assert result["verified"] is True
+    assert result["pending_visual_proof"]["attempt"] == 1
+    assert result["pending_visual_proof"]["sequence"] == 1
+    assert server._DISPATCH_ATTEMPTS == {previous_attempt: 1}
+    assert server._LAST_CERTIFIED_PREFIX == 1
+    assert all(payload.get("action") != "reset_scene" for _, payload in _FakeSeam.calls)
+    # The next action in this new scene still requires its own visual proof.
+    assert _first_move()["status"] == "refused"
+
+
+@pytest.mark.parametrize("state", [
+    {"tote": {}, "tote_r": {}, "_meta": {"scene_reset_id": "before"}},
+    {"tote": {}, "tote_r": {}},
+    {"tote": {}, "tote_r": {}, "_meta": {"scene_reset_id": None}},
+    {"tote": {}, "tote_r": {}, "_meta": {"scene_reset_id": ""}},
+    {"tote": {}, "tote_r": {}, "_meta": {"scene_reset_id": 1}},
+    {"error": "floor service unavailable"},
+    {"error": "failed read", "_meta": {"scene_reset_id": "untrusted"}},
+])
+def test_missing_unchanged_or_invalid_reset_marker_retains_guards(seam, monkeypatch, state):
+    _seed_pending_reset_scene(monkeypatch)
+    pending = server._PENDING_PROOF.copy()
+    attempts = server._DISPATCH_ATTEMPTS.copy()
+    prefix = server._LAST_CERTIFIED_PREFIX
+    _FakeSeam.floor_state_response = state
+    _FakeSeam.calls.clear()
+
+    result = _first_move()
+
+    assert result["status"] == "refused"
+    assert server._PENDING_PROOF == pending
+    assert server._DISPATCH_ATTEMPTS == attempts
+    assert server._LAST_CERTIFIED_PREFIX == prefix
+    assert _FakeSeam.calls == [("/v1/floor-state", {})]
+
+
+def test_first_marker_after_legacy_response_is_not_reset_evidence(seam, monkeypatch):
+    _enable_certified(monkeypatch)
+    _FakeSeam.dispatch_response = {"dispatched": True, "verified": True}
+    _first_move()
+    _FakeSeam.floor_state_response["_meta"] = {"scene_reset_id": "already-existed"}
+    assert _first_move()["status"] == "refused"
+    assert _first_move()["status"] == "refused"
+
+
+def test_external_reset_clears_exhausted_retries_without_pending_proof(seam, monkeypatch):
+    _seed_pending_reset_scene(monkeypatch)
+    server._PENDING_PROOF = None
+    key = next(iter(server._DISPATCH_ATTEMPTS))
+    server._DISPATCH_ATTEMPTS[key] = 2
+    # Empty totes alone are not evidence that an operator reset succeeded.
+    assert _first_move()["attempts"] == 2
+    _FakeSeam.floor_state_response["_meta"]["scene_reset_id"] = "after"
+    _FakeSeam.dispatch_response["_meta"]["scene_reset_id"] = "after"
+    assert _first_move()["pending_visual_proof"]["attempt"] == 1
+
+
+def test_dispatch_result_binds_proof_to_reset_between_preflight_and_motion(seam, monkeypatch):
+    _enable_certified(monkeypatch)
+    _FakeSeam.floor_state_response["_meta"] = {"scene_reset_id": "before"}
+    _FakeSeam.dispatch_response = {
+        "dispatched": True, "verified": False,
+        "error": "motion did not complete",
+        "_meta": {"scene_reset_id": "after"},
+    }
+    first = _first_move()
+    assert first["pending_visual_proof"]["state"] == "awaiting_reconciliation"
+    _FakeSeam.floor_state_response["_meta"]["scene_reset_id"] = "after"
+    assert _first_move()["status"] == "refused"
+    assert server._PENDING_PROOF == first["pending_visual_proof"]
+
+
+def test_external_reset_clears_parallel_proofs_and_retries(seam, monkeypatch):
+    _enable_certified(monkeypatch)
+    monkeypatch.setenv("PGFR_GROOT_PARALLEL_ENABLED", "1")
+    monkeypatch.setenv("PGFR_GROOT_FLEXIBLE_ORDER", "1")
+    _FakeSeam.floor_state_response["_meta"] = {"scene_reset_id": "before"}
+    _FakeSeam.dispatch_response = {
+        "dispatched": True, "verified": True, "independent_b1_verified": True,
+        "_meta": {"scene_reset_id": "before"},
+    }
+    first = json.loads(server.dispatch_parallel("blue", "green"))
+    assert first["pending_visual_proof"]["remaining_regions"] == ["tote", "tote_r"]
+    server._DISPATCH_ATTEMPTS[("move_pair", "blue", "green")] = 2
+    _FakeSeam.floor_state_response["_meta"]["scene_reset_id"] = "after"
+    _FakeSeam.dispatch_response["_meta"]["scene_reset_id"] = "after"
+    result = json.loads(server.dispatch_parallel("blue", "green"))
+    assert result["verified"] is True
+    assert result["pending_visual_proof"]["attempt"] == 1
+    assert result["pending_visual_proof"]["remaining_regions"] == ["tote", "tote_r"]
+    assert json.loads(server.dispatch_parallel("blue", "green"))["status"] == "refused"
+
+
+@pytest.mark.parametrize("reset_during_verify", [False, True])
+def test_verification_after_reset_does_not_claim_to_prove_old_action(
+    seam, monkeypatch, reset_during_verify,
+):
+    _seed_pending_reset_scene(monkeypatch)
+    if not reset_during_verify:
+        _FakeSeam.floor_state_response["_meta"]["scene_reset_id"] = "after"
+    _FakeSeam.verify_response = {
+        "answer": "yes", "evidence": "current scene",
+        "_meta": {"scene_reset_id": "after"},
+    }
+    out = json.loads(server.verify("the green brick is in the right tote", region="tote_r"))
+    assert out["answer"] == "yes"
+    assert "proof_gate" not in out
+    assert server._PENDING_PROOF is None
+    assert server._DISPATCH_ATTEMPTS == {}
+    assert server._LAST_CERTIFIED_PREFIX is None
+
+
+@pytest.mark.parametrize("outcome", [
+    {"verified": True},
+    {"dispatched": False, "verified": True},
+    {"dispatched": True, "verified": False},
+    {"dispatched": True, "verified": True, "status": "refused"},
+    {"dispatched": True, "verified": True, "status": "uncertain"},
+    {"dispatched": True, "verified": True, "status": "running"},
+    {"dispatched": True, "verified": True, "status": "queued"},
+    {"dispatched": True, "verified": True, "delivery_uncertain": True},
+    {"dispatched": True, "verified": True, "transport_error": True},
+    {"dispatched": True, "verified": True, "error": "contradictory result"},
+])
+def test_native_reset_requires_unambiguous_success_before_clearing(seam, monkeypatch, outcome):
+    _seed_pending_reset_scene(monkeypatch)
+    pending = server._PENDING_PROOF.copy()
+    attempts = server._DISPATCH_ATTEMPTS.copy()
+    _FakeSeam.dispatch_response = {**outcome, "_meta": {"scene_reset_id": "untrusted"}}
+    server.reset_scene()
+    assert server._PENDING_PROOF == pending
+    assert server._DISPATCH_ATTEMPTS == attempts
+    assert server._SCENE_RESET_ID == "before"
+
+
+@pytest.mark.parametrize("status_code", [400, 500])
+def test_http_failure_cannot_clear_policy_state_even_with_success_json(
+    seam, monkeypatch, status_code,
+):
+    _seed_pending_reset_scene(monkeypatch)
+    pending = server._PENDING_PROOF.copy()
+    _FakeSeam.status_code = status_code
+    _FakeSeam.dispatch_response = {
+        "dispatched": True, "verified": True,
+        "_meta": {"api": "v1", "scene_reset_id": "untrusted"},
+    }
+    result = json.loads(server.reset_scene())
+    assert result["verified"] is False
+    assert result["_meta"] == {"api": "v1"}
+    assert server._PENDING_PROOF == pending
+    assert server._SCENE_RESET_ID == "before"
+    # An error reading state must not clear proof either.
+    _FakeSeam.floor_state_response = {
+        "tote": {}, "tote_r": {}, "_meta": {"scene_reset_id": "untrusted"},
+    }
+    assert _first_move()["status"] == "refused"
+    assert server._PENDING_PROOF == pending

@@ -196,6 +196,7 @@ def validate(work: Path) -> None:
     run("uv", "pip", "install", "--python", str(python), *wheels, cwd=work)
     run("uv", "pip", "check", "--python", str(python), cwd=work)
     run(str(python), "-I", "-c", SMOKE, cwd=work)
+    run(str(python), "-I", str(ROOT / "ops/test_reset_scene_sync.py"), cwd=work)
     for command in ("policy_gated_factory_robot_orchestrator_reference", "pgfr-conformance"):
         run(str(environment / "bin" / command), "--help", cwd=work)
     print(f"All {len(PROJECTS)} source distributions and installed wheels passed.", flush=True)

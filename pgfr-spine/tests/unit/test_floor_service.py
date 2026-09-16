@@ -518,6 +518,128 @@ def test_operator_reset_forwards_explicit_scene_contract(
         assert invalid.status_code == 422
 
 
+
+@pytest.mark.parametrize("route", ["/v1/dispatch", "/dispatch"])
+def test_verified_reset_is_shared_in_floor_metadata(
+    monkeypatch: pytest.MonkeyPatch, route: str,
+) -> None:
+    from fastapi.testclient import TestClient
+
+    from policy_gated_factory_robot_orchestrator_reference.floor import service as svc
+
+    monkeypatch.setattr(svc, "load_backend", lambda *a, **k: _FakeLiveBackend())
+    reset = {"endpoint": "mobilebot", "action": "reset_scene"}
+    with TestClient(svc.build_app()) as client:
+        assert client.post("/v1/floor-state", json={}).json()["_meta"]["scene_reset_id"] is None
+        accepted = client.post(route, json=reset, headers={"x-role": "operator"})
+        assert accepted.json()["verified"] is True
+        reset_id = client.post("/v1/floor-state", json={}).json()["_meta"]["scene_reset_id"]
+        assert isinstance(reset_id, str) and len(reset_id) == 32
+        if route == "/v1/dispatch":
+            assert accepted.json()["_meta"]["scene_reset_id"] == reset_id
+
+        # Ordinary actions, read-only observations and refusals all expose the
+        # same reset receipt; none may manufacture evidence of another reset.
+        requests = [
+            ("/v1/floor-state", {}),
+            ("/v1/perceive", {"target": "table_1"}),
+            ("/v1/verify", {"predicate": "is the tote on the rack?", "region": "rack_1"}),
+            ("/v1/dispatch", {
+                "endpoint": "mobilebot", "action": "pick_and_place",
+                "object_id": "tote", "target_id": "rack_1",
+            }),
+            ("/v1/dispatch", reset),  # no operator role: policy refusal
+        ]
+        for path, payload in requests:
+            assert client.post(path, json=payload).json()["_meta"]["scene_reset_id"] == reset_id
+        assert client.get("/v1/tasks/absent.goal").json()["_meta"]["scene_reset_id"] == reset_id
+
+        second = client.post("/v1/dispatch", json=reset, headers={"x-role": "operator"})
+        assert second.json()["_meta"]["scene_reset_id"] != reset_id
+
+    # A service restart is not a scene reset and must not release client guards.
+    with TestClient(svc.build_app()) as restarted:
+        assert restarted.post("/v1/floor-state", json={}).json()["_meta"]["scene_reset_id"] is None
+
+
+@pytest.mark.parametrize("result_override", [
+    {"dispatched": False},
+    {"dispatched": 1},
+    {"verified": False},
+    {"verified": 1},
+    {"status": "refused"},
+    {"status": "failed"},
+    {"status": "uncertain"},
+    {"status": "error"},
+    {"status": "stopped"},
+    {"status": "running"},
+    {"status": "queued"},
+    {"error": "reset failed"},
+    {"transport_error": True},
+    {"delivery_uncertain": True},
+])
+def test_incomplete_or_contradictory_reset_preserves_scene_reset_id(
+    monkeypatch: pytest.MonkeyPatch, result_override: dict[str, Any],
+) -> None:
+    from fastapi.testclient import TestClient
+
+    from policy_gated_factory_robot_orchestrator_reference.floor import ros2
+    from policy_gated_factory_robot_orchestrator_reference.floor import service as svc
+
+    outcome: dict[str, Any] = {"dispatched": True, "verified": True}
+    calls = 0
+
+    async def dispatch(
+        backend: Any, endpoint: str, action: str, goal_args: dict[str, Any],
+    ) -> dict[str, Any]:
+        nonlocal calls
+        calls += 1
+        return dict(outcome)
+
+    monkeypatch.setattr(svc, "load_backend", lambda *a, **k: _FakeLiveBackend())
+    monkeypatch.setattr(ros2, "live_dispatch", dispatch)
+    reset = {"endpoint": "mobilebot", "action": "reset_scene"}
+    with TestClient(svc.build_app()) as client:
+        initial = client.post("/v1/dispatch", json=reset, headers={"x-role": "operator"})
+        reset_id = initial.json()["_meta"]["scene_reset_id"]
+        assert reset_id is not None
+        outcome.update(result_override)
+        attempted = client.post("/v1/dispatch", json=reset, headers={"x-role": "operator"})
+        assert attempted.json()["_meta"]["scene_reset_id"] == reset_id
+        assert client.post("/v1/floor-state", json={}).json()["_meta"]["scene_reset_id"] == reset_id
+        assert calls == 2
+
+
+def test_async_reset_acknowledgement_does_not_advance_scene_reset_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from fastapi.testclient import TestClient
+
+    from policy_gated_factory_robot_orchestrator_reference.floor import ros2
+    from policy_gated_factory_robot_orchestrator_reference.floor import service as svc
+
+    calls = 0
+
+    async def dispatch_async(
+        backend: Any, endpoint: str, action: str, goal_args: dict[str, Any],
+    ) -> dict[str, Any]:
+        nonlocal calls
+        calls += 1
+        return {"dispatched": True, "verified": True}
+
+    monkeypatch.setattr(svc, "load_backend", lambda *a, **k: _FakeLiveBackend())
+    monkeypatch.setattr(ros2, "live_dispatch_async", dispatch_async)
+    with TestClient(svc.build_app()) as client:
+        result = client.post(
+            "/v1/dispatch",
+            json={"endpoint": "mobilebot", "action": "reset_scene", "wait": False},
+            headers={"x-role": "operator"},
+        )
+        assert result.json()["_meta"]["scene_reset_id"] is None
+        assert client.post("/v1/floor-state", json={}).json()["_meta"]["scene_reset_id"] is None
+        assert calls == 1
+
+
 def test_conformance_kit_certifies_this_implementation(monkeypatch: pytest.MonkeyPatch) -> None:
     """The reference implementation must pass its own certification bar."""
     import sys

@@ -305,6 +305,7 @@ def build_app() -> FastAPI:
     state = getattr(backend, "state", None)
     lock = asyncio.Lock()  # serialize floor ops: one FIFO cell, one shared floor
     started = time.time()
+    scene_reset_id: str | None = None
     journal = _Journal(os.environ.get("PGFR_JOURNAL_DIR"))
     policy = ActionPolicy.load()
 
@@ -460,6 +461,22 @@ def build_app() -> FastAPI:
         journal.record("task_result", "-", {"goal_id": goal_id, **req_payload},
                        {"goal_id": goal_id, "status": "watch_timeout"}, 0.0, None, None)
 
+    def _record_verified_reset(req: DispatchRequest, result: dict[str, Any]) -> None:
+        # A process restart or queued reset is not evidence that the scene reset.
+        # Both dispatch routes call this while holding the floor-operation lock.
+        nonlocal scene_reset_id
+        if (
+            req.action == "reset_scene"
+            and req.wait
+            and result.get("dispatched") is True
+            and result.get("verified") is True
+            and result.get("status") in (None, "verified", "done", "completed", "ok", "success")
+            and not result.get("error")
+            and not result.get("transport_error")
+            and not result.get("delivery_uncertain")
+        ):
+            scene_reset_id = uuid.uuid4().hex
+
     async def _dispatch(req: DispatchRequest) -> dict[str, Any]:
         if live:
             if req.action == "cancel":
@@ -494,12 +511,16 @@ def build_app() -> FastAPI:
                 if r.get("goal_id"):
                     asyncio.create_task(_watch_async_goal(r["goal_id"], {"action": req.action, "endpoint": req.endpoint}))
                 return r
-            return await ros2.live_dispatch(backend, req.endpoint, req.action, goal_args)
+            result = await ros2.live_dispatch(backend, req.endpoint, req.action, goal_args)
+            _record_verified_reset(req, result)
+            return result
         assert isinstance(state, FloorState)
-        return await ops.dispatch(
+        result = await ops.dispatch(
             state, endpoint=req.endpoint, action=req.action,
             color=req.color, source=req.source, destination=req.destination,
         )
+        _record_verified_reset(req, result)
+        return result
 
     async def _dispatch_parallel(req: ParallelDispatchRequest) -> dict[str, Any]:
         if not live:
@@ -525,7 +546,7 @@ def build_app() -> FastAPI:
     async def v1_floor_state() -> dict[str, Any]:
         async with lock:
             payload = await _floor_state()
-        payload["_meta"] = _freshness()
+            payload["_meta"] = _freshness()
         return payload
 
     @app.post("/v1/perceive")
@@ -533,7 +554,7 @@ def build_app() -> FastAPI:
         t0 = time.time()
         async with lock:
             payload = await _perceive(req)
-        payload["_meta"] = _freshness()
+            payload["_meta"] = _freshness()
         # expose the journal id so clients can fetch the exact frame the VLM
         # saw for this op via GET /v1/frames/{request_id}
         payload["_meta"]["request_id"] = request.state.rid
@@ -551,10 +572,11 @@ def build_app() -> FastAPI:
         if req.action == "cancel":
             # control-plane: must NOT queue behind the very task it cancels
             payload = await _dispatch(req)
+            payload["_meta"] = _freshness()
         else:
             async with lock:
                 payload = await _dispatch(req)
-        payload["_meta"] = _freshness()
+                payload["_meta"] = _freshness()
         _record("dispatch", request, req.model_dump(exclude_none=True), payload, t0)
         return payload
 
@@ -581,7 +603,7 @@ def build_app() -> FastAPI:
                 payload = await _dispatch_parallel(req)
             else:
                 payload = refusal
-        payload["_meta"] = _freshness()
+            payload["_meta"] = _freshness()
         _record(
             "dispatch_parallel",
             request,
@@ -596,7 +618,7 @@ def build_app() -> FastAPI:
         t0 = time.time()
         async with lock:
             payload = await _verify(req)
-        payload["_meta"] = _freshness()
+            payload["_meta"] = _freshness()
         payload["_meta"]["request_id"] = request.state.rid
         _record("verify", request, req.model_dump(exclude_none=True), payload, t0)
         return payload
@@ -609,6 +631,7 @@ def build_app() -> FastAPI:
                 meta.update(health_fn())
             except Exception:
                 meta["health_error"] = True
+        meta["scene_reset_id"] = scene_reset_id
         return meta
 
     def _lost_goals() -> set[str]:

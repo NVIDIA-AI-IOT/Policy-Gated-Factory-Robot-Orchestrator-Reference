@@ -101,6 +101,19 @@ rejects wrong, partial, repeated, and same-color pairs before dispatch, and it
 does not expand a pair into serial `dispatch_task` calls. PGFR Spine independently
 checks the same order against current floor state.
 
+## Scene resets
+
+With proof gates enabled, MCP checks Spine's `_meta.scene_reset_id` before
+physical actions and visual verification. A new verified reset clears proof,
+retry, and sequence state from the previous scene, including when the operator
+used **Reset Scene** in the Console. Each connected MCP process synchronizes on
+its next gated tool call; no additional reset is sent.
+
+Spine publishes this marker only after a synchronous reset completes and is
+verified. Failed or uncertain resets, missing metadata, and service restarts
+do not clear MCP's guards. Update both Spine and the MCP server to enable this
+behavior; older Spine versions do not publish the marker.
+
 ## Security boundary
 
 The MCP process has no network listener or user-authentication layer. Access to
