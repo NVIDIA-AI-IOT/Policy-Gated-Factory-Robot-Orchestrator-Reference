@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=Policy-Gated Factory Robot Orchestrator Reference Chat Gateway
+Wants=network-online.target
+Wants=pgfr-seam.service pgfr-openclaw.service
+After=network-online.target pgfr-seam.service pgfr-openclaw.service
+
+[Service]
+Type=simple
+WorkingDirectory=__PGFR_REPO__/servers/pgfr-chat
+EnvironmentFile=__PGFR_HOME__/.config/pgfr-spine/chat.env
+EnvironmentFile=-__PGFR_HOME__/.openclaw/secrets.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=__PGFR_REPO__/servers/pgfr-chat/.venv/bin/pgfr-chat
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+KillSignal=SIGTERM
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=__PGFR_HOME__/.local/share/pgfr-spine/chat-sessions
+UMask=0077
+
+[Install]
+WantedBy=default.target

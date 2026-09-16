@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-# Start only the Industrial Claw OpenClaw gateway.
+# Start only the Policy-Gated Factory Robot Orchestrator Reference OpenClaw gateway.
 #
 # The Seam is a separately supervised service. This launcher deliberately
 # refuses to create or replace it: one process owns each port, and one service
@@ -10,14 +10,22 @@
 set -euo pipefail
 
 export NODE_USE_SYSTEM_CA=1
-IC_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-IC_OPENCLAW_GATEWAY_PORT="${IC_OPENCLAW_GATEWAY_PORT:-18790}"
-export IC_FLOOR_SERVICE="${IC_FLOOR_SERVICE:-http://127.0.0.1:8766}"
+PGFR_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PGFR_OPENCLAW_GATEWAY_PORT="${PGFR_OPENCLAW_GATEWAY_PORT:-18790}"
+export PGFR_FLOOR_SERVICE="${PGFR_FLOOR_SERVICE:-http://127.0.0.1:8766}"
+LEGACY_GUARD="$PGFR_REPO/ops/pgfr-legacy-guard.sh"
+if [ ! -r "$LEGACY_GUARD" ]; then
+  echo "gw: ERROR: missing migration guard: $LEGACY_GUARD" >&2
+  exit 2
+fi
+# shellcheck disable=SC1090
+. "$LEGACY_GUARD"
+pgfr_refuse_active_legacy_units
 
 if ! curl --fail --silent --show-error --max-time 5 \
-  "$IC_FLOOR_SERVICE/v1/health" >/dev/null; then
-  echo "Industrial Claw Seam is unavailable at $IC_FLOOR_SERVICE." >&2
-  echo "Start the canonical ic-seam.service, then retry; this launcher will not spawn a duplicate." >&2
+  "$PGFR_FLOOR_SERVICE/v1/health" >/dev/null; then
+  echo "Policy-Gated Factory Robot Orchestrator Reference Seam is unavailable at $PGFR_FLOOR_SERVICE." >&2
+  echo "Start the canonical pgfr-seam.service, then retry; this launcher will not spawn a duplicate." >&2
   exit 3
 fi
 
@@ -35,8 +43,8 @@ fi
 # restart that missed that file silently disabled the audit trail (and the
 # frames the chat renders). Pin it here — versioned, survives reboots — while
 # still honoring an explicit override.
-export IC_JOURNAL_DIR="${IC_JOURNAL_DIR:-$HOME/ic-journal}"
-mkdir -p "$IC_JOURNAL_DIR/frames"
+export PGFR_JOURNAL_DIR="${PGFR_JOURNAL_DIR:-$HOME/pgfr-journal}"
+mkdir -p "$PGFR_JOURNAL_DIR/frames"
 
 
 # --- Standalone runtime: the installed openclaw dependency, isolated state ---
@@ -44,21 +52,21 @@ mkdir -p "$IC_JOURNAL_DIR/frames"
 # sessions fully separate from any classic deployment's ~/.openclaw. First
 # start seeds a minimal config that connects OpenClaw to the governed floor MCP
 # server. The MCP process is owned by OpenClaw and proxies only to the Seam.
-export OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-$HOME/.industrial-claw/openclaw}"
+export OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-$HOME/.policy-gated-factory-robot-orchestrator-reference/openclaw}"
 export OPENCLAW_CONFIG_PATH="${OPENCLAW_CONFIG_PATH:-$OPENCLAW_STATE_DIR/openclaw.json}"
-IC_MCP_BIN="${IC_MCP_BIN:-$IC_REPO/servers/industrial-claw-mcp/.venv/bin/ic-mcp}"
+PGFR_MCP_BIN="${PGFR_MCP_BIN:-$PGFR_REPO/servers/policy-gated-factory-robot-orchestrator-reference-mcp/.venv/bin/pgfr-mcp}"
 mkdir -p "$OPENCLAW_STATE_DIR"
-if [ ! -x "$IC_MCP_BIN" ]; then
-  echo "IC MCP server not installed — run: (cd $IC_REPO/servers/industrial-claw-mcp && python3 -m venv .venv && .venv/bin/pip install -e .)" >&2
+if [ ! -x "$PGFR_MCP_BIN" ]; then
+  echo "PGFR MCP server not installed — run: (cd $PGFR_REPO/servers/policy-gated-factory-robot-orchestrator-reference-mcp && python3 -m venv .venv && .venv/bin/pip install -e .)" >&2
   exit 2
 fi
 if [ ! -f "$OPENCLAW_CONFIG_PATH" ]; then
-  sed "s#__MCP_COMMAND__#$IC_MCP_BIN#" \
-    "$IC_REPO/ops/openclaw.template.json" > "$OPENCLAW_CONFIG_PATH"
+  sed "s#__MCP_COMMAND__#$PGFR_MCP_BIN#" \
+    "$PGFR_REPO/ops/openclaw.template.json" > "$OPENCLAW_CONFIG_PATH"
 fi
-OPENCLAW_BIN="$IC_REPO/node_modules/.bin/openclaw"
+OPENCLAW_BIN="$PGFR_REPO/node_modules/.bin/openclaw"
 if [ ! -x "$OPENCLAW_BIN" ]; then
-  echo "openclaw runtime not installed — run: (cd $IC_REPO && npm ci)" >&2
+  echo "openclaw runtime not installed — run: (cd $PGFR_REPO && npm ci)" >&2
   exit 2
 fi
-exec "$OPENCLAW_BIN" gateway --port "$IC_OPENCLAW_GATEWAY_PORT" "$@"
+exec "$OPENCLAW_BIN" gateway --port "$PGFR_OPENCLAW_GATEWAY_PORT" "$@"

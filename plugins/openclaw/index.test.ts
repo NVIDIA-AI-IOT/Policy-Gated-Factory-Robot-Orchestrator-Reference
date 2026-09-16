@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 import plugin from "./index.js";
 import type { evaluateDispatchPolicy } from "./policy.js";
@@ -24,6 +26,20 @@ function loadRegisteredTools(): string[] {
   return tools;
 }
 
+function loadToolDescription(toolName: string): string {
+  let description = "";
+  const api = {
+    registerTool: (tool: { name: string; description?: string }) => {
+      if (tool.name === toolName) description = tool.description ?? "";
+    },
+    logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
+    on: () => {},
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  plugin.register(api as any);
+  return description;
+}
+
 /** Drive the plugin's register() with a stub api that captures its hooks. */
 function loadBeforeToolCallHook(): Hook {
   const hooks: Record<string, Hook> = {};
@@ -40,8 +56,28 @@ function loadBeforeToolCallHook(): Hook {
 }
 
 describe("floor before_tool_call enforcement", () => {
-  it("registers the operator reset tool", () => {
-    expect(loadRegisteredTools()).toContain("reset_scene");
+  it("registers exactly the tools declared by the plugin contract", () => {
+    const manifest = JSON.parse(
+      readFileSync(new URL("./openclaw.plugin.json", import.meta.url), "utf8"),
+    ) as { contracts: { tools: string[] } };
+    expect(loadRegisteredTools()).toEqual(manifest.contracts.tools);
+    expect(manifest.contracts.tools).toEqual([
+      "floor_state",
+      "perceive",
+      "dispatch_task",
+      "reset_scene",
+      "task_status",
+      "verify",
+    ]);
+  });
+
+  it("never advises retrying an unverified physical dispatch", () => {
+    const description = loadToolDescription("dispatch_task");
+    expect(description).toContain("physical outcome unknown");
+    expect(description).toContain("Never resend it blindly");
+    expect(description).toContain("fresh floor_state");
+    expect(description).not.toContain("did NOT take effect");
+    expect(description).not.toContain("retry up to twice");
   });
 
   const move = {
@@ -56,7 +92,7 @@ describe("floor before_tool_call enforcement", () => {
     expect(typeof loadBeforeToolCallHook()).toBe("function");
   });
 
-  it("allows a safe dispatch_task (returns no block)", () => {
+  it("allows a permitted dispatch_task (returns no block)", () => {
     const hook = loadBeforeToolCallHook();
     expect(hook({ toolName: "dispatch_task", params: move })).toBeUndefined();
   });
@@ -72,11 +108,11 @@ describe("floor before_tool_call enforcement", () => {
     expect(hook({ toolName: "dispatch_task", params: haul })).toBeUndefined();
   });
 
-  it("blocks an unsafe dispatch_task with a reason", () => {
+  it("blocks an unpermitted dispatch_task with a reason", () => {
     const hook = loadBeforeToolCallHook();
     const result = hook({ toolName: "dispatch_task", params: { ...move, destination: "human" } });
     expect(result?.block).toBe(true);
-    expect(result?.blockReason).toMatch(/unsafe/i);
+    expect(result?.blockReason).toMatch(/prohibited/i);
   });
 
   it("blocks an unsupported action", () => {

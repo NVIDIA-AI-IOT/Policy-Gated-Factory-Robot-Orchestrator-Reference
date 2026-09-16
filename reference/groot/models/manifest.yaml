@@ -1,0 +1,49 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+schema_version: 3
+status: user_checkpoint_required
+
+model:
+  source: locally_trained_by_user
+  required_environment: PGFR_GROOT_MODEL_ROOT
+  artifact_layout: exported_directory
+  metadata: pgfr_checkpoint.json
+  checksums: SHA256SUMS
+  fingerprint: sha256_of_sha256sums_bytes
+  qualification: artifact_integrity_only_task_evaluation_required
+  base_model:
+    repository_id: nvidia/GR00T-N1.7-DROID
+    revision: 05e7cc97e40dbd33b0890c35cc0214fcb0547ab5
+  embodiment_tag: OXE_DROID_RELATIVE_EEF_RELATIVE_JOINT
+  serving_instances:
+    - franka_left
+    - franka_right
+  required_inference_metadata:
+    - config.json
+    - embodiment_id.json
+    - processor_config.json
+    - statistics.json
+  supported_weight_layouts:
+    - model.safetensors
+    - model.safetensors.index.json_and_all_referenced_safetensors_shards
+
+dataset:
+  source: recorded_and_owned_or_authorized_by_user
+  format: native-droid
+  preparation: ../groot_n1_7_pgfr_pipeline/README.md
+  required_for_training: true
+  distributed_by_this_repository: false
+
+runtime_backbone:
+  repository_id: nvidia/Cosmos-Reason2-2B
+  revision: 9ce19a195e423419c349abfc86fd07178b230561
+  gated: true
+  model_safetensors_sha256: fa5a6e6ef4fce40216b185cc48a3b24d31637ac3e2ba69c107ed1f389c1e6ede
+  access_requirement: accept the NVIDIA model terms on Hugging Face and authenticate as the runtime user
+
+local_export:
+  helper: ops/export-groot-checkpoint.py
+  verifier: ops/verify-groot-models.sh
+  simulation_host_identity_files:
+    - pgfr_checkpoint.json
+    - SHA256SUMS

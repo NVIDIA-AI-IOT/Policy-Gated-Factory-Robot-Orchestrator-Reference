@@ -2,22 +2,23 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [project]
-name = "ic-conformance"
+name = "pgfr-conformance"
 version = "0.1.0"
-license = { text = "Apache-2.0" }
-description = "Industrial Claw conformance kit — the certification bar for floor-seam implementations"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.md"]
+description = "Policy-Gated Factory Robot Orchestrator Reference conformance kit — the certification bar for floor-seam implementations"
 requires-python = ">=3.10"
 dependencies = ["httpx>=0.27,<1", "pyyaml>=6.0,<7"]
 
 [project.optional-dependencies]
-mcp = ["mcp>=1.2"]
+mcp = ["mcp>=1.2,<2"]
 
 [project.scripts]
-ic-conformance = "ic_conformance.kit:main"
+pgfr-conformance = "pgfr_conformance.kit:main"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.32.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ic_conformance"]
+packages = ["src/pgfr_conformance"]

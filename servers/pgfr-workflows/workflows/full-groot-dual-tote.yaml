@@ -1,0 +1,157 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+name: full-groot-dual-tote
+version: 1.0.0
+description: >-
+  Pick the red cube, blue cylinder, and green brick from both workcells with
+  the certified GR00T specialists; visually verify every placement; then haul
+  both totes to rack_1 and visually verify each shelf placement.
+owner: policy-gated-factory-robot-orchestrator-reference
+params: {}
+steps:
+  - tool: perceive
+    args:
+      target: conveyor_1
+  - tool: perceive
+    args:
+      target: conveyor_2
+  - tool: perceive
+    args:
+      target: table_1
+  - tool: check_predicate
+    args:
+      predicate: >-
+        All six sortable objects are visibly staged: one red cube, one blue
+        cylinder, and one green rectangular brick in front of each Franka arm,
+        with both gray three-compartment totes on the table.
+      region: table_1
+    max_retries: 1
+
+  - tool: dispatch_task
+    args:
+      action: move
+      endpoint: franka_right
+      color: green
+      source: conveyor_2
+      destination: tote_green
+      backend: groot
+  - tool: check_predicate
+    args:
+      predicate: >-
+        The right green rectangular brick is visibly inside the right tote on
+        its green compartment pad.
+      region: tote_r
+    max_retries: 1
+
+  - tool: dispatch_task
+    args:
+      action: move
+      endpoint: franka_left
+      color: green
+      source: conveyor_1
+      destination: tote_green
+      backend: groot
+  - tool: check_predicate
+    args:
+      predicate: >-
+        The left green rectangular brick is visibly inside the left tote on
+        its green compartment pad.
+      region: tote
+    max_retries: 1
+
+  - tool: dispatch_task
+    args:
+      action: move
+      endpoint: franka_right
+      color: red
+      source: conveyor_2
+      destination: tote_red
+      backend: groot
+  - tool: check_predicate
+    args:
+      predicate: >-
+        The right red cube is visibly inside the right tote on its red
+        compartment pad together with the green rectangular brick.
+      region: tote_r
+    max_retries: 1
+
+  - tool: dispatch_task
+    args:
+      action: move
+      endpoint: franka_left
+      color: red
+      source: conveyor_1
+      destination: tote_red
+      backend: groot
+  - tool: check_predicate
+    args:
+      predicate: >-
+        The left red cube is visibly inside the left tote on its red
+        compartment pad together with the green rectangular brick.
+      region: tote
+    max_retries: 1
+
+  - tool: dispatch_task
+    args:
+      action: move
+      endpoint: franka_right
+      color: blue
+      source: conveyor_2
+      destination: tote_blue
+      backend: groot
+  - tool: check_predicate
+    args:
+      predicate: >-
+        The right tote visibly contains the green rectangular brick, red cube,
+        and blue cylinder on their matching compartment pads.
+      region: tote_r
+    max_retries: 1
+
+  - tool: dispatch_task
+    args:
+      action: move
+      endpoint: franka_left
+      color: blue
+      source: conveyor_1
+      destination: tote_blue
+      backend: groot
+  - tool: check_predicate
+    args:
+      predicate: >-
+        The left tote visibly contains the green rectangular brick, red cube,
+        and blue cylinder on their matching compartment pads.
+      region: tote
+    max_retries: 1
+
+  - tool: dispatch_task
+    args:
+      action: pick_and_place
+      endpoint: mobilebot
+      object_id: tote
+      target_id: rack_1
+  - tool: check_predicate
+    args:
+      predicate: >-
+        The left gray three-compartment tote is visibly resting on a shelf
+        level of the white rack and still contains all three sortable objects.
+      region: rack_1
+    max_retries: 1
+
+  - tool: dispatch_task
+    args:
+      action: pick_and_place
+      endpoint: mobilebot
+      object_id: tote_r
+      target_id: rack_1
+  - tool: check_predicate
+    args:
+      predicate: >-
+        Both gray three-compartment totes are visibly resting on separate
+        shelf levels of the white rack, and both still contain their red cube,
+        blue cylinder, and green rectangular brick.
+      region: rack_1
+    max_retries: 1
+done_criteria: >-
+  Exactly six physics-verified GR00T moves and two physics-verified tote hauls
+  completed in order; every dispatch is followed by a fresh VLM answer=yes
+  carrying evidence, source camera, and its journal request ID.

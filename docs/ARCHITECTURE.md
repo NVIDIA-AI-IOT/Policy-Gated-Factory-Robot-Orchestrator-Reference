@@ -1,15 +1,14 @@
-# Industrial Claw architecture
+# Policy-Gated Factory Robot Orchestrator Reference architecture
 
-Industrial Claw is a reference architecture and implementation for governed,
-closed-loop orchestration of a factory cell. IC Spine separates agent reasoning
-from floor execution so the agent harness, perception model, and robot action
-backend can be changed without bypassing policy, verification, or audit.
+PGFR Spine sits between agent clients and the Isaac Sim cell. It checks action
+policy, dispatches robot commands, verifies results, and records them. Agent
+clients, model providers, and robot controllers connect through these interfaces.
 
 ## Primary components
 
-### IC Spine
+### PGFR Spine
 
-IC Spine is the control and assurance service. It owns:
+PGFR Spine provides:
 
 - floor topology and endpoint discovery;
 - action-policy validation;
@@ -19,20 +18,19 @@ IC Spine is the control and assurance service. It owns:
 - mission journals and evidence frames; and
 - health and signal-freshness reporting.
 
-IC Spine can use a hardware-free mock backend or the ROS 2 backend used by the
+PGFR Spine can use a hardware-free mock backend or the ROS 2 backend used by the
 Isaac Sim reference cell.
 
-### IC Console
+### PGFR Console
 
-IC Console is the operator interface. Its panes expose topology, chat,
-inspection, mission history, and host telemetry. It observes the same session
-and journal identities used by IC Spine; it is not a second control plane.
+PGFR Console displays Chat, topology, inspection, mission history, and GPU
+telemetry. Its aggregation API is read-only; operator commands go through Chat.
 
-### Agent harnesses and IC Chat
+### Agent interfaces
 
-OpenClaw, Codex, Claude Code, Hermes, IC Chat, and other compatible harnesses
-connect through the same MCP server. The MCP handshake distributes the
-Industrial Claw operating playbook and exposes nine governed tools:
+MCP clients connect through the floor MCP server. When run from this checkout,
+the server includes the operating playbook in its handshake. It exposes nine
+tools:
 
 1. `floor_state`
 2. `perceive`
@@ -44,8 +42,8 @@ Industrial Claw operating playbook and exposes nine governed tools:
 8. `mission_history`
 9. `mission_detail`
 
-Harnesses propose and sequence work. IC Spine remains responsible for whether
-an action is allowed, dispatched, verified, and journaled.
+The Default Chat backend calls PGFR Spine over HTTP. With the OpenClaw backend,
+OpenClaw runs the tool loop through MCP. Both use PGFR Spine for floor actions.
 
 ### Isaac Sim reference cell
 
@@ -60,45 +58,32 @@ The cell provides two action-execution paths:
 - a learned-motion path using one fine-tuned GR00T checkpoint loaded by two
   policy-server processes, one for each arm.
 
-The two GR00T serving processes load the same model. A paired dispatch queries
-both processes and applies the validated left and right action streams in one
-cell transaction. Pairs are sequenced because each completed placement changes
-the next observation.
+An enabled paired dispatch queries both policy processes and executes the
+left and right action streams together. Each pair must finish and pass its
+visual checks before the next pair starts.
 
 ### Perception and verification
 
 Camera frames are published by the cell and selected by logical region. The
 reference deployment serves NVIDIA Nemotron Nano 12B VL through an
-OpenAI-compatible endpoint. IC Spine requests a fresh frame, applies the
-configured region crop, records the exact VLM input, and returns structured
-`yes`, `no`, or `unknown` evidence.
+OpenAI-compatible endpoint. PGFR Spine requests a fresh frame, applies the
+region crop, and records the VLM input. `perceive` returns a scene observation;
+`verify` answers a predicate with `yes`, `no`, or `unknown` and supporting text.
 
-The agent reasons from camera perception in `vision_only` mode. Action success
-is independently checked by the executor and resulting floor state, so a model
-response or normal command return is not by itself proof that an object moved.
+In `vision_only` mode, `perceive` omits symbolic object state. Dispatch still
+checks the executor result and floor state independently of the VLM response.
 
 ## Reference deployment
 
-```text
-Operator browser
-      |
-      v
-IC Console and selected agent harness
-      |
-      | MCP tools and playbook
-      v
-IC Spine -----> perception VLM
-      |
-      | ROS 2 command/result/state/camera contract
-      v
-Isaac Sim cell -----> GR00T policy/relay pair per arm
-```
+ROS 2 carries floor commands and scene evidence. The GR00T bridge carries
+observations and action chunks between the Isaac executor and Thor policy
+servers. AMR tote transport uses scripted control.
 
-The reference two-host arrangement places IC Spine, IC Console, the harness,
-the VLM, and both GR00T serving processes on the brain host. Isaac Sim and the
-robot executor run on the simulation host. The GR00T bridge exposes validated
-loopback forwards and derived readiness state to the simulation host; it does
-not make policy servers network-facing.
+The reference two-host arrangement places PGFR Spine, PGFR Console, the agent
+services, the VLM, and both GR00T serving processes on the Jetson control host.
+Isaac Sim and the robot executor run on the RTX simulation host. The GR00T
+bridge uses SSH port forwarding and checks policy/relay readiness on the
+simulation host. Policy servers remain bound to loopback.
 
 Exact versions, ports, artifact identities, and service ownership are defined
 in [`../deploy/reproducible-demo.yaml`](../deploy/reproducible-demo.yaml).
@@ -108,53 +93,39 @@ in [`../deploy/reproducible-demo.yaml`](../deploy/reproducible-demo.yaml).
 Given a goal such as “inspect the conveyor, sort the objects into the totes,
 then shelve both totes,” the system follows this loop:
 
-1. The harness receives the goal and the MCP operating playbook.
+1. An agent interface receives the goal and its operating instructions.
 2. `perceive` obtains fresh camera evidence for the relevant region.
-3. The harness selects an endpoint and action.
-4. IC Spine validates the request against the scene capabilities and policy.
-5. The ROS backend publishes one goal-correlated command on `/ic/command`.
+3. The agent selects an endpoint and action.
+4. PGFR Spine validates the request against the scene capabilities and policy.
+5. The ROS backend publishes one goal-correlated command on `/pgfr/command`.
 6. The cell executes the scripted or GR00T action and publishes progress.
-7. The cell publishes the matching result on `/ic/result`; IC Spine rejects a
-   timeout, mismatched goal, or unverified physical effect.
-8. `verify` checks the resulting scene using a fresh camera frame and VLM.
-9. The harness continues, retries within its bounded playbook, or reports the
-   unresolved condition.
-10. Every operation, result, duration, mission identity, and VLM evidence frame
-    is retained in the mission journal.
+7. The cell publishes the result on `/pgfr/result`, echoing the command's
+   `goal_id`. PGFR Spine reads the result and checks the physical effect.
+8. `verify` checks the destination using a fresh camera frame and VLM.
+9. The mission journal records the calls, results, timing, and evidence frames.
 
 ## ROS 2 boundary
 
 The reference cell uses a small generic protocol:
 
-- `/ic/command` — JSON command envelope;
-- `/ic/result` — goal-correlated JSON outcome;
-- `/ic/feedback` — progress for long-running actions;
-- `/ic/floor_state` — current floor-state JSON; and
+- `/pgfr/command` — JSON command envelope;
+- `/pgfr/result` — goal-correlated JSON outcome;
+- `/pgfr/feedback` — progress for long-running actions;
+- `/pgfr/floor_state` — current floor-state JSON; and
 - `/<camera>/image_raw` — ROS image streams.
 
-See [`floor-ros2-contract.md`](floor-ros2-contract.md) for the message contract.
-
-## Source map
-
-| Concern | Location |
-|---|---|
-| IC Spine service and floor backends | [`../ic-spine/`](../ic-spine/) |
-| MCP tool surface | [`../servers/industrial-claw-mcp/`](../servers/industrial-claw-mcp/) |
-| IC Chat | [`../servers/ic-chat/`](../servers/ic-chat/) |
-| IC Console | [`../ic-console/`](../ic-console/) |
-| OpenClaw integration | [`../plugins/openclaw/`](../plugins/openclaw/) |
-| Isaac Sim reference cell | [`../reference/industrial-claw/isaac-cell/`](../reference/industrial-claw/isaac-cell/) |
-| GR00T action execution | [`../reference/industrial-claw/groot/`](../reference/industrial-claw/groot/) |
-| Deployment manifest | [`../deploy/reproducible-demo.yaml`](../deploy/reproducible-demo.yaml) |
-| Agent playbook | [`../skills/industrial-claw-orchestrator/`](../skills/industrial-claw-orchestrator/) |
+See the [ROS 2 contract](floor-ros2-contract.md) for message formats and legacy
+compatibility, and the [source map](../STRUCTURE.md) for component guides.
 
 ## Failure behavior
 
 - Policy rejection returns a structured refusal before dispatch.
-- Missing ROS subscribers, stale signals, timeouts, and mismatched goal IDs fail
-  closed.
+- Missing or stale ROS signals can block readiness or cause an unverified
+  timeout. The transport does not automatically republish timed-out commands.
 - A robot result with `verified:false` is not reported as success.
 - VLM `no` or `unknown` is not treated as visual confirmation.
-- Retries are bounded by the operating playbook; unresolved work is surfaced to
-  the operator.
-- Cancellation is an explicit action and is not inferred from a new request.
+- Read-only perception and verification retries are bounded. An unverified
+  dispatch requires state reconciliation before any further motion.
+- The protocol defines a cancellation action, but the current ROS cell refuses
+  mid-flight cancellation because it cannot safely preempt the active command.
+  Use the deployment's operator-controlled stop procedure.

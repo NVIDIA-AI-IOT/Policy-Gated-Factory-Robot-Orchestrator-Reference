@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "ic/cell-protocol/command.v1",
-  "title": "/ic/command payload (JSON in std_msgs/String)",
+  "$id": "pgfr/cell-protocol/command.v1",
+  "title": "/pgfr/command payload (JSON in std_msgs/String)",
   "type": "object",
   "required": [
     "action"

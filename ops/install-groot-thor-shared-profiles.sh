@@ -1,45 +1,47 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-# Install only the shared Order744-cont24 GR00T profiles on an idle Thor stack.
+# Install shared GR00T profiles for a verified user-provided checkpoint on an idle Thor stack.
 set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: ops/install-groot-thor-shared-profiles.sh
+Usage: ops/install-groot-thor-shared-profiles.sh --checkpoint-path /absolute/local/export
 
-Verifies the existing generic GR00T policy/relay templates and the pinned
-Order744-cont24 checkpoint, then installs only the two shared profiles and
-their target. The command never enables or starts a service.
+Verifies the generic GR00T policy/relay templates and your checkpoint export,
+then installs two profiles with its checksum-derived identity. The command
+never enables or starts a service. Export your own training checkpoint first
+with ops/export-groot-checkpoint.py; no fine-tuned weights are downloaded.
 EOF
 }
 
-if (($#)); then
+MODEL_ROOT="${PGFR_GROOT_MODEL_ROOT:-}"
+while (($#)); do
   case "$1" in
+    --checkpoint-path) MODEL_ROOT=${2:?missing checkpoint path}; shift 2 ;;
     -h|--help) usage; exit 0 ;;
-    *) echo "install-groot-thor-shared-profiles: ERROR: no arguments are accepted" >&2; exit 2 ;;
+    *) echo "install-groot-thor-shared-profiles: ERROR: unknown argument: $1" >&2; exit 2 ;;
   esac
-fi
+done
 
-IC_REPO=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
-IC_USER_HOME=${HOME:?HOME is required}
-SYSTEMD_DIR="${XDG_CONFIG_HOME:-$IC_USER_HOME/.config}/systemd/user"
-GROOT_ENV_DIR="${XDG_CONFIG_HOME:-$IC_USER_HOME/.config}/ic-spine/groot"
-STATE_ROOT="$IC_USER_HOME/.local/share/ic-spine/groot"
-MODEL_ROOT="$IC_USER_HOME/industrial-claw-models/order744-cont24"
-POLICY_UNIT="$SYSTEMD_DIR/ic-groot-policy@.service"
-RELAY_UNIT="$SYSTEMD_DIR/ic-groot-relay@.service"
-TARGET_NAME=ic-groot-shared-stack.target
-TARGET_SOURCE="$IC_REPO/ops/systemd/groot/$TARGET_NAME"
-LEFT_SOURCE="$IC_REPO/ops/systemd/groot/shared-left.env"
-RIGHT_SOURCE="$IC_REPO/ops/systemd/groot/shared-right.env"
-VERIFY_MODEL="$IC_REPO/ops/verify-groot-models.sh"
+PGFR_REPO=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
+PGFR_USER_HOME=${HOME:?HOME is required}
+SYSTEMD_DIR="${XDG_CONFIG_HOME:-$PGFR_USER_HOME/.config}/systemd/user"
+GROOT_ENV_DIR="${XDG_CONFIG_HOME:-$PGFR_USER_HOME/.config}/pgfr-spine/groot"
+STATE_ROOT="$PGFR_USER_HOME/.local/share/pgfr-spine/groot"
+POLICY_UNIT="$SYSTEMD_DIR/pgfr-groot-policy@.service"
+RELAY_UNIT="$SYSTEMD_DIR/pgfr-groot-relay@.service"
+TARGET_NAME=pgfr-groot-shared-stack.target
+TARGET_SOURCE="$PGFR_REPO/ops/systemd/groot/$TARGET_NAME"
+LEFT_SOURCE="$PGFR_REPO/ops/systemd/groot/shared-left.env"
+RIGHT_SOURCE="$PGFR_REPO/ops/systemd/groot/shared-right.env"
+VERIFY_MODEL="$PGFR_REPO/ops/verify-groot-models.sh"
 SHARED_UNITS=(
   "$TARGET_NAME"
-  ic-groot-policy@shared-left.service
-  ic-groot-policy@shared-right.service
-  ic-groot-relay@shared-left.service
-  ic-groot-relay@shared-right.service
+  pgfr-groot-policy@shared-left.service
+  pgfr-groot-policy@shared-right.service
+  pgfr-groot-relay@shared-left.service
+  pgfr-groot-relay@shared-right.service
 )
 SHARED_PORTS=(5592 5593 5641 5642)
 
@@ -48,12 +50,21 @@ fail() {
   exit 2
 }
 
+[[ $MODEL_ROOT = /* && $MODEL_ROOT != / ]] || fail "supply --checkpoint-path with an absolute local checkpoint export path"
+HF_CACHE="${PGFR_HF_HOME:-$(dirname "$MODEL_ROOT")/hf-home}"
+
+LEGACY_GUARD="$PGFR_REPO/ops/pgfr-legacy-guard.sh"
+[[ -r $LEGACY_GUARD ]] || fail "missing migration guard: $LEGACY_GUARD"
+# shellcheck disable=SC1090
+. "$LEGACY_GUARD"
+
 for command in systemctl python3 grep cmp install mktemp sed mv dirname basename rm; do
   command -v "$command" >/dev/null 2>&1 || fail "missing command: $command"
 done
 for source in "$TARGET_SOURCE" "$LEFT_SOURCE" "$RIGHT_SOURCE" "$VERIFY_MODEL"; do
   [[ -f $source && ! -L $source ]] || fail "missing regular source file: $source"
 done
+pgfr_refuse_active_legacy_units
 for unit in "${SHARED_UNITS[@]}"; do
   if systemctl --user --quiet is-active "$unit" 2>/dev/null; then
     fail "$unit is active; this installer never changes an active shared stack"
@@ -73,18 +84,19 @@ require_text() {
   grep -Fq -- "$expected" "$file" || fail "installed unit contract mismatch in $file: $expected"
 }
 
-require_line "$POLICY_UNIT" "WorkingDirectory=$IC_USER_HOME/groot_shadow/Isaac-GR00T"
-require_line "$POLICY_UNIT" "EnvironmentFile=$IC_USER_HOME/.config/ic-spine/groot/%i.env"
-require_text "$POLICY_UNIT" "ExecStart=$IC_USER_HOME/groot_shadow/Isaac-GR00T/.venv/bin/python gr00t/eval/run_gr00t_server.py"
+require_line "$POLICY_UNIT" "WorkingDirectory=$PGFR_USER_HOME/groot_shadow/Isaac-GR00T"
+require_line "$POLICY_UNIT" "EnvironmentFile=$PGFR_USER_HOME/.config/pgfr-spine/groot/%i.env"
+require_text "$POLICY_UNIT" "ExecStart=$PGFR_USER_HOME/groot_shadow/Isaac-GR00T/.venv/bin/python gr00t/eval/run_gr00t_server.py"
 require_text "$POLICY_UNIT" "--host 127.0.0.1"
 require_text "$POLICY_UNIT" '--port ${POLICY_PORT} --model-path ${MODEL_PATH}'
+require_text "$POLICY_UNIT" 'ops/verify-groot-models.sh ${MODEL_PATH} ${PGFR_CHECKPOINT_FINGERPRINT}'
 require_line "$POLICY_UNIT" "Restart=on-failure"
 
-require_line "$RELAY_UNIT" "WorkingDirectory=$IC_USER_HOME/groot_shadow/Isaac-GR00T"
-require_line "$RELAY_UNIT" "EnvironmentFile=$IC_USER_HOME/.config/ic-spine/groot/%i.env"
-require_line "$RELAY_UNIT" "Environment=IC_RELAY_HOST=127.0.0.1"
-require_line "$RELAY_UNIT" "Environment=IC_POLICY_HOST=127.0.0.1"
-require_text "$RELAY_UNIT" "ExecStart=$IC_USER_HOME/groot_shadow/Isaac-GR00T/.venv/bin/python"
+require_line "$RELAY_UNIT" "WorkingDirectory=$PGFR_USER_HOME/groot_shadow/Isaac-GR00T"
+require_line "$RELAY_UNIT" "EnvironmentFile=$PGFR_USER_HOME/.config/pgfr-spine/groot/%i.env"
+require_line "$RELAY_UNIT" "Environment=PGFR_RELAY_HOST=127.0.0.1"
+require_line "$RELAY_UNIT" "Environment=PGFR_POLICY_HOST=127.0.0.1"
+require_text "$RELAY_UNIT" "ExecStart=$PGFR_USER_HOME/groot_shadow/Isaac-GR00T/.venv/bin/python"
 require_text "$RELAY_UNIT" '${RELAY_SCRIPT}'
 require_line "$RELAY_UNIT" "Restart=on-failure"
 
@@ -118,12 +130,39 @@ done
 
 STAGE=$(mktemp -d)
 trap 'rm -rf -- "$STAGE"' EXIT
-render() {
-  sed -e "s#__IC_REPO__#$IC_REPO#g" -e "s#__IC_HOME__#$IC_USER_HOME#g" "$1"
+python3 - "$PGFR_REPO/ops" "$MODEL_ROOT" "$PGFR_USER_HOME" "$PGFR_REPO" "$HF_CACHE" "$STAGE" <<'PYTHON'
+from pathlib import Path
+import sys
+sys.path.insert(0, sys.argv[1])
+from pgfr_checkpoint import read_identity
+root, user_home, repo, hf_cache, stage = sys.argv[2:]
+identity = read_identity(Path(root) / "pgfr_checkpoint.json")
+replacements = {
+    "__PGFR_REPO__": repo,
+    "__PGFR_HOME__": user_home,
+    "__PGFR_CHECKPOINT_PATH__": root,
+    "__PGFR_MODEL_LABEL__": identity["model_label"],
+    "__PGFR_CHECKPOINT_FINGERPRINT__": identity["checkpoint_fingerprint"],
+    "__PGFR_HF_HOME__": hf_cache,
 }
-render "$TARGET_SOURCE" >"$STAGE/$TARGET_NAME"
-render "$LEFT_SOURCE" >"$STAGE/shared-left.env"
-render "$RIGHT_SOURCE" >"$STAGE/shared-right.env"
+for value in replacements.values():
+    if any(ord(character) < 32 for character in value):
+        raise SystemExit("profile paths and identity must not contain control characters")
+for name in ("pgfr-groot-shared-stack.target", "shared-left.env", "shared-right.env"):
+    text = (Path(repo) / "ops/systemd/groot" / name).read_text(encoding="utf-8")
+    for placeholder, value in replacements.items():
+        text = text.replace(placeholder, value)
+    if name.endswith(".env"):
+        lines = []
+        for line in text.splitlines():
+            if line and not line.startswith("#"):
+                key, value = line.split("=", 1)
+                value = value.strip('"').replace("\\", "\\\\").replace('"', '\\"')
+                line = f'{key}="{value}"'
+            lines.append(line)
+        text = "\n".join(lines) + "\n"
+    (Path(stage) / name).write_text(text, encoding="utf-8")
+PYTHON
 
 check_destination() {
   local source=$1 destination=$2

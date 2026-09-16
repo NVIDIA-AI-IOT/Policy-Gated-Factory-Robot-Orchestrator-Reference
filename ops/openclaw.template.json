@@ -1,58 +1,44 @@
 {
   "agents": {
+    "ownership": "explicit",
     "defaults": {
       "skipBootstrap": true
     },
-    "list": [
-      {
-        "id": "main",
-        "name": "Industrial Claw",
+    "entries": {
+      "main": {
+        "name": "Policy-Gated Factory Robot Orchestrator Reference",
         "skills": [],
         "tools": {
           "allow": [
-            "ic-floor__*"
+            "pgfr-floor__*"
           ]
         }
       },
-      {
-        "id": "ic-console",
-        "name": "Industrial Claw Console",
+      "pgfr-console": {
+        "name": "Policy-Gated Factory Robot Orchestrator Reference Console",
         "contextInjection": "never",
         "skills": [],
         "tools": {
           "allow": [
-            "ic-floor__*"
+            "pgfr-floor__*"
           ],
           "loopDetection": {
-            "enabled": true,
-            "historySize": 30,
-            "warningThreshold": 6,
-            "unknownToolThreshold": 6,
-            "criticalThreshold": 12,
-            "globalCircuitBreakerThreshold": 20,
-            "detectors": {
-              "genericRepeat": true,
-              "knownPollNoProgress": true,
-              "pingPong": true
-            },
-            "postCompactionGuard": {
-              "windowSize": 3
-            }
+            "enabled": true
           }
         }
       }
-    ]
+    }
   },
   "mcp": {
     "servers": {
-      "ic-floor": {
+      "pgfr-floor": {
         "command": "__MCP_COMMAND__",
         "env": {
-          "IC_FLOOR_SERVICE": "http://127.0.0.1:8766",
-          "IC_MCP_ROLE": "agent",
-          "IC_CERTIFIED_GROOT_ORDER": "1",
-          "IC_GROOT_PARALLEL_ENABLED": "0",
-          "IC_GROOT_FLEXIBLE_ORDER": "0"
+          "PGFR_FLOOR_SERVICE": "http://127.0.0.1:8766",
+          "PGFR_MCP_ROLE": "agent",
+          "PGFR_CERTIFIED_GROOT_ORDER": "1",
+          "PGFR_GROOT_PARALLEL_ENABLED": "0",
+          "PGFR_GROOT_FLEXIBLE_ORDER": "0"
         },
         "requestTimeoutMs": 280000,
         "supportsParallelToolCalls": false,

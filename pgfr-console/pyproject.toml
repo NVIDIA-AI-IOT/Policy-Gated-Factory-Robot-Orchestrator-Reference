@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+[build-system]
+requires = ["hatchling==1.32.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pgfr-console"
+version = "0.1.0"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.md"]
+description = "Policy-Gated Factory Robot Orchestrator Reference console — read-only live topology, mission replay, and system health over the floor seam"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.23"]
+
+[project.scripts]
+pgfr-console = "pgfr_console.app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pgfr_console"]
+# Package discovery includes the static assets; force-including them duplicates wheel entries.
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

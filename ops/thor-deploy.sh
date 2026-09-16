@@ -7,17 +7,26 @@
 # Read-only by default. No PID discovery, kill -9, nohup, or implicit restart.
 set -euo pipefail
 
-SEAM_URL="${IC_FLOOR_SERVICE:-http://127.0.0.1:8766}"
-GW_URL="${IC_OPENCLAW_URL:-http://127.0.0.1:18790}"
-CHAT_URL="${IC_CHAT_URL:-http://127.0.0.1:8620}"
-WORKFLOWS_URL="${IC_WORKFLOWS_URL:-http://127.0.0.1:8610}"
-CONSOLE_URL="${IC_CONSOLE_URL:-http://127.0.0.1:8600}"
-GPU_URL="${IC_GPU_URL_THOR:-http://127.0.0.1:8601}"
-VLM_URL="${IC_VLM_URL:-http://127.0.0.1:8001}"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SEAM_URL="${PGFR_FLOOR_SERVICE:-http://127.0.0.1:8766}"
+GW_URL="${PGFR_OPENCLAW_URL:-http://127.0.0.1:18790}"
+CHAT_URL="${PGFR_CHAT_URL:-http://127.0.0.1:8620}"
+WORKFLOWS_URL="${PGFR_WORKFLOWS_URL:-http://127.0.0.1:8610}"
+CONSOLE_URL="${PGFR_CONSOLE_URL:-http://127.0.0.1:8600}"
+GPU_URL="${PGFR_GPU_URL_THOR:-http://127.0.0.1:8601}"
+VLM_URL="${PGFR_VLM_URL:-http://127.0.0.1:8001}"
 MODE="${1:---check}"
 TARGET="${2:-}"
 
 say() { printf '%s thor-deploy: %s\n' "$(date +%H:%M:%S)" "$*"; }
+
+LEGACY_GUARD="$REPO/ops/pgfr-legacy-guard.sh"
+if [ ! -r "$LEGACY_GUARD" ]; then
+  say "ERROR: missing migration guard: $LEGACY_GUARD"
+  exit 2
+fi
+# shellcheck disable=SC1090
+. "$LEGACY_GUARD"
 
 port_listener_count() {
   ss -H -ltnp "sport = :$1" 2>/dev/null \
@@ -68,14 +77,14 @@ EOF
 
 units_for() {
   case "$1" in
-    vlm) printf '%s\n' ic-perception-vlm.service ;;
-    seam) printf '%s\n' ic-seam.service ;;
-    gateway) printf '%s\n' ic-openclaw.service ;;
-    chat) printf '%s\n' ic-chat.service ;;
-    workflows) printf '%s\n' ic-workflows.service ;;
-    console) printf '%s\n' ic-console.service ;;
-    gpu) printf '%s\n' ic-gpu-exporter.service ;;
-    all) printf '%s\n' ic-perception-vlm.service ic-seam.service ic-openclaw.service ic-chat.service ic-workflows.service ic-gpu-exporter.service ic-console.service ;;
+    vlm) printf '%s\n' pgfr-perception-vlm.service ;;
+    seam) printf '%s\n' pgfr-seam.service ;;
+    gateway) printf '%s\n' pgfr-openclaw.service ;;
+    chat) printf '%s\n' pgfr-chat.service ;;
+    workflows) printf '%s\n' pgfr-workflows.service ;;
+    console) printf '%s\n' pgfr-console.service ;;
+    gpu) printf '%s\n' pgfr-gpu-exporter.service ;;
+    all) printf '%s\n' pgfr-perception-vlm.service pgfr-seam.service pgfr-openclaw.service pgfr-chat.service pgfr-workflows.service pgfr-gpu-exporter.service pgfr-console.service ;;
     *) return 2 ;;
   esac
 }
@@ -120,12 +129,14 @@ wait_for_stack() {
   verify
 }
 
+pgfr_refuse_active_legacy_units
+
 case "$MODE" in
   --check) verify ;;
   --status)
     systemctl --user --no-pager status \
-      ic-perception-vlm.service ic-seam.service ic-openclaw.service ic-chat.service \
-      ic-workflows.service ic-gpu-exporter.service ic-console.service || true
+      pgfr-perception-vlm.service pgfr-seam.service pgfr-openclaw.service pgfr-chat.service \
+      pgfr-workflows.service pgfr-gpu-exporter.service pgfr-console.service || true
     verify
     ;;
   --start)

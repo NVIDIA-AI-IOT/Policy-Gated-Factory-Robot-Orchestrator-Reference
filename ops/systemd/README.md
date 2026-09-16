@@ -1,49 +1,74 @@
-# IC Spine user services
+# User-systemd services
 
-These files are templates, not files to copy directly: `__IC_REPO__` and
-`__IC_HOME__` are rendered by `../bootstrap-brain.sh --install`.
+These templates define the long-running services on the Jetson control host.
+Do not copy them directly: `ops/bootstrap-brain.sh --install` replaces
+`__PGFR_REPO__` and `__PGFR_HOME__` with installation-specific paths, seeds the
+environment files, and reloads the user manager.
 
-The six units are the only supported owners of ports 8766, 18790, 8620, 8610,
-8601, and 8600. Environment files are seeded once and preserved on later installs.
-No unit starts or restarts Isaac Sim or a model container.
+## Service ownership
 
-The `groot/` templates load the published Order744-cont24 checkpoint in two
-independent B=1 policy processes, one per arm. Each process has its own
-loopback relay and service-state record. They are installed by
-`bootstrap-brain.sh`, but are not started by the brain/viewer target. Start
-`ic-groot-shared-stack.target` only after model verification succeeds.
+| Unit | Port | Purpose |
+|---|---:|---|
+| `pgfr-seam.service` | 8766 | PGFR Spine HTTP and ROS 2 floor service |
+| `pgfr-openclaw.service` | 18790 | Loopback OpenClaw Gateway API |
+| `pgfr-chat.service` | 8620 | PGFR Chat API |
+| `pgfr-workflows.service` | 8610 | Workflow API and runner |
+| `pgfr-console.service` | 8600 | Operator Console |
+| `pgfr-gpu-exporter.service` | 8601 | Jetson GPU telemetry |
+| `pgfr-perception-vlm.service` | 8001 | Pinned perception VLM |
 
-The `simulation-host/` unit is separate. It runs no model and no relay; it
-creates validated loopback-only forwards to a Thor-owned shared stack and
-publishes only derived local readiness records. Its installer performs a
-daemon reload but never enables or starts it.
+The GR00T templates under [`groot/`](groot/) run two independent B=1 policy
+processes and two loopback relays. The per-arm units are grouped by
+`pgfr-groot-shared-stack.target` and publish separate service-state records.
+Installation does not start or enable that target.
 
-## Manual and appliance operation
+The [simulation-host bridge](simulation-host/README.md) is installed and
+operated separately on the RTX host. It runs no model or relay.
 
-Installation is manual-start by design. `WantedBy` records dependency
-relationships but does not enable a unit. This is the default for development,
-evaluation, and any cell where an operator must review state before actuation.
+## Operate the control-host stack
 
-An operator may opt into reboot persistence only after reviewing the cell's
-startup, network, and safety behavior. On the brain host, enable the exact
-reviewed owners rather than a wildcard:
+Use `--check` or `--status` to inspect the stack. Start and restart operations
+require an explicit target:
 
 ```bash
-systemctl --user enable ic-perception-vlm.service \
-  ic-seam.service ic-openclaw.service ic-chat.service \
-  ic-workflows.service ic-gpu-exporter.service ic-console.service
-systemctl --user enable ic-groot-shared-stack.target
+ops/thor-deploy.sh --check
+ops/thor-deploy.sh --status
+ops/thor-deploy.sh --start all
+ops/thor-deploy.sh --restart chat
+```
+
+Supported operation targets are `vlm`, `seam`, `gateway`, `chat`,
+`workflows`, `gpu`, `console`, and `all`. Start the GR00T target separately,
+after verifying its checkpoint and installed profiles:
+
+```bash
+systemctl --user start pgfr-groot-shared-stack.target
+```
+
+No unit starts or restarts Isaac Sim. Existing environment files under
+`~/.config/pgfr-spine/` are preserved by later bootstrap runs and must be
+reviewed when deployment settings change.
+
+## Optional startup at boot
+
+Manual start is the default. Enable persistent user services only after the
+site has reviewed startup, network, and actuation behavior:
+
+```bash
+systemctl --user enable pgfr-perception-vlm.service pgfr-seam.service
+systemctl --user enable pgfr-openclaw.service pgfr-chat.service pgfr-workflows.service
+systemctl --user enable pgfr-gpu-exporter.service pgfr-console.service
+systemctl --user enable pgfr-groot-shared-stack.target
 loginctl enable-linger "$USER"
 ```
 
-On the simulation host, persistence of the bridge is a separate decision:
+The RTX bridge requires a separate decision on the simulation host:
 
 ```bash
-systemctl --user enable ic-groot-two-host-bridge.service
+systemctl --user enable pgfr-groot-two-host-bridge.service
 ```
 
-`enable` changes future startup only; it does not start or restart a running
-service. To remove persistence without stopping active work, use the matching
-`systemctl --user disable ...` commands and, if appropriate,
-`loginctl disable-linger "$USER"`. Starting or stopping remains an explicit
-operator action.
+`enable` changes future startup behavior; it does not start or restart a
+running service. Use the matching `systemctl --user disable` commands to remove
+persistence. Disable lingering separately with
+`loginctl disable-linger "$USER"` when appropriate.

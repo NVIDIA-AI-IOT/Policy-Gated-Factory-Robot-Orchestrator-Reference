@@ -12,6 +12,27 @@ permissions:
   contents: read
 
 jobs:
+  package-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12.3"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          version: "0.11.32"
+          enable-cache: false
+
+      - name: Build and validate standalone package artifacts
+        run: python ops/validate-packages.py
+
   hardware-free:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -38,35 +59,86 @@ jobs:
 
       - name: Validate shell sources
         run: |
-          bash -n ops/*.sh
-          bash -n reference/industrial-claw/groot/thor/install_deps.sh
+          for script in ops/*.sh; do bash -n "$script"; done
+          bash -n reference/groot/thor/install_deps.sh
+
+      - name: Validate Python lock metadata
+        run: |
+          for project in pgfr-spine pgfr-console servers/pgfr-chat servers/pgfr-workflows \
+            servers/policy-gated-factory-robot-orchestrator-reference-mcp; do
+            uv lock --check --project "$project"
+          done
+          uv lock --check --project reference/groot/thor
 
       - name: Validate locked Node installation
         run: |
           npm ci
+          npm ls --all
+          npm audit --audit-level=high
+          OPENCLAW_CONFIG_PATH="$PWD/ops/openclaw.template.json" \
+            ./node_modules/.bin/openclaw config validate
+          rendered_config="$RUNNER_TEMP/openclaw-rendered.json"
+          sed 's#__MCP_COMMAND__#/usr/bin/true#' \
+            ops/openclaw.template.json > "$rendered_config"
+          OPENCLAW_CONFIG_PATH="$rendered_config" \
+            ./node_modules/.bin/openclaw config validate
           npm test
 
-      - name: Validate IC Chat
+      - name: Validate PGFR Spine
         run: |
-          uv sync --frozen --extra dev --project servers/ic-chat
-          uv run --frozen --project servers/ic-chat pytest -q servers/ic-chat/tests
+          uv sync --frozen --extra dev --project pgfr-spine
+          uv run --frozen --project pgfr-spine ruff check pgfr-spine skills ops/validate-packages.py
+          (cd pgfr-spine && uv run --frozen mypy)
+          uv run --frozen --project pgfr-spine pytest -q pgfr-spine/tests
+          uv run --frozen --project pgfr-spine policy_gated_factory_robot_orchestrator_reference --help
 
-      - name: Validate IC Workflows
+      - name: Validate PGFR Chat
         run: |
-          uv sync --frozen --extra dev --project servers/ic-workflows
-          uv run --frozen --project servers/ic-workflows pytest -q servers/ic-workflows/tests
+          uv sync --frozen --extra dev --project servers/pgfr-chat
+          uv run --frozen --project servers/pgfr-chat pytest -q servers/pgfr-chat/tests
 
-      - name: Validate IC Console
+      - name: Validate PGFR Workflows
         run: |
-          uv sync --frozen --extra dev --project ic-console
-          uv run --frozen --project ic-console pytest -q ic-console/tests
+          uv sync --frozen --extra dev --project servers/pgfr-workflows
+          uv run --frozen --project servers/pgfr-workflows pytest -q servers/pgfr-workflows/tests
+
+      - name: Validate PGFR Console
+        run: |
+          uv sync --frozen --extra dev --project pgfr-console
+          uv run --frozen --project pgfr-console pytest -q pgfr-console/tests
 
       - name: Validate MCP server
         run: |
-          uv sync --frozen --extra dev --project servers/industrial-claw-mcp
-          uv run --frozen --project servers/industrial-claw-mcp pytest -q servers/industrial-claw-mcp/tests
+          uv sync --frozen --extra dev --project servers/policy-gated-factory-robot-orchestrator-reference-mcp
+          uv run --frozen --project servers/policy-gated-factory-robot-orchestrator-reference-mcp pytest -q servers/policy-gated-factory-robot-orchestrator-reference-mcp/tests
+
+      - name: Validate hardware-free GR00T deployment contracts
+        run: |
+          uv run --frozen --project servers/pgfr-workflows pytest -q \
+            reference/groot/tests/test_cont24_v36_runtime.py \
+            reference/groot/tests/test_native_droid_relay_batch2.py \
+            reference/groot/tests/test_two_host_bridge.py
+
+      - name: Validate dataset creation and training preflight
+        run: |
+          # Reuse the reviewed lock for CPU-only fixtures without installing the GPU stack.
+          uv export --frozen --extra dev \
+            --project reference/groot/thor \
+            --no-emit-project --no-hashes --no-annotate --no-header \
+            --format requirements-txt --output-file "$RUNNER_TEMP/pipeline-constraints.txt"
+          uv venv --python 3.12 "$RUNNER_TEMP/pipeline-tests"
+          uv pip install --python "$RUNNER_TEMP/pipeline-tests/bin/python" \
+            --constraint "$RUNNER_TEMP/pipeline-constraints.txt" pytest numpy pandas pyarrow scipy
+          "$RUNNER_TEMP/pipeline-tests/bin/python" -m pytest -q \
+            reference/groot/groot_n1_7_pgfr_pipeline/tests
 
       - name: Validate deployment contracts
         run: |
-          uv run --frozen --project servers/ic-workflows pytest -q ops/test_deployment_contracts.py ops/test_ic_gpu_exporter.py
-          python -m compileall -q ic-spine/src servers ic-console/src ops
+          uv run --frozen --project servers/pgfr-workflows pytest -q \
+            ops/test_deployment_contracts.py \
+            ops/test_groot_sim_host_contract.py \
+            ops/test_pgfr_gpu_exporter.py \
+            ops/test_isaac_sim_acceptance.py \
+            ops/test_isaac_sim_workstation.py \
+            pgfr-spine/tests/unit/test_isaac_lifecycle_contract.py
+          python -m compileall -q pgfr-spine/src servers pgfr-console/src ops

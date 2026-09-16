@@ -12,7 +12,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from ic_connector_sdk import CapabilitySpec, Connector
+from pgfr_connector_sdk import CapabilitySpec, Connector
 
 
 class MyConnector(Connector):

@@ -1,9 +1,9 @@
 {
-  "name": "@openclaw/industrial-claw-floor-plugin",
+  "name": "@openclaw/policy-gated-factory-robot-orchestrator-reference-floor-plugin",
   "version": "2026.5.28",
   "license": "Apache-2.0",
   "private": true,
-  "description": "Industrial Claw floor primitives plugin (perceive / dispatch_task / floor_state)",
+  "description": "Policy-Gated Factory Robot Orchestrator Reference floor primitives plugin (perceive / dispatch_task / floor_state)",
   "type": "module",
   "dependencies": {
     "typebox": "1.1.38"

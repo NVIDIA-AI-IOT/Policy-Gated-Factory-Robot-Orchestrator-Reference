@@ -1,0 +1,66 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+[build-system]
+requires = ["hatchling==1.32.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "policy_gated_factory_robot_orchestrator_reference"
+version = "0.1.0"
+description = "A factory brain that orchestrates verified action across heterogeneous robots and sensors."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.md"]
+authors = [{ name = "Policy-Gated Factory Robot Orchestrator Reference" }]
+
+dependencies = [
+  "pydantic>=2.7,<3",
+  "anthropic>=0.40,<1",
+  "structlog>=24.1,<25",
+  "pyyaml>=6.0,<7",
+  "fastapi>=0.110,<1",
+  "uvicorn>=0.30,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0,<9",
+  "pytest-asyncio>=0.23,<1",
+  "httpx>=0.27,<1",
+  "ruff>=0.5,<1",
+  "mypy>=1.10,<2",
+  "types-PyYAML",
+]
+
+[project.scripts]
+policy_gated_factory_robot_orchestrator_reference = "policy_gated_factory_robot_orchestrator_reference.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/policy_gated_factory_robot_orchestrator_reference"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"configs/scene.example.yaml" = "policy_gated_factory_robot_orchestrator_reference/floor/scene.example.yaml"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+  "real_anthropic: integration tests that hit the real Anthropic API (skipped when ANTHROPIC_API_KEY is unset)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src", "tests"]

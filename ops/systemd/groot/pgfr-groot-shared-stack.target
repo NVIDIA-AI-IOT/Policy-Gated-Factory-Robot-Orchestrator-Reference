@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+[Unit]
+Description=Policy-Gated Factory Robot Orchestrator Reference one-checkpoint two-instance B=1 GR00T stack
+Requires=pgfr-groot-policy@shared-left.service
+Requires=pgfr-groot-policy@shared-right.service
+Requires=pgfr-groot-relay@shared-left.service
+Requires=pgfr-groot-relay@shared-right.service
+After=pgfr-groot-policy@shared-left.service pgfr-groot-policy@shared-right.service
+
+[Install]
+WantedBy=default.target

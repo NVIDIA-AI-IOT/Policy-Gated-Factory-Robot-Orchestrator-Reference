@@ -1,21 +1,108 @@
-# Contributing to Industrial Claw
+# Contributing to Policy-Gated Factory Robot Orchestrator Reference
 
-Thank you for your interest in contributing to Industrial Claw.
+## Development environment
 
-## If you're working on this repo
+CI uses:
 
-- **Python engine work** lives under [`ic-spine/`](ic-spine/).
-- **Python tests must stay green** before any commit:
-  ```bash
-  cd ic-spine
-  .venv/bin/ruff check src tests
-  .venv/bin/mypy src tests
-  .venv/bin/pytest
-  ```
-- **Commit style:** Conventional Commits prefix (`feat:`, `fix:`, `chore:`, `docs:`, `test:`, etc.) with a scope
-  when meaningful (`feat(agents): ...`, `docs(readme): ...`).
-- **TypeScript runtime work** uses the pinned OpenClaw package dependency and
-  the Industrial Claw plugin under [`plugins/openclaw/`](plugins/openclaw/).
+- Ubuntu 24.04;
+- Python 3.12.3;
+- Node.js 22.22.3; and
+- uv 0.11.32.
+
+Use the pinned lockfiles. Do not update dependencies as a side effect of an
+unrelated change.
+
+## Validation
+
+Run the tests for each changed component. The complete hardware-free CI
+workflow is defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
+PGFR Spine:
+
+```bash
+uv sync --frozen --extra dev --project pgfr-spine
+uv run --frozen --project pgfr-spine pytest -q pgfr-spine/tests
+```
+
+Chat, Workflows, Console, and MCP:
+
+```bash
+uv sync --frozen --extra dev --project servers/pgfr-chat
+uv run --frozen --project servers/pgfr-chat pytest -q servers/pgfr-chat/tests
+
+uv sync --frozen --extra dev --project servers/pgfr-workflows
+uv run --frozen --project servers/pgfr-workflows pytest -q servers/pgfr-workflows/tests
+
+uv sync --frozen --extra dev --project pgfr-console
+uv run --frozen --project pgfr-console pytest -q pgfr-console/tests
+
+uv sync --frozen --extra dev \
+  --project servers/policy-gated-factory-robot-orchestrator-reference-mcp
+uv run --frozen \
+  --project servers/policy-gated-factory-robot-orchestrator-reference-mcp \
+  pytest -q servers/policy-gated-factory-robot-orchestrator-reference-mcp/tests
+```
+
+OpenClaw plugin:
+
+```bash
+npm ci
+npm test
+npm audit --audit-level=high
+```
+
+Validate shell and documentation changes with the relevant contract tests:
+
+```bash
+for script in ops/*.sh reference/groot/thor/install_deps.sh; do
+  bash -n "$script" || exit 1
+done
+uv run --frozen --project servers/pgfr-workflows pytest -q \
+  ops/test_deployment_contracts.py \
+  ops/test_groot_sim_host_contract.py \
+  ops/test_isaac_sim_acceptance.py \
+  ops/test_isaac_sim_workstation.py
+git diff --check
+```
+
+The release gate also runs the configured Ruff checks for PGFR Spine and skills,
+and strict Mypy for all PGFR Spine source and tests:
+
+```bash
+uv run --frozen --project pgfr-spine ruff check pgfr-spine skills ops/validate-packages.py
+(cd pgfr-spine && uv run --frozen mypy)
+```
+
+Build and validate all seven Python distributions with:
+
+```bash
+python3 ops/validate-packages.py
+```
+
+Use Python 3.12 and the CI-pinned uv. This gate rebuilds wheels from standalone
+source archives, checks package assets and license metadata, then installs all
+seven wheels into a temporary environment outside the checkout. It checks
+imports, entry points, dependency consistency, and Console HTTP assets without
+starting host services. Templates and the Thor upstream environment are not
+release distributions.
+
+Each package pins Hatchling. Package-local `LICENSE`, `NOTICE`, and
+`THIRD-PARTY-NOTICES.md` are regular copies so source archives can
+be rebuilt without the monorepo. After changing a canonical root legal file,
+refresh the copies with `python3 ops/validate-packages.py --sync-legal`; CI
+rejects missing or stale copies.
+
+## Change guidelines
+
+- Keep production behavior, tests, and operator documentation in the same
+  change.
+- Preserve the deny-by-default action and verification contracts.
+- Do not add credentials, generated host state, model weights, or simulator
+  caches to the repository.
+- Use a Conventional Commits prefix such as `feat:`, `fix:`, `docs:`,
+  `test:`, or `chore:`. Add a scope when it improves clarity.
+- TypeScript integration work uses the pinned OpenClaw dependency and the
+  plugin under [`plugins/openclaw/`](plugins/openclaw/).
 
 ## Developer Certificate of Origin
 

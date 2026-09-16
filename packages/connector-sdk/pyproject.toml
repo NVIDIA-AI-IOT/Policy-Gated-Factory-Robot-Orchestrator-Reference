@@ -2,16 +2,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [project]
-name = "ic-connector-sdk"
+name = "pgfr-connector-sdk"
 version = "0.1.0"
-license = { text = "Apache-2.0" }
-description = "Industrial Claw connector SDK — the contract for wrapping external systems (MES, VSS, QC)"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.md"]
+description = "Policy-Gated Factory Robot Orchestrator Reference connector SDK — the contract for wrapping external systems (MES, VSS, QC)"
 requires-python = ">=3.10"
 dependencies = []
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.32.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ic_connector_sdk"]
+packages = ["src/pgfr_connector_sdk"]

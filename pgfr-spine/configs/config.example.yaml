@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+brain:
+  model: claude-opus-4-7
+  max_subtasks: 20
+  max_replans: 3
+  max_mission_seconds: 600
+perception:
+  vlm:
+    provider: anthropic         # alt: nim (phase 2)
+    model: claude-opus-4-7
+  default_modality: image
+action:
+  default_max_attempts: 2
+mock:
+  enabled: false                # true → use MockInputSource + MockActionEndpoint + Mock clients
+runs_dir: ~/.policy_gated_factory_robot_orchestrator_reference/runs

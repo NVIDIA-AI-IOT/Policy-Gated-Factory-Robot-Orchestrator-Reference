@@ -1,11 +1,11 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-# Example workflow (edit in the console's Workflows tab, or by hand — it's just YAML)
+# Example workflow (edit this YAML file or update it through the Workflows API)
 name: sort-one-cube
 version: 0.1.0
 description: Perceive the conveyor, move one cube of the requested color into the tote, prove it.
-owner: ic-workflows
+owner: pgfr-workflows
 params:
   color: cube color (red | blue | green)
 steps:

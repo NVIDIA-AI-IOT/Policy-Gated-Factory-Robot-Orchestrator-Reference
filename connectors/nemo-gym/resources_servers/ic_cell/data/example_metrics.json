@@ -1,4 +1,0 @@
-{
- "Number of examples": 5,
- "note": "placeholder rollouts; regenerate with gym eval run + gym dataset collate (+mode=example_validation)"
-}

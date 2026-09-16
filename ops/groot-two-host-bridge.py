@@ -28,16 +28,16 @@ import time
 from typing import Mapping
 
 
-MODEL_LABEL = "droid15_dual_shared3_layout3_order744_cont24_droid1f_steps3000_v1"
-CHECKPOINT_FINGERPRINT = (
-    "bef1f16e82d87962b6d9659c25ed5cc8e7ec75bf2a7c7bfc5afcfa1af9ca5178"
-)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from pgfr_checkpoint import read_identity
+
+
 RELAY_CONTRACT = "explicit_pair_v1_single_frame_[0]"
 REMOTE_UNITS = (
-    "ic-groot-policy@shared-left.service",
-    "ic-groot-policy@shared-right.service",
-    "ic-groot-relay@shared-left.service",
-    "ic-groot-relay@shared-right.service",
+    "pgfr-groot-policy@shared-left.service",
+    "pgfr-groot-policy@shared-right.service",
+    "pgfr-groot-relay@shared-left.service",
+    "pgfr-groot-relay@shared-right.service",
 )
 STATE_NAMES = ("shared-left.json", "shared-right.json")
 TARGET_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_.-]*@[A-Za-z0-9_.:-]+")
@@ -84,7 +84,7 @@ print(json.dumps({"active": active, "listeners": listeners, "states": states}))
 
 
 class BridgeError(RuntimeError):
-    """Fail-closed bridge configuration or runtime error."""
+    """Bridge configuration or runtime error; callers stop on uncertainty."""
 
 
 @dataclass(frozen=True)
@@ -101,6 +101,9 @@ class Arm:
 class Config:
     thor_ssh: str
     remote_checkpoint: str
+    checkpoint_metadata: Path
+    model_label: str
+    checkpoint_fingerprint: str
     remote_state_root: Path
     local_state_root: Path
     poll_seconds: float
@@ -142,47 +145,64 @@ def _require_loopback(host: str, name: str) -> None:
         raise BridgeError(f"{name} must be loopback, got {host}")
 
 
+def load_local_state_root(environment: Mapping[str, str]) -> Path:
+    root = _absolute_path(
+        _required(environment, "PGFR_GROOT_LOCAL_STATE_ROOT"),
+        "PGFR_GROOT_LOCAL_STATE_ROOT",
+    )
+    if not root.is_dir() or root.is_symlink():
+        raise BridgeError("PGFR_GROOT_LOCAL_STATE_ROOT must be an existing real directory")
+    if root.stat().st_uid != os.getuid():
+        raise BridgeError("PGFR_GROOT_LOCAL_STATE_ROOT must be owned by the bridge user")
+    return root
+
+
 def load_config(environment: Mapping[str, str] | None = None) -> Config:
     env = os.environ if environment is None else environment
-    target = _required(env, "IC_GROOT_THOR_SSH")
+    target = _required(env, "PGFR_GROOT_THOR_SSH")
     if not TARGET_PATTERN.fullmatch(target):
-        raise BridgeError("IC_GROOT_THOR_SSH must have the form user@host")
+        raise BridgeError("PGFR_GROOT_THOR_SSH must have the form user@host")
     checkpoint = str(
         _absolute_path(
-            _required(env, "IC_GROOT_REMOTE_CHECKPOINT"),
-            "IC_GROOT_REMOTE_CHECKPOINT",
+            _required(env, "PGFR_GROOT_REMOTE_CHECKPOINT"),
+            "PGFR_GROOT_REMOTE_CHECKPOINT",
         )
     )
-    remote_root = _absolute_path(
-        _required(env, "IC_GROOT_REMOTE_STATE_ROOT"),
-        "IC_GROOT_REMOTE_STATE_ROOT",
-    )
-    local_root = _absolute_path(
-        _required(env, "IC_GROOT_LOCAL_STATE_ROOT"),
-        "IC_GROOT_LOCAL_STATE_ROOT",
+    metadata_path = _absolute_path(
+        _required(env, "PGFR_GROOT_CHECKPOINT_METADATA"),
+        "PGFR_GROOT_CHECKPOINT_METADATA",
     )
     try:
-        poll_seconds = float(env.get("IC_GROOT_BRIDGE_POLL_SECONDS", "5"))
+        identity = read_identity(metadata_path)
+    except (ValueError, OSError) as exc:
+        raise BridgeError(f"checkpoint metadata verification failed: {exc}") from exc
+    remote_root = _absolute_path(
+        _required(env, "PGFR_GROOT_REMOTE_STATE_ROOT"),
+        "PGFR_GROOT_REMOTE_STATE_ROOT",
+    )
+    local_root = load_local_state_root(env)
+    try:
+        poll_seconds = float(env.get("PGFR_GROOT_BRIDGE_POLL_SECONDS", "5"))
     except ValueError as exc:
-        raise BridgeError("IC_GROOT_BRIDGE_POLL_SECONDS must be numeric") from exc
+        raise BridgeError("PGFR_GROOT_BRIDGE_POLL_SECONDS must be numeric") from exc
     if not 1 <= poll_seconds <= 300:
-        raise BridgeError("IC_GROOT_BRIDGE_POLL_SECONDS must be between 1 and 300")
+        raise BridgeError("PGFR_GROOT_BRIDGE_POLL_SECONDS must be between 1 and 300")
 
     left = Arm(
         "franka_left",
         STATE_NAMES[0],
-        _port(env, "IC_GROOT_REMOTE_LEFT_POLICY_PORT"),
-        _port(env, "IC_GROOT_REMOTE_LEFT_RELAY_PORT"),
-        _port(env, "IC_GROOT_LOCAL_LEFT_POLICY_PORT"),
-        _port(env, "IC_GROOT_LOCAL_LEFT_RELAY_PORT"),
+        _port(env, "PGFR_GROOT_REMOTE_LEFT_POLICY_PORT"),
+        _port(env, "PGFR_GROOT_REMOTE_LEFT_RELAY_PORT"),
+        _port(env, "PGFR_GROOT_LOCAL_LEFT_POLICY_PORT"),
+        _port(env, "PGFR_GROOT_LOCAL_LEFT_RELAY_PORT"),
     )
     right = Arm(
         "franka_right",
         STATE_NAMES[1],
-        _port(env, "IC_GROOT_REMOTE_RIGHT_POLICY_PORT"),
-        _port(env, "IC_GROOT_REMOTE_RIGHT_RELAY_PORT"),
-        _port(env, "IC_GROOT_LOCAL_RIGHT_POLICY_PORT"),
-        _port(env, "IC_GROOT_LOCAL_RIGHT_RELAY_PORT"),
+        _port(env, "PGFR_GROOT_REMOTE_RIGHT_POLICY_PORT"),
+        _port(env, "PGFR_GROOT_REMOTE_RIGHT_RELAY_PORT"),
+        _port(env, "PGFR_GROOT_LOCAL_RIGHT_POLICY_PORT"),
+        _port(env, "PGFR_GROOT_LOCAL_RIGHT_RELAY_PORT"),
     )
     all_ports = (
         left.remote_policy_port,
@@ -199,16 +219,15 @@ def load_config(environment: Mapping[str, str] | None = None) -> Config:
     if len(set(all_ports[4:])) != 4:
         raise BridgeError("local policy and relay ports must be distinct")
 
-    if not local_root.is_dir() or local_root.is_symlink():
-        raise BridgeError("IC_GROOT_LOCAL_STATE_ROOT must be an existing real directory")
-    if local_root.stat().st_uid != os.getuid():
-        raise BridgeError("IC_GROOT_LOCAL_STATE_ROOT must be owned by the bridge user")
-    ssh_bin = env.get("IC_GROOT_SSH_BIN", "/usr/bin/ssh").strip()
+    ssh_bin = env.get("PGFR_GROOT_SSH_BIN", "/usr/bin/ssh").strip()
     if not Path(ssh_bin).is_absolute():
-        raise BridgeError("IC_GROOT_SSH_BIN must be an absolute path")
+        raise BridgeError("PGFR_GROOT_SSH_BIN must be an absolute path")
     return Config(
         thor_ssh=target,
         remote_checkpoint=checkpoint,
+        checkpoint_metadata=metadata_path,
+        model_label=identity["model_label"],
+        checkpoint_fingerprint=identity["checkpoint_fingerprint"],
         remote_state_root=remote_root,
         local_state_root=local_root,
         poll_seconds=poll_seconds,
@@ -281,9 +300,9 @@ def _validate_remote_state(state: object, arm: Arm, config: Config) -> dict[str,
     expected = {
         "schema_version": 1,
         "status": "ready",
-        "model_label": MODEL_LABEL,
+        "model_label": config.model_label,
         "checkpoint": config.remote_checkpoint,
-        "checkpoint_fingerprint": CHECKPOINT_FINGERPRINT,
+        "checkpoint_fingerprint": config.checkpoint_fingerprint,
         "server_host": "127.0.0.1",
         "server_port": arm.remote_policy_port,
         "relay_host": "127.0.0.1",
@@ -344,8 +363,12 @@ def rewrite_states(
 
 
 def invalidate_states(config: Config) -> None:
+    invalidate_state_files(config.local_state_root)
+
+
+def invalidate_state_files(state_root: Path) -> None:
     for name in STATE_NAMES:
-        path = config.local_state_root / name
+        path = state_root / name
         try:
             if path.is_symlink() or path.is_file():
                 path.unlink()
@@ -491,12 +514,16 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     try:
+        # Cleanup must still work if a checkpoint identity file is later lost or
+        # damaged. Validate ownership before touching the two derived states.
+        state_root = load_local_state_root(os.environ)
+        if not args.check_config:
+            invalidate_state_files(state_root)
+        if args.invalidate_states:
+            return 0
         config = load_config()
         if args.check_config:
             print(shlex.join(tunnel_command(config)))
-            return 0
-        if args.invalidate_states:
-            invalidate_states(config)
             return 0
         run(config)
     except (BridgeError, OSError, subprocess.SubprocessError) as exc:

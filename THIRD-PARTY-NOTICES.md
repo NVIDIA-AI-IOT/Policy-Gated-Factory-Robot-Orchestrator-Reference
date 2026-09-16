@@ -1,7 +1,7 @@
 # Third-party notices
 
 This document inventories third-party software and externally retrieved
-artifacts used by the Industrial Claw reference implementation. It is a
+artifacts used by this repository's reference implementation. It is a
 release-review aid, not a substitute for the license files shipped by each
 dependency and not a statement that NVIDIA OSRB or artifact review is
 complete.
@@ -15,7 +15,8 @@ complete.
   binary payload is redistributed by this repository.
 - **Redistributed binaries** require their own license, notice, export, codec,
   and security review. In particular, packaged NumPy/SciPy native libraries
-  and the observed GPL/nonfree FFmpeg build remain explicit review items.
+  and FFmpeg native libraries remain explicit review items. The observed
+  nonfree system FFmpeg build is not a binary supplied by this release.
 - <code>AND</code> and <code>OR</code> retain their normal SPDX meanings.
   Where an upstream lockfile offered a choice and this distribution selected
   one branch, that selection is stated explicitly.
@@ -25,153 +26,189 @@ The dependency tables are derived from the committed
 Package links are the attribution and license-detail entry points; installed
 distributions remain authoritative for complete copyright and license text.
 
-## Upstream source, models, and dataset
+## Distribution scope
+
+Project fine-tuned weights and full recorded training datasets are not supplied
+or retrieved by the public installation path. Users create demonstrations and
+train their own checkpoints; see `INSTALL.md` in the source repository.
+
+The tracked arm-alignment state files remain reference runtime inputs; their
+provenance and applicable scene asset terms remain part of release review.
+Their inclusion does not establish new distribution rights.
+
+No container image, OS package, model weight, dataset payload, FFmpeg binary,
+or remote Isaac asset binary is embedded in this source-tree inventory unless
+a separately listed tracked file says otherwise.
+
+The architecture diagram, screenshots, and project video are listed in
+`docs/ASSET-PROVENANCE.md` in the source repository. Other runtime recordings,
+installed virtual environments, package caches, and container exports are
+excluded from public artifacts. Redistribution of excluded artifacts requires
+a separate release review. Source, dependency, asset, and codec review remains
+required for release.
+
+## Upstream source and model prerequisites
 
 | Component | Immutable identity | Terms | Distribution role |
 |---|---|---|---|
-| [NVIDIA Isaac-GR00T](https://github.com/NVIDIA/Isaac-GR00T) | <code>e5749287857afd97b78f1147166137de29746392</code> | Apache-2.0; [repository copy](reference/industrial-claw/groot/LICENSE.NVIDIA-ISAAC-GROOT) | Upstream source patched by this repository |
-| [Industrial Claw Order744-cont24](https://huggingface.co/mmallick/industrial-claw-groot-order744-cont24) | <code>9307ac9cba3a27c9a57ed2d90393ceefb28367e1</code> | [NVIDIA Open Model License](https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/) | Fine-tuned checkpoint retrieved at runtime |
+| [NVIDIA Isaac-GR00T](https://github.com/NVIDIA/Isaac-GR00T) | <code>e5749287857afd97b78f1147166137de29746392</code> | Apache-2.0; repository copy: <code>reference/groot/LICENSE.NVIDIA-ISAAC-GROOT</code> | Upstream source patched by this repository |
 | [NVIDIA GR00T-N1.7-DROID](https://huggingface.co/nvidia/GR00T-N1.7-DROID) | <code>05e7cc97e40dbd33b0890c35cc0214fcb0547ab5</code> | NVIDIA Open Model License | Base checkpoint lineage |
 | [NVIDIA Cosmos-Reason2-2B](https://huggingface.co/nvidia/Cosmos-Reason2-2B) | <code>9ce19a195e423419c349abfc86fd07178b230561</code> | NVIDIA Open Model License | GR00T runtime backbone retrieved at runtime |
 | [Qwen3-VL-2B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct) | Upstream identity declared by Cosmos model card | Apache-2.0 | Nested Cosmos base-model attribution |
 | [NVIDIA Nemotron Nano 12B VL NVFP4](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-12B-v2-VL-NVFP4-QAD) | <code>312eb94f6d36209f7c6a82eda896e27200d152ee</code> | NVIDIA Open Model License | VLM retrieved at runtime |
-| [Industrial Claw Order744-cont24 dataset](https://huggingface.co/datasets/mmallick/industrial-claw-groot-order744-cont24-dataset) | <code>da9b6e9a2faf5bd91bc559e7f12babd7102a5863</code> | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Native-DROID fine-tuning data; attribution is in the dataset repository |
 
-The GR00T bundle includes an Industrial Claw patch against the pinned
+The GR00T bundle includes a Policy-Gated Factory Robot Orchestrator Reference patch against the pinned
 Isaac-GR00T source. The patch identifies modified upstream files; the
-Industrial Claw relay, executor, scene, service, and orchestration code is
+Policy-Gated Factory Robot Orchestrator Reference relay, executor, scene, service, and orchestration code is
 separately authored integration code.
 
 ## Containers, system packages, codecs, and remote assets
 
 | Runtime item | Pinned or declared identity | Terms / review status |
 |---|---|---|
-| NVIDIA Isaac Sim container | <code>nvcr.io/nvidia/isaac-sim:6.0.0-dev2@sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9</code> | NVIDIA Isaac Sim/container terms; runtime retrieval only |
+| NVIDIA Isaac Sim container (historical GR00T/X11 path) | <code>nvcr.io/nvidia/isaac-sim:6.0.0-dev2@sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9</code> | NVIDIA Isaac Sim/container terms; runtime retrieval only |
+| NVIDIA Isaac Sim container (stable scripted baseline) | <code>nvcr.io/nvidia/isaac-sim:6.0.1@sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb</code> (linux/amd64) | NVIDIA Isaac Sim/container terms; runtime retrieval only |
+| ROS 2 Jazzy acceptance sidecar | <code>docker.io/library/ros:jazzy-ros-base-noble@sha256:2589a8fba5257307857890173c069852c2abf913a0be7970f172478baecb09e4</code> (linux/amd64) | ROS 2 and Ubuntu package terms; runtime retrieval only; retain package-provided notices |
 | vLLM OpenAI-compatible container | <code>vllm/vllm-openai:v0.20.0-ubuntu2404@sha256:aff65d7198dd284c37dd0a18a606544cc5e92bfb0d5eb608b77e8b8f1c6b8b0d</code> | [Apache-2.0](https://github.com/vllm-project/vllm/blob/main/LICENSE); runtime retrieval only |
-| Thor CUDA base image | <code>nvidia/cuda:13.0.0-devel-ubuntu24.04</code> | [NVIDIA CUDA Toolkit EULA](https://docs.nvidia.com/cuda/eula/index.html); runtime/container build input |
-| Brain-host packages | <code>ca-certificates</code>, <code>curl</code>, <code>gnupg</code>, Node.js 22.22.3, ROS 2 Jazzy base/Fast DDS, CUDA 13 CUPTI/math runtimes | Retrieved from Ubuntu, NodeSource, ROS, and NVIDIA package repositories; retain package-provided copyright/license files |
-| Thor GR00T system packages | NVPL BLAS/LAPACK, CUDA development/runtime packages, FFmpeg, Git LFS, TorchCodec build prerequisites | Runtime retrieval; retain package-provided copyright/license files and NVIDIA SDK terms where applicable |
-| TorchCodec | <code>0.10.0</code> | [BSD-3-Clause](https://github.com/meta-pytorch/torchcodec/blob/main/LICENSE); Jetson wheel or source build |
-| FFmpeg and H.264 path | Installed Thor build observed with GPL, nonfree, and libx264 enabled | [FFmpeg legal guidance](https://ffmpeg.org/legal.html) states nonfree builds are not redistributable; ARB/codec review remains open |
-| Remotely referenced Isaac 6.0 assets | Ten HTTPS assets referenced by five ASCII USDA compositions | NVIDIA Isaac asset terms; per-path provenance and rights state in [Asset provenance](docs/ASSET-PROVENANCE.md); owner/OSRB confirmation pending |
+| Upstream Thor CUDA GPU-check image | <code>nvidia/cuda:13.0.0-devel-ubuntu24.04@sha256:1e8ac7a54c184a1af8ef2167f28fa98281892a835c981ebcddb1fad04bdd452d</code> (linux/arm64 child <code>sha256:38c2598ded0fd3ed2b0b13351543fde493faba43ae580f81f0a9ab58d76fdd2d</code>) | [NVIDIA CUDA Toolkit EULA](https://docs.nvidia.com/cuda/eula/index.html); operator-retrieved GPU diagnostic only; no project Thor image is built or distributed |
+| Brain-host packages | <code>ca-certificates</code>, <code>curl</code>, <code>git-lfs</code>, <code>gnupg</code>, Node.js 22.22.3, ROS 2 Jazzy base/Fast DDS, CUDA 13 CUPTI/math runtimes | Retrieved from Ubuntu, NodeSource, ROS, and NVIDIA package repositories; retain package-provided copyright/license files |
+| Thor GR00T system packages | NVPL BLAS/LAPACK, CUDA development/runtime packages, FFmpeg 6 compatibility runtimes, Git LFS | Native host installation from upstream; does not request the unversioned FFmpeg CLI package; retain package-provided copyright/license files and NVIDIA SDK terms where applicable |
+| TorchCodec Thor runtime artifact | <code>torchcodec-0.10.0a0-cp312-cp312-linux_aarch64.whl</code>, SHA-256 <code>1421de7e6248cc33398c16b2d7ba5ada4bf5c2a38af7cc44a003f3b0c36eb314</code> | [BSD-3-Clause](https://github.com/meta-pytorch/torchcodec/blob/main/LICENSE); Git LFS path <code>scripts/deployment/thor/wheels/</code> at pinned Isaac-GR00T revision <code>e5749287857afd97b78f1147166137de29746392</code>; installed only as an explicit post-sync overlay |
+| Observed development-host FFmpeg executable | NVIDIA <code>7:8.0.1-nvidia</code>; FFmpeg 8 with GPL, nonfree, and libx264 enabled | Reports nonfree/unredistributable; not supplied by this source release or requested by its Thor installer. This finding concerns redistribution, not a determination about prior internal use. [FFmpeg licensing](https://ffmpeg.org/doxygen/trunk/md_LICENSE.html) |
+| Thor FFmpeg 6 decoder libraries | Observed Ubuntu <code>7:6.1.1-3ubuntu5</code>: <code>libavcodec60</code>, <code>libavformat60</code>, <code>libavutil58</code>, <code>libavfilter9</code>, <code>libswscale7</code>, <code>libswresample4</code> | Identified as GPL-2.0-or-later; retrieved by the user for the pinned TorchCodec native adapters. Separate from the observed FFmpeg 8 executable. Retain upstream notices; any binary redistribution requires corresponding-source and linkage review. |
+| OpenCV bundled video libraries | Observed <code>opencv-python-headless==4.11.0.86</code> wheel includes FFmpeg 5 libraries, loaded by the GR00T policy processes | Bundled FFmpeg identified as LGPL-2.1-or-later; headless OpenCV is not FFmpeg-free. Runtime retrieval only; preserve [bundled third-party notices](https://github.com/opencv/opencv-python/blob/86/LICENSE-3RD-PARTY.txt). Identifying the license is not complete binary redistribution clearance. |
+| Dataset conversion and H.264 | User-selected FFmpeg executable with CPU <code>scale</code>, <code>libx264</code>, and MP4 support | Separate local training prerequisite. Preflight rejects a reported nonfree build and checks required encoding behavior; GPL is not rejected. H.264/ARB review remains open for project media and codec use. [FFmpeg legal guidance](https://ffmpeg.org/legal.html) |
+| Remotely referenced Isaac 6.0 assets | Seven HTTPS assets referenced by two ASCII USDA compositions | NVIDIA Isaac asset terms; per-path provenance and rights state in the source repository's <code>docs/ASSET-PROVENANCE.md</code>; owner/OSRB confirmation pending |
 
-No container image, OS package, model weight, dataset payload, FFmpeg binary,
-or remote Isaac asset binary is embedded in this source-tree inventory unless
-a separately listed tracked file says otherwise.
+The release uses official Isaac Sim images pulled directly by the operator,
+with project files mounted from the host. GR00T serving remains native on Thor;
+the optional project Thor Dockerfile has been removed. The NVIDIA image's Kit,
+assets, and other proprietary components retain their own terms; the source
+repository's Apache license does not cover every runtime component. See
+[Isaac Sim licensing](https://docs.isaacsim.omniverse.nvidia.com/6.0.1/common/licenses-isaac-sim.html).
 
-## npm dependency inventory (406 identities)
+The codec observations above distinguish installed artifacts from libraries
+loaded by a process. They do not qualify a fresh installation, infer executed
+codec functions from process maps, or clear a future environment/container
+export. Complete source/build provenance of the custom TorchCodec wheel and
+any redistributed native bundles remains a separate review item.
+
+## npm dependency inventory (431 identities)
 
 | Ecosystem | Package | Version | Declared or selected license |
 |---|---|---:|---|
-| npm | [@agentclientprotocol/sdk](https://www.npmjs.com/package/@agentclientprotocol/sdk/v/1.1.0) | <code>1.1.0</code> | Apache-2.0 |
-| npm | [@anthropic-ai/sdk](https://www.npmjs.com/package/@anthropic-ai/sdk/v/0.109.1) | <code>0.109.1</code> | MIT |
+| npm | [@agentclientprotocol/sdk](https://www.npmjs.com/package/@agentclientprotocol/sdk/v/1.4.0) | <code>1.4.0</code> | Apache-2.0 |
+| npm | [@anthropic-ai/sdk](https://www.npmjs.com/package/@anthropic-ai/sdk/v/0.120.0) | <code>0.120.0</code> | MIT |
 | npm | [@babel/runtime](https://www.npmjs.com/package/@babel/runtime/v/7.29.7) | <code>7.29.7</code> | MIT |
 | npm | [@borewit/text-codec](https://www.npmjs.com/package/@borewit/text-codec/v/0.2.2) | <code>0.2.2</code> | MIT |
-| npm | [@clack/core](https://www.npmjs.com/package/@clack/core/v/1.4.2) | <code>1.4.2</code> | MIT |
-| npm | [@clack/prompts](https://www.npmjs.com/package/@clack/prompts/v/1.6.0) | <code>1.6.0</code> | MIT |
-| npm | [@earendil-works/pi-tui](https://www.npmjs.com/package/@earendil-works/pi-tui/v/0.80.3) | <code>0.80.3</code> | MIT |
-| npm | [@esbuild/aix-ppc64](https://www.npmjs.com/package/@esbuild/aix-ppc64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/android-arm](https://www.npmjs.com/package/@esbuild/android-arm/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/android-arm64](https://www.npmjs.com/package/@esbuild/android-arm64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/android-x64](https://www.npmjs.com/package/@esbuild/android-x64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/darwin-arm64](https://www.npmjs.com/package/@esbuild/darwin-arm64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/darwin-x64](https://www.npmjs.com/package/@esbuild/darwin-x64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/freebsd-arm64](https://www.npmjs.com/package/@esbuild/freebsd-arm64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/freebsd-x64](https://www.npmjs.com/package/@esbuild/freebsd-x64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/linux-arm](https://www.npmjs.com/package/@esbuild/linux-arm/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/linux-arm64](https://www.npmjs.com/package/@esbuild/linux-arm64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/linux-ia32](https://www.npmjs.com/package/@esbuild/linux-ia32/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/linux-loong64](https://www.npmjs.com/package/@esbuild/linux-loong64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/linux-mips64el](https://www.npmjs.com/package/@esbuild/linux-mips64el/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/linux-ppc64](https://www.npmjs.com/package/@esbuild/linux-ppc64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/linux-riscv64](https://www.npmjs.com/package/@esbuild/linux-riscv64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/linux-s390x](https://www.npmjs.com/package/@esbuild/linux-s390x/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/linux-x64](https://www.npmjs.com/package/@esbuild/linux-x64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/netbsd-arm64](https://www.npmjs.com/package/@esbuild/netbsd-arm64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/netbsd-x64](https://www.npmjs.com/package/@esbuild/netbsd-x64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/openbsd-arm64](https://www.npmjs.com/package/@esbuild/openbsd-arm64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/openbsd-x64](https://www.npmjs.com/package/@esbuild/openbsd-x64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/openharmony-arm64](https://www.npmjs.com/package/@esbuild/openharmony-arm64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/sunos-x64](https://www.npmjs.com/package/@esbuild/sunos-x64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/win32-arm64](https://www.npmjs.com/package/@esbuild/win32-arm64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/win32-ia32](https://www.npmjs.com/package/@esbuild/win32-ia32/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@esbuild/win32-x64](https://www.npmjs.com/package/@esbuild/win32-x64/v/0.28.1) | <code>0.28.1</code> | MIT |
-| npm | [@google/genai](https://www.npmjs.com/package/@google/genai/v/2.10.0) | <code>2.10.0</code> | Apache-2.0 |
+| npm | [@clack/core](https://www.npmjs.com/package/@clack/core/v/1.4.3) | <code>1.4.3</code> | MIT |
+| npm | [@clack/prompts](https://www.npmjs.com/package/@clack/prompts/v/1.7.0) | <code>1.7.0</code> | MIT |
+| npm | [@earendil-works/pi-tui](https://www.npmjs.com/package/@earendil-works/pi-tui/v/0.84.3) | <code>0.84.3</code> | MIT |
+| npm | [@google/genai](https://www.npmjs.com/package/@google/genai/v/2.18.0) | <code>2.18.0</code> | Apache-2.0 |
 | npm | [@grammyjs/runner](https://www.npmjs.com/package/@grammyjs/runner/v/2.0.3) | <code>2.0.3</code> | MIT |
 | npm | [@grammyjs/transformer-throttler](https://www.npmjs.com/package/@grammyjs/transformer-throttler/v/1.2.1) | <code>1.2.1</code> | MIT |
-| npm | [@grammyjs/types](https://www.npmjs.com/package/@grammyjs/types/v/3.28.0) | <code>3.28.0</code> | MIT |
-| npm | [@homebridge/ciao](https://www.npmjs.com/package/@homebridge/ciao/v/1.3.9) | <code>1.3.9</code> | MIT |
-| npm | [@hono/node-server](https://www.npmjs.com/package/@hono/node-server/v/1.19.14) | <code>1.19.14</code> | MIT |
+| npm | [@grammyjs/types](https://www.npmjs.com/package/@grammyjs/types/v/5.0.0) | <code>5.0.0</code> | MIT |
+| npm | [@homebridge/ciao](https://www.npmjs.com/package/@homebridge/ciao/v/1.3.12) | <code>1.3.12</code> | MIT |
+| npm | [@hono/node-server](https://www.npmjs.com/package/@hono/node-server/v/2.1.1) | <code>2.1.1</code> | MIT |
 | npm | [@isaacs/fs-minipass](https://www.npmjs.com/package/@isaacs/fs-minipass/v/4.0.1) | <code>4.0.1</code> | ISC |
-| npm | [@jridgewell/sourcemap-codec](https://www.npmjs.com/package/@jridgewell/sourcemap-codec/v/1.5.5) | <code>1.5.5</code> | MIT |
-| npm | [@lydell/node-pty](https://www.npmjs.com/package/@lydell/node-pty/v/1.2.0-beta.12) | <code>1.2.0-beta.12</code> | MIT |
-| npm | [@lydell/node-pty-darwin-arm64](https://www.npmjs.com/package/@lydell/node-pty-darwin-arm64/v/1.2.0-beta.12) | <code>1.2.0-beta.12</code> | MIT |
-| npm | [@lydell/node-pty-darwin-x64](https://www.npmjs.com/package/@lydell/node-pty-darwin-x64/v/1.2.0-beta.12) | <code>1.2.0-beta.12</code> | MIT |
-| npm | [@lydell/node-pty-linux-arm64](https://www.npmjs.com/package/@lydell/node-pty-linux-arm64/v/1.2.0-beta.12) | <code>1.2.0-beta.12</code> | MIT |
-| npm | [@lydell/node-pty-linux-x64](https://www.npmjs.com/package/@lydell/node-pty-linux-x64/v/1.2.0-beta.12) | <code>1.2.0-beta.12</code> | MIT |
-| npm | [@lydell/node-pty-win32-arm64](https://www.npmjs.com/package/@lydell/node-pty-win32-arm64/v/1.2.0-beta.12) | <code>1.2.0-beta.12</code> | MIT |
-| npm | [@lydell/node-pty-win32-x64](https://www.npmjs.com/package/@lydell/node-pty-win32-x64/v/1.2.0-beta.12) | <code>1.2.0-beta.12</code> | MIT |
-| npm | [@mistralai/mistralai](https://www.npmjs.com/package/@mistralai/mistralai/v/2.4.0) | <code>2.4.0</code> | Apache-2.0 |
-| npm | [@modelcontextprotocol/sdk](https://www.npmjs.com/package/@modelcontextprotocol/sdk/v/1.29.0) | <code>1.29.0</code> | MIT |
+| npm | [@jridgewell/resolve-uri](https://www.npmjs.com/package/@jridgewell/resolve-uri/v/3.1.2) | <code>3.1.2</code> | MIT |
+| npm | [@jridgewell/sourcemap-codec](https://www.npmjs.com/package/@jridgewell/sourcemap-codec/v/1.6.0) | <code>1.6.0</code> | MIT |
+| npm | [@jridgewell/trace-mapping](https://www.npmjs.com/package/@jridgewell/trace-mapping/v/0.3.31) | <code>0.3.31</code> | MIT |
+| npm | [@koromix/koffi-darwin-arm64](https://www.npmjs.com/package/@koromix/koffi-darwin-arm64/v/3.1.6) | <code>3.1.6</code> | MIT |
+| npm | [@koromix/koffi-darwin-x64](https://www.npmjs.com/package/@koromix/koffi-darwin-x64/v/3.1.6) | <code>3.1.6</code> | MIT |
+| npm | [@koromix/koffi-freebsd-arm64](https://www.npmjs.com/package/@koromix/koffi-freebsd-arm64/v/3.1.6) | <code>3.1.6</code> | MIT |
+| npm | [@koromix/koffi-freebsd-ia32](https://www.npmjs.com/package/@koromix/koffi-freebsd-ia32/v/3.1.6) | <code>3.1.6</code> | MIT |
+| npm | [@koromix/koffi-freebsd-x64](https://www.npmjs.com/package/@koromix/koffi-freebsd-x64/v/3.1.6) | <code>3.1.6</code> | MIT |
+| npm | [@koromix/koffi-linux-arm64](https://www.npmjs.com/package/@koromix/koffi-linux-arm64/v/3.1.6) | <code>3.1.6</code> | MIT |
+| npm | [@koromix/koffi-linux-ia32](https://www.npmjs.com/package/@koromix/koffi-linux-ia32/v/3.1.6) | <code>3.1.6</code> | MIT |
+| npm | [@koromix/koffi-linux-loong64](https://www.npmjs.com/package/@koromix/koffi-linux-loong64/v/3.1.6) | <code>3.1.6</code> | MIT |
+| npm | [@koromix/koffi-linux-riscv64](https://www.npmjs.com/package/@koromix/koffi-linux-riscv64/v/3.1.6) | <code>3.1.6</code> | MIT |
+| npm | [@koromix/koffi-linux-x64](https://www.npmjs.com/package/@koromix/koffi-linux-x64/v/3.1.6) | <code>3.1.6</code> | MIT |
+| npm | [@koromix/koffi-openbsd-ia32](https://www.npmjs.com/package/@koromix/koffi-openbsd-ia32/v/3.1.6) | <code>3.1.6</code> | MIT |
+| npm | [@koromix/koffi-openbsd-x64](https://www.npmjs.com/package/@koromix/koffi-openbsd-x64/v/3.1.6) | <code>3.1.6</code> | MIT |
+| npm | [@koromix/koffi-win32-arm64](https://www.npmjs.com/package/@koromix/koffi-win32-arm64/v/3.1.6) | <code>3.1.6</code> | MIT |
+| npm | [@koromix/koffi-win32-ia32](https://www.npmjs.com/package/@koromix/koffi-win32-ia32/v/3.1.6) | <code>3.1.6</code> | MIT |
+| npm | [@koromix/koffi-win32-x64](https://www.npmjs.com/package/@koromix/koffi-win32-x64/v/3.1.6) | <code>3.1.6</code> | MIT |
+| npm | [@lydell/node-pty](https://www.npmjs.com/package/@lydell/node-pty/v/1.2.0-beta.15) | <code>1.2.0-beta.15</code> | MIT |
+| npm | [@lydell/node-pty-darwin-arm64](https://www.npmjs.com/package/@lydell/node-pty-darwin-arm64/v/1.2.0-beta.15) | <code>1.2.0-beta.15</code> | MIT |
+| npm | [@lydell/node-pty-darwin-x64](https://www.npmjs.com/package/@lydell/node-pty-darwin-x64/v/1.2.0-beta.15) | <code>1.2.0-beta.15</code> | MIT |
+| npm | [@lydell/node-pty-linux-arm64](https://www.npmjs.com/package/@lydell/node-pty-linux-arm64/v/1.2.0-beta.15) | <code>1.2.0-beta.15</code> | MIT |
+| npm | [@lydell/node-pty-linux-x64](https://www.npmjs.com/package/@lydell/node-pty-linux-x64/v/1.2.0-beta.15) | <code>1.2.0-beta.15</code> | MIT |
+| npm | [@lydell/node-pty-win32-arm64](https://www.npmjs.com/package/@lydell/node-pty-win32-arm64/v/1.2.0-beta.15) | <code>1.2.0-beta.15</code> | MIT |
+| npm | [@lydell/node-pty-win32-x64](https://www.npmjs.com/package/@lydell/node-pty-win32-x64/v/1.2.0-beta.15) | <code>1.2.0-beta.15</code> | MIT |
+| npm | [@mistralai/mistralai](https://www.npmjs.com/package/@mistralai/mistralai/v/2.6.4) | <code>2.6.4</code> | Apache-2.0 |
+| npm | [@modelcontextprotocol/sdk](https://www.npmjs.com/package/@modelcontextprotocol/sdk/v/1.30.0) | <code>1.30.0</code> | MIT |
 | npm | [@mozilla/readability](https://www.npmjs.com/package/@mozilla/readability/v/0.6.0) | <code>0.6.0</code> | Apache-2.0 |
-| npm | [@nolyfill/domexception](https://www.npmjs.com/package/@nolyfill/domexception/v/1.0.28) | <code>1.0.28</code> | MIT |
-| npm | [@openclaw/ai](https://www.npmjs.com/package/@openclaw/ai/v/2026.7.1) | <code>2026.7.1</code> | MIT |
-| npm | [@openclaw/fs-safe](https://www.npmjs.com/package/@openclaw/fs-safe/v/0.4.1) | <code>0.4.1</code> | MIT |
-| npm | [@openclaw/proxyline](https://www.npmjs.com/package/@openclaw/proxyline/v/0.3.3) | <code>0.3.3</code> | MIT |
-| npm | [@opentelemetry/semantic-conventions](https://www.npmjs.com/package/@opentelemetry/semantic-conventions/v/1.41.1) | <code>1.41.1</code> | Apache-2.0 |
+| npm | [@openclaw/ai](https://www.npmjs.com/package/@openclaw/ai/v/2026.9.2) | <code>2026.9.2</code> | MIT |
+| npm | [@openclaw/fs-safe](https://www.npmjs.com/package/@openclaw/fs-safe/v/0.8.1) | <code>0.8.1</code> | MIT |
+| npm | [@openclaw/fs-safe-darwin-arm64](https://www.npmjs.com/package/@openclaw/fs-safe-darwin-arm64/v/0.8.1) | <code>0.8.1</code> | MIT |
+| npm | [@openclaw/fs-safe-darwin-x64](https://www.npmjs.com/package/@openclaw/fs-safe-darwin-x64/v/0.8.1) | <code>0.8.1</code> | MIT |
+| npm | [@openclaw/fs-safe-linux-arm64-gnu](https://www.npmjs.com/package/@openclaw/fs-safe-linux-arm64-gnu/v/0.8.1) | <code>0.8.1</code> | MIT |
+| npm | [@openclaw/fs-safe-linux-arm64-musl](https://www.npmjs.com/package/@openclaw/fs-safe-linux-arm64-musl/v/0.8.1) | <code>0.8.1</code> | MIT |
+| npm | [@openclaw/fs-safe-linux-x64-gnu](https://www.npmjs.com/package/@openclaw/fs-safe-linux-x64-gnu/v/0.8.1) | <code>0.8.1</code> | MIT |
+| npm | [@openclaw/fs-safe-linux-x64-musl](https://www.npmjs.com/package/@openclaw/fs-safe-linux-x64-musl/v/0.8.1) | <code>0.8.1</code> | MIT |
+| npm | [@openclaw/fs-safe-win32-x64-msvc](https://www.npmjs.com/package/@openclaw/fs-safe-win32-x64-msvc/v/0.8.1) | <code>0.8.1</code> | MIT |
+| npm | [@openclaw/proxyline](https://www.npmjs.com/package/@openclaw/proxyline/v/0.3.7) | <code>0.3.7</code> | MIT |
+| npm | [@opentelemetry/semantic-conventions](https://www.npmjs.com/package/@opentelemetry/semantic-conventions/v/1.43.0) | <code>1.43.0</code> | Apache-2.0 |
+| npm | [@oxc-project/types](https://www.npmjs.com/package/@oxc-project/types/v/0.148.0) | <code>0.148.0</code> | MIT |
 | npm | [@protobufjs/aspromise](https://www.npmjs.com/package/@protobufjs/aspromise/v/1.1.2) | <code>1.1.2</code> | BSD-3-Clause |
 | npm | [@protobufjs/base64](https://www.npmjs.com/package/@protobufjs/base64/v/1.1.2) | <code>1.1.2</code> | BSD-3-Clause |
 | npm | [@protobufjs/codegen](https://www.npmjs.com/package/@protobufjs/codegen/v/2.0.5) | <code>2.0.5</code> | BSD-3-Clause |
 | npm | [@protobufjs/eventemitter](https://www.npmjs.com/package/@protobufjs/eventemitter/v/1.1.1) | <code>1.1.1</code> | BSD-3-Clause |
 | npm | [@protobufjs/fetch](https://www.npmjs.com/package/@protobufjs/fetch/v/1.1.1) | <code>1.1.1</code> | BSD-3-Clause |
 | npm | [@protobufjs/float](https://www.npmjs.com/package/@protobufjs/float/v/1.0.2) | <code>1.0.2</code> | BSD-3-Clause |
-| npm | [@protobufjs/inquire](https://www.npmjs.com/package/@protobufjs/inquire/v/1.1.2) | <code>1.1.2</code> | BSD-3-Clause |
 | npm | [@protobufjs/path](https://www.npmjs.com/package/@protobufjs/path/v/1.1.2) | <code>1.1.2</code> | BSD-3-Clause |
 | npm | [@protobufjs/pool](https://www.npmjs.com/package/@protobufjs/pool/v/1.1.0) | <code>1.1.0</code> | BSD-3-Clause |
-| npm | [@protobufjs/utf8](https://www.npmjs.com/package/@protobufjs/utf8/v/1.1.1) | <code>1.1.1</code> | BSD-3-Clause |
-| npm | [@rollup/rollup-android-arm-eabi](https://www.npmjs.com/package/@rollup/rollup-android-arm-eabi/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-android-arm64](https://www.npmjs.com/package/@rollup/rollup-android-arm64/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-darwin-arm64](https://www.npmjs.com/package/@rollup/rollup-darwin-arm64/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-darwin-x64](https://www.npmjs.com/package/@rollup/rollup-darwin-x64/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-freebsd-arm64](https://www.npmjs.com/package/@rollup/rollup-freebsd-arm64/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-freebsd-x64](https://www.npmjs.com/package/@rollup/rollup-freebsd-x64/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-linux-arm-gnueabihf](https://www.npmjs.com/package/@rollup/rollup-linux-arm-gnueabihf/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-linux-arm-musleabihf](https://www.npmjs.com/package/@rollup/rollup-linux-arm-musleabihf/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-linux-arm64-gnu](https://www.npmjs.com/package/@rollup/rollup-linux-arm64-gnu/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-linux-arm64-musl](https://www.npmjs.com/package/@rollup/rollup-linux-arm64-musl/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-linux-loong64-gnu](https://www.npmjs.com/package/@rollup/rollup-linux-loong64-gnu/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-linux-loong64-musl](https://www.npmjs.com/package/@rollup/rollup-linux-loong64-musl/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-linux-ppc64-gnu](https://www.npmjs.com/package/@rollup/rollup-linux-ppc64-gnu/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-linux-ppc64-musl](https://www.npmjs.com/package/@rollup/rollup-linux-ppc64-musl/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-linux-riscv64-gnu](https://www.npmjs.com/package/@rollup/rollup-linux-riscv64-gnu/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-linux-riscv64-musl](https://www.npmjs.com/package/@rollup/rollup-linux-riscv64-musl/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-linux-s390x-gnu](https://www.npmjs.com/package/@rollup/rollup-linux-s390x-gnu/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-linux-x64-gnu](https://www.npmjs.com/package/@rollup/rollup-linux-x64-gnu/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-linux-x64-musl](https://www.npmjs.com/package/@rollup/rollup-linux-x64-musl/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-openbsd-x64](https://www.npmjs.com/package/@rollup/rollup-openbsd-x64/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-openharmony-arm64](https://www.npmjs.com/package/@rollup/rollup-openharmony-arm64/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-win32-arm64-msvc](https://www.npmjs.com/package/@rollup/rollup-win32-arm64-msvc/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-win32-ia32-msvc](https://www.npmjs.com/package/@rollup/rollup-win32-ia32-msvc/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-win32-x64-gnu](https://www.npmjs.com/package/@rollup/rollup-win32-x64-gnu/v/4.62.3) | <code>4.62.3</code> | MIT |
-| npm | [@rollup/rollup-win32-x64-msvc](https://www.npmjs.com/package/@rollup/rollup-win32-x64-msvc/v/4.62.3) | <code>4.62.3</code> | MIT |
+| npm | [@protobufjs/utf8](https://www.npmjs.com/package/@protobufjs/utf8/v/1.1.2) | <code>1.1.2</code> | BSD-3-Clause |
+| npm | [@rolldown/binding-android-arm-eabi](https://www.npmjs.com/package/@rolldown/binding-android-arm-eabi/v/1.2.7) | <code>1.2.7</code> | MIT |
+| npm | [@rolldown/binding-android-arm64](https://www.npmjs.com/package/@rolldown/binding-android-arm64/v/1.2.7) | <code>1.2.7</code> | MIT |
+| npm | [@rolldown/binding-darwin-arm64](https://www.npmjs.com/package/@rolldown/binding-darwin-arm64/v/1.2.7) | <code>1.2.7</code> | MIT |
+| npm | [@rolldown/binding-darwin-x64](https://www.npmjs.com/package/@rolldown/binding-darwin-x64/v/1.2.7) | <code>1.2.7</code> | MIT |
+| npm | [@rolldown/binding-freebsd-x64](https://www.npmjs.com/package/@rolldown/binding-freebsd-x64/v/1.2.7) | <code>1.2.7</code> | MIT |
+| npm | [@rolldown/binding-linux-arm-gnueabihf](https://www.npmjs.com/package/@rolldown/binding-linux-arm-gnueabihf/v/1.2.7) | <code>1.2.7</code> | MIT |
+| npm | [@rolldown/binding-linux-arm64-gnu](https://www.npmjs.com/package/@rolldown/binding-linux-arm64-gnu/v/1.2.7) | <code>1.2.7</code> | MIT |
+| npm | [@rolldown/binding-linux-arm64-musl](https://www.npmjs.com/package/@rolldown/binding-linux-arm64-musl/v/1.2.7) | <code>1.2.7</code> | MIT |
+| npm | [@rolldown/binding-linux-ppc64-gnu](https://www.npmjs.com/package/@rolldown/binding-linux-ppc64-gnu/v/1.2.7) | <code>1.2.7</code> | MIT |
+| npm | [@rolldown/binding-linux-s390x-gnu](https://www.npmjs.com/package/@rolldown/binding-linux-s390x-gnu/v/1.2.7) | <code>1.2.7</code> | MIT |
+| npm | [@rolldown/binding-linux-x64-gnu](https://www.npmjs.com/package/@rolldown/binding-linux-x64-gnu/v/1.2.7) | <code>1.2.7</code> | MIT |
+| npm | [@rolldown/binding-linux-x64-musl](https://www.npmjs.com/package/@rolldown/binding-linux-x64-musl/v/1.2.7) | <code>1.2.7</code> | MIT |
+| npm | [@rolldown/binding-openharmony-arm64](https://www.npmjs.com/package/@rolldown/binding-openharmony-arm64/v/1.2.7) | <code>1.2.7</code> | MIT |
+| npm | [@rolldown/binding-win32-arm64-msvc](https://www.npmjs.com/package/@rolldown/binding-win32-arm64-msvc/v/1.2.7) | <code>1.2.7</code> | MIT |
+| npm | [@rolldown/binding-win32-x64-msvc](https://www.npmjs.com/package/@rolldown/binding-win32-x64-msvc/v/1.2.7) | <code>1.2.7</code> | MIT |
+| npm | [@rolldown/pluginutils](https://www.npmjs.com/package/@rolldown/pluginutils/v/1.0.1) | <code>1.0.1</code> | MIT |
+| npm | [@sec-ant/readable-stream](https://www.npmjs.com/package/@sec-ant/readable-stream/v/0.4.1) | <code>0.4.1</code> | MIT |
 | npm | [@silvia-odwyer/photon-node](https://www.npmjs.com/package/@silvia-odwyer/photon-node/v/0.3.4) | <code>0.3.4</code> | Apache-2.0 |
+| npm | [@sindresorhus/merge-streams](https://www.npmjs.com/package/@sindresorhus/merge-streams/v/4.0.0) | <code>4.0.0</code> | MIT |
 | npm | [@stablelib/base64](https://www.npmjs.com/package/@stablelib/base64/v/1.0.1) | <code>1.0.1</code> | MIT |
 | npm | [@tokenizer/inflate](https://www.npmjs.com/package/@tokenizer/inflate/v/0.4.1) | <code>0.4.1</code> | MIT |
 | npm | [@tokenizer/token](https://www.npmjs.com/package/@tokenizer/token/v/0.3.0) | <code>0.3.0</code> | MIT |
+| npm | [@trycua/cua-driver](https://www.npmjs.com/package/@trycua/cua-driver/v/0.22.0) | <code>0.22.0</code> | MIT |
+| npm | [@trycua/cua-driver-darwin-arm64](https://www.npmjs.com/package/@trycua/cua-driver-darwin-arm64/v/0.22.0) | <code>0.22.0</code> | MIT AND MPL-2.0 |
+| npm | [@trycua/cua-driver-darwin-x64](https://www.npmjs.com/package/@trycua/cua-driver-darwin-x64/v/0.22.0) | <code>0.22.0</code> | MIT AND MPL-2.0 |
+| npm | [@trycua/cua-driver-linux-arm64-gnu](https://www.npmjs.com/package/@trycua/cua-driver-linux-arm64-gnu/v/0.22.0) | <code>0.22.0</code> | MIT AND MPL-2.0 |
+| npm | [@trycua/cua-driver-linux-x64-gnu](https://www.npmjs.com/package/@trycua/cua-driver-linux-x64-gnu/v/0.22.0) | <code>0.22.0</code> | MIT AND MPL-2.0 |
+| npm | [@trycua/cua-driver-win32-arm64-msvc](https://www.npmjs.com/package/@trycua/cua-driver-win32-arm64-msvc/v/0.22.0) | <code>0.22.0</code> | MIT AND MPL-2.0 |
+| npm | [@trycua/cua-driver-win32-x64-msvc](https://www.npmjs.com/package/@trycua/cua-driver-win32-x64-msvc/v/0.22.0) | <code>0.22.0</code> | MIT AND MPL-2.0 |
 | npm | [@types/chai](https://www.npmjs.com/package/@types/chai/v/5.2.3) | <code>5.2.3</code> | MIT |
 | npm | [@types/deep-eql](https://www.npmjs.com/package/@types/deep-eql/v/4.0.2) | <code>4.0.2</code> | MIT |
 | npm | [@types/estree](https://www.npmjs.com/package/@types/estree/v/1.0.9) | <code>1.0.9</code> | MIT |
-| npm | [@types/node](https://www.npmjs.com/package/@types/node/v/26.1.0) | <code>26.1.0</code> | MIT |
-| npm | [@types/retry](https://www.npmjs.com/package/@types/retry/v/0.12.5) | <code>0.12.5</code> | MIT |
-| npm | [@vitest/expect](https://www.npmjs.com/package/@vitest/expect/v/3.2.7) | <code>3.2.7</code> | MIT |
-| npm | [@vitest/mocker](https://www.npmjs.com/package/@vitest/mocker/v/3.2.7) | <code>3.2.7</code> | MIT |
-| npm | [@vitest/pretty-format](https://www.npmjs.com/package/@vitest/pretty-format/v/3.2.7) | <code>3.2.7</code> | MIT |
-| npm | [@vitest/runner](https://www.npmjs.com/package/@vitest/runner/v/3.2.7) | <code>3.2.7</code> | MIT |
-| npm | [@vitest/snapshot](https://www.npmjs.com/package/@vitest/snapshot/v/3.2.7) | <code>3.2.7</code> | MIT |
-| npm | [@vitest/spy](https://www.npmjs.com/package/@vitest/spy/v/3.2.7) | <code>3.2.7</code> | MIT |
-| npm | [@vitest/utils](https://www.npmjs.com/package/@vitest/utils/v/3.2.7) | <code>3.2.7</code> | MIT |
+| npm | [@types/node](https://www.npmjs.com/package/@types/node/v/26.5.0) | <code>26.5.0</code> | MIT |
+| npm | [@types/retry](https://www.npmjs.com/package/@types/retry/v/0.12.0) | <code>0.12.0</code> | MIT |
+| npm | [@ubjs/core](https://www.npmjs.com/package/@ubjs/core/v/0.31.0-3) | <code>0.31.0-3</code> | MPL-2.0 |
+| npm | [@ubjs/node](https://www.npmjs.com/package/@ubjs/node/v/0.31.0-3) | <code>0.31.0-3</code> | MPL-2.0 |
+| npm | [@ubjs/node-darwin-arm64](https://www.npmjs.com/package/@ubjs/node-darwin-arm64/v/0.31.0-3) | <code>0.31.0-3</code> | MPL-2.0 |
+| npm | [@ubjs/node-darwin-x64](https://www.npmjs.com/package/@ubjs/node-darwin-x64/v/0.31.0-3) | <code>0.31.0-3</code> | MPL-2.0 |
+| npm | [@ubjs/node-linux-arm64-gnu](https://www.npmjs.com/package/@ubjs/node-linux-arm64-gnu/v/0.31.0-3) | <code>0.31.0-3</code> | MPL-2.0 |
+| npm | [@ubjs/node-linux-arm64-musl](https://www.npmjs.com/package/@ubjs/node-linux-arm64-musl/v/0.31.0-3) | <code>0.31.0-3</code> | MPL-2.0 |
+| npm | [@ubjs/node-linux-x64-gnu](https://www.npmjs.com/package/@ubjs/node-linux-x64-gnu/v/0.31.0-3) | <code>0.31.0-3</code> | MPL-2.0 |
+| npm | [@ubjs/node-linux-x64-musl](https://www.npmjs.com/package/@ubjs/node-linux-x64-musl/v/0.31.0-3) | <code>0.31.0-3</code> | MPL-2.0 |
+| npm | [@ubjs/node-win32-arm64-msvc](https://www.npmjs.com/package/@ubjs/node-win32-arm64-msvc/v/0.31.0-3) | <code>0.31.0-3</code> | MPL-2.0 |
+| npm | [@ubjs/node-win32-x64-msvc](https://www.npmjs.com/package/@ubjs/node-win32-x64-msvc/v/0.31.0-3) | <code>0.31.0-3</code> | MPL-2.0 |
+| npm | [@vitest/mocker](https://www.npmjs.com/package/@vitest/mocker/v/5.0.0) | <code>5.0.0</code> | MIT |
+| npm | [@vitest/spy](https://www.npmjs.com/package/@vitest/spy/v/5.0.0) | <code>5.0.0</code> | MIT |
 | npm | [abort-controller](https://www.npmjs.com/package/abort-controller/v/3.0.0) | <code>3.0.0</code> | MIT |
 | npm | [accepts](https://www.npmjs.com/package/accepts/v/2.0.0) | <code>2.0.0</code> | MIT |
+| npm | [acorn](https://www.npmjs.com/package/acorn/v/8.18.0) | <code>8.18.0</code> | MIT |
 | npm | [agent-base](https://www.npmjs.com/package/agent-base/v/7.1.4) | <code>7.1.4</code> | MIT |
 | npm | [ajv](https://www.npmjs.com/package/ajv/v/8.20.0) | <code>8.20.0</code> | MIT |
 | npm | [ajv-formats](https://www.npmjs.com/package/ajv-formats/v/3.0.1) | <code>3.0.1</code> | MIT |
@@ -182,24 +219,22 @@ a separately listed tracked file says otherwise.
 | npm | [balanced-match](https://www.npmjs.com/package/balanced-match/v/4.0.4) | <code>4.0.4</code> | MIT |
 | npm | [base64-js](https://www.npmjs.com/package/base64-js/v/1.5.1) | <code>1.5.1</code> | MIT |
 | npm | [bignumber.js](https://www.npmjs.com/package/bignumber.js/v/9.3.1) | <code>9.3.1</code> | MIT |
-| npm | [bn.js](https://www.npmjs.com/package/bn.js/v/4.12.4) | <code>4.12.4</code> | MIT |
+| npm | [bn.js](https://www.npmjs.com/package/bn.js/v/4.12.5) | <code>4.12.5</code> | MIT |
 | npm | [body-parser](https://www.npmjs.com/package/body-parser/v/2.3.0) | <code>2.3.0</code> | MIT |
-| npm | [boolbase](https://www.npmjs.com/package/boolbase/v/1.0.0) | <code>1.0.0</code> | ISC |
+| npm | [boolbase](https://www.npmjs.com/package/boolbase/v/2.0.0) | <code>2.0.0</code> | ISC |
 | npm | [bottleneck](https://www.npmjs.com/package/bottleneck/v/2.19.5) | <code>2.19.5</code> | MIT |
-| npm | [brace-expansion](https://www.npmjs.com/package/brace-expansion/v/5.0.7) | <code>5.0.7</code> | MIT |
+| npm | [brace-expansion](https://www.npmjs.com/package/brace-expansion/v/5.0.9) | <code>5.0.9</code> | MIT |
 | npm | [buffer-equal-constant-time](https://www.npmjs.com/package/buffer-equal-constant-time/v/1.0.1) | <code>1.0.1</code> | BSD-3-Clause |
 | npm | [buffer-from](https://www.npmjs.com/package/buffer-from/v/1.1.2) | <code>1.1.2</code> | MIT |
 | npm | [bytes](https://www.npmjs.com/package/bytes/v/3.1.2) | <code>3.1.2</code> | MIT |
-| npm | [cac](https://www.npmjs.com/package/cac/v/6.7.14) | <code>6.7.14</code> | MIT |
 | npm | [call-bind-apply-helpers](https://www.npmjs.com/package/call-bind-apply-helpers/v/1.0.2) | <code>1.0.2</code> | MIT |
 | npm | [call-bound](https://www.npmjs.com/package/call-bound/v/1.0.4) | <code>1.0.4</code> | MIT |
 | npm | [camelcase](https://www.npmjs.com/package/camelcase/v/5.3.1) | <code>5.3.1</code> | MIT |
-| npm | [chai](https://www.npmjs.com/package/chai/v/5.3.3) | <code>5.3.3</code> | MIT |
-| npm | [chalk](https://www.npmjs.com/package/chalk/v/5.6.2) | <code>5.6.2</code> | MIT |
-| npm | [check-error](https://www.npmjs.com/package/check-error/v/2.1.3) | <code>2.1.3</code> | MIT |
+| npm | [chai](https://www.npmjs.com/package/chai/v/6.2.2) | <code>6.2.2</code> | MIT |
+| npm | [chalk](https://www.npmjs.com/package/chalk/v/6.0.0) | <code>6.0.0</code> | MIT |
 | npm | [chokidar](https://www.npmjs.com/package/chokidar/v/5.0.0) | <code>5.0.0</code> | MIT |
 | npm | [chownr](https://www.npmjs.com/package/chownr/v/3.0.0) | <code>3.0.0</code> | BlueOak-1.0.0 |
-| npm | [clawpdf](https://www.npmjs.com/package/clawpdf/v/0.3.0) | <code>0.3.0</code> | MIT |
+| npm | [clawpdf](https://www.npmjs.com/package/clawpdf/v/0.3.1) | <code>0.3.1</code> | MIT |
 | npm | [cliui](https://www.npmjs.com/package/cliui/v/6.0.0) | <code>6.0.0</code> | ISC |
 | npm | [cliui](https://www.npmjs.com/package/cliui/v/8.0.1) | <code>8.0.1</code> | ISC |
 | npm | [color-convert](https://www.npmjs.com/package/color-convert/v/2.0.1) | <code>2.0.1</code> | MIT |
@@ -207,27 +242,31 @@ a separately listed tracked file says otherwise.
 | npm | [commander](https://www.npmjs.com/package/commander/v/15.0.0) | <code>15.0.0</code> | MIT |
 | npm | [content-disposition](https://www.npmjs.com/package/content-disposition/v/1.1.0) | <code>1.1.0</code> | MIT |
 | npm | [content-type](https://www.npmjs.com/package/content-type/v/1.0.5) | <code>1.0.5</code> | MIT |
-| npm | [content-type](https://www.npmjs.com/package/content-type/v/2.0.0) | <code>2.0.0</code> | MIT |
+| npm | [content-type](https://www.npmjs.com/package/content-type/v/2.1.0) | <code>2.1.0</code> | MIT |
 | npm | [cookie](https://www.npmjs.com/package/cookie/v/0.7.2) | <code>0.7.2</code> | MIT |
 | npm | [cookie-signature](https://www.npmjs.com/package/cookie-signature/v/1.2.2) | <code>1.2.2</code> | MIT |
 | npm | [core-util-is](https://www.npmjs.com/package/core-util-is/v/1.0.3) | <code>1.0.3</code> | MIT |
 | npm | [cors](https://www.npmjs.com/package/cors/v/2.8.6) | <code>2.8.6</code> | MIT |
 | npm | [croner](https://www.npmjs.com/package/croner/v/10.0.1) | <code>10.0.1</code> | MIT |
 | npm | [cross-spawn](https://www.npmjs.com/package/cross-spawn/v/7.0.6) | <code>7.0.6</code> | MIT |
-| npm | [css-select](https://www.npmjs.com/package/css-select/v/5.2.2) | <code>5.2.2</code> | BSD-2-Clause |
-| npm | [css-what](https://www.npmjs.com/package/css-what/v/6.2.2) | <code>6.2.2</code> | BSD-2-Clause |
+| npm | [css-select](https://www.npmjs.com/package/css-select/v/7.0.0) | <code>7.0.0</code> | BSD-2-Clause |
+| npm | [css-what](https://www.npmjs.com/package/css-what/v/8.0.0) | <code>8.0.0</code> | BSD-2-Clause |
 | npm | [cssom](https://www.npmjs.com/package/cssom/v/0.5.0) | <code>0.5.0</code> | MIT |
 | npm | [data-uri-to-buffer](https://www.npmjs.com/package/data-uri-to-buffer/v/4.0.1) | <code>4.0.1</code> | MIT |
 | npm | [debug](https://www.npmjs.com/package/debug/v/4.4.3) | <code>4.4.3</code> | MIT |
 | npm | [decamelize](https://www.npmjs.com/package/decamelize/v/1.2.0) | <code>1.2.0</code> | MIT |
-| npm | [deep-eql](https://www.npmjs.com/package/deep-eql/v/5.0.2) | <code>5.0.2</code> | MIT |
 | npm | [depd](https://www.npmjs.com/package/depd/v/2.0.0) | <code>2.0.0</code> | MIT |
+| npm | [detect-libc](https://www.npmjs.com/package/detect-libc/v/2.1.2) | <code>2.1.2</code> | Apache-2.0 |
 | npm | [diff](https://www.npmjs.com/package/diff/v/9.0.0) | <code>9.0.0</code> | BSD-3-Clause |
 | npm | [dijkstrajs](https://www.npmjs.com/package/dijkstrajs/v/1.0.3) | <code>1.0.3</code> | MIT |
 | npm | [dom-serializer](https://www.npmjs.com/package/dom-serializer/v/2.0.0) | <code>2.0.0</code> | MIT |
+| npm | [dom-serializer](https://www.npmjs.com/package/dom-serializer/v/3.1.1) | <code>3.1.1</code> | MIT |
 | npm | [domelementtype](https://www.npmjs.com/package/domelementtype/v/2.3.0) | <code>2.3.0</code> | BSD-2-Clause |
+| npm | [domelementtype](https://www.npmjs.com/package/domelementtype/v/3.0.0) | <code>3.0.0</code> | BSD-2-Clause |
 | npm | [domhandler](https://www.npmjs.com/package/domhandler/v/5.0.3) | <code>5.0.3</code> | BSD-2-Clause |
+| npm | [domhandler](https://www.npmjs.com/package/domhandler/v/6.0.1) | <code>6.0.1</code> | BSD-2-Clause |
 | npm | [domutils](https://www.npmjs.com/package/domutils/v/3.2.2) | <code>3.2.2</code> | BSD-2-Clause |
+| npm | [domutils](https://www.npmjs.com/package/domutils/v/4.0.2) | <code>4.0.2</code> | BSD-2-Clause |
 | npm | [dotenv](https://www.npmjs.com/package/dotenv/v/17.4.2) | <code>17.4.2</code> | BSD-2-Clause |
 | npm | [dunder-proto](https://www.npmjs.com/package/dunder-proto/v/1.0.1) | <code>1.0.1</code> | MIT |
 | npm | [ecdsa-sig-formatter](https://www.npmjs.com/package/ecdsa-sig-formatter/v/1.0.11) | <code>1.0.11</code> | Apache-2.0 |
@@ -236,31 +275,33 @@ a separately listed tracked file says otherwise.
 | npm | [encodeurl](https://www.npmjs.com/package/encodeurl/v/2.0.0) | <code>2.0.0</code> | MIT |
 | npm | [entities](https://www.npmjs.com/package/entities/v/4.5.0) | <code>4.5.0</code> | BSD-2-Clause |
 | npm | [entities](https://www.npmjs.com/package/entities/v/7.0.1) | <code>7.0.1</code> | BSD-2-Clause |
+| npm | [entities](https://www.npmjs.com/package/entities/v/8.0.0) | <code>8.0.0</code> | BSD-2-Clause |
 | npm | [es-define-property](https://www.npmjs.com/package/es-define-property/v/1.0.1) | <code>1.0.1</code> | MIT |
 | npm | [es-errors](https://www.npmjs.com/package/es-errors/v/1.3.0) | <code>1.3.0</code> | MIT |
-| npm | [es-module-lexer](https://www.npmjs.com/package/es-module-lexer/v/1.7.0) | <code>1.7.0</code> | MIT |
+| npm | [es-module-lexer](https://www.npmjs.com/package/es-module-lexer/v/2.3.2) | <code>2.3.2</code> | MIT |
 | npm | [es-object-atoms](https://www.npmjs.com/package/es-object-atoms/v/1.1.2) | <code>1.1.2</code> | MIT |
-| npm | [esbuild](https://www.npmjs.com/package/esbuild/v/0.28.1) | <code>0.28.1</code> | MIT |
 | npm | [escalade](https://www.npmjs.com/package/escalade/v/3.2.0) | <code>3.2.0</code> | MIT |
 | npm | [escape-html](https://www.npmjs.com/package/escape-html/v/1.0.3) | <code>1.0.3</code> | MIT |
 | npm | [estree-walker](https://www.npmjs.com/package/estree-walker/v/3.0.3) | <code>3.0.3</code> | MIT |
 | npm | [etag](https://www.npmjs.com/package/etag/v/1.8.1) | <code>1.8.1</code> | MIT |
 | npm | [event-target-shim](https://www.npmjs.com/package/event-target-shim/v/5.0.1) | <code>5.0.1</code> | MIT |
 | npm | [eventsource](https://www.npmjs.com/package/eventsource/v/3.0.7) | <code>3.0.7</code> | MIT |
-| npm | [eventsource-parser](https://www.npmjs.com/package/eventsource-parser/v/3.1.0) | <code>3.1.0</code> | MIT |
+| npm | [eventsource-parser](https://www.npmjs.com/package/eventsource-parser/v/3.1.1) | <code>3.1.1</code> | MIT |
+| npm | [execa](https://www.npmjs.com/package/execa/v/10.0.1) | <code>10.0.1</code> | MIT |
 | npm | [expect-type](https://www.npmjs.com/package/expect-type/v/1.4.0) | <code>1.4.0</code> | Apache-2.0 |
 | npm | [express](https://www.npmjs.com/package/express/v/5.2.1) | <code>5.2.1</code> | MIT |
-| npm | [express-rate-limit](https://www.npmjs.com/package/express-rate-limit/v/8.5.2) | <code>8.5.2</code> | MIT |
+| npm | [express-rate-limit](https://www.npmjs.com/package/express-rate-limit/v/8.7.0) | <code>8.7.0</code> | MIT |
 | npm | [extend](https://www.npmjs.com/package/extend/v/3.0.2) | <code>3.0.2</code> | MIT |
 | npm | [fast-deep-equal](https://www.npmjs.com/package/fast-deep-equal/v/3.1.3) | <code>3.1.3</code> | MIT |
 | npm | [fast-sha256](https://www.npmjs.com/package/fast-sha256/v/1.3.0) | <code>1.3.0</code> | Unlicense |
 | npm | [fast-string-truncated-width](https://www.npmjs.com/package/fast-string-truncated-width/v/3.0.3) | <code>3.0.3</code> | MIT |
 | npm | [fast-string-width](https://www.npmjs.com/package/fast-string-width/v/3.0.2) | <code>3.0.2</code> | MIT |
-| npm | [fast-uri](https://www.npmjs.com/package/fast-uri/v/3.1.2) | <code>3.1.2</code> | BSD-3-Clause |
+| npm | [fast-uri](https://www.npmjs.com/package/fast-uri/v/3.1.7) | <code>3.1.7</code> | BSD-3-Clause |
 | npm | [fast-wrap-ansi](https://www.npmjs.com/package/fast-wrap-ansi/v/0.2.2) | <code>0.2.2</code> | MIT |
 | npm | [fdir](https://www.npmjs.com/package/fdir/v/6.5.0) | <code>6.5.0</code> | MIT |
 | npm | [fetch-blob](https://www.npmjs.com/package/fetch-blob/v/3.2.0) | <code>3.2.0</code> | MIT |
-| npm | [file-type](https://www.npmjs.com/package/file-type/v/22.0.1) | <code>22.0.1</code> | MIT |
+| npm | [figures](https://www.npmjs.com/package/figures/v/6.1.0) | <code>6.1.0</code> | MIT |
+| npm | [file-type](https://www.npmjs.com/package/file-type/v/22.0.2) | <code>22.0.2</code> | MIT |
 | npm | [finalhandler](https://www.npmjs.com/package/finalhandler/v/2.1.1) | <code>2.1.1</code> | MIT |
 | npm | [find-up](https://www.npmjs.com/package/find-up/v/4.1.0) | <code>4.1.0</code> | MIT |
 | npm | [formdata-polyfill](https://www.npmjs.com/package/formdata-polyfill/v/4.0.10) | <code>4.0.10</code> | MIT |
@@ -268,42 +309,44 @@ a separately listed tracked file says otherwise.
 | npm | [fresh](https://www.npmjs.com/package/fresh/v/2.0.0) | <code>2.0.0</code> | MIT |
 | npm | [fsevents](https://www.npmjs.com/package/fsevents/v/2.3.3) | <code>2.3.3</code> | MIT |
 | npm | [function-bind](https://www.npmjs.com/package/function-bind/v/1.1.2) | <code>1.1.2</code> | MIT |
-| npm | [gaxios](https://www.npmjs.com/package/gaxios/v/7.1.5) | <code>7.1.5</code> | Apache-2.0 |
+| npm | [gaxios](https://www.npmjs.com/package/gaxios/v/7.3.1) | <code>7.3.1</code> | Apache-2.0 |
 | npm | [gcp-metadata](https://www.npmjs.com/package/gcp-metadata/v/8.1.2) | <code>8.1.2</code> | Apache-2.0 |
 | npm | [get-caller-file](https://www.npmjs.com/package/get-caller-file/v/2.0.5) | <code>2.0.5</code> | ISC |
 | npm | [get-east-asian-width](https://www.npmjs.com/package/get-east-asian-width/v/1.6.0) | <code>1.6.0</code> | MIT |
 | npm | [get-intrinsic](https://www.npmjs.com/package/get-intrinsic/v/1.3.0) | <code>1.3.0</code> | MIT |
 | npm | [get-proto](https://www.npmjs.com/package/get-proto/v/1.0.1) | <code>1.0.1</code> | MIT |
-| npm | [glob](https://www.npmjs.com/package/glob/v/13.0.6) | <code>13.0.6</code> | BlueOak-1.0.0 |
-| npm | [google-auth-library](https://www.npmjs.com/package/google-auth-library/v/10.9.0) | <code>10.9.0</code> | Apache-2.0 |
+| npm | [get-stream](https://www.npmjs.com/package/get-stream/v/9.0.1) | <code>9.0.1</code> | MIT |
+| npm | [google-auth-library](https://www.npmjs.com/package/google-auth-library/v/10.9.1) | <code>10.9.1</code> | Apache-2.0 |
 | npm | [google-logging-utils](https://www.npmjs.com/package/google-logging-utils/v/1.1.3) | <code>1.1.3</code> | Apache-2.0 |
 | npm | [gopd](https://www.npmjs.com/package/gopd/v/1.2.0) | <code>1.2.0</code> | MIT |
-| npm | [graceful-fs](https://www.npmjs.com/package/graceful-fs/v/4.2.11) | <code>4.2.11</code> | ISC |
-| npm | [grammy](https://www.npmjs.com/package/grammy/v/1.44.0) | <code>1.44.0</code> | MIT |
+| npm | [grammy](https://www.npmjs.com/package/grammy/v/1.46.0) | <code>1.46.0</code> | MIT |
 | npm | [has-symbols](https://www.npmjs.com/package/has-symbols/v/1.1.0) | <code>1.1.0</code> | MIT |
 | npm | [hasown](https://www.npmjs.com/package/hasown/v/2.0.4) | <code>2.0.4</code> | MIT |
-| npm | [highlight.js](https://www.npmjs.com/package/highlight.js/v/11.11.1) | <code>11.11.1</code> | BSD-3-Clause |
-| npm | [hono](https://www.npmjs.com/package/hono/v/4.12.25) | <code>4.12.25</code> | MIT |
+| npm | [highlight.js](https://www.npmjs.com/package/highlight.js/v/11.12.0) | <code>11.12.0</code> | BSD-3-Clause |
+| npm | [hono](https://www.npmjs.com/package/hono/v/4.13.7) | <code>4.13.7</code> | MIT |
 | npm | [hosted-git-info](https://www.npmjs.com/package/hosted-git-info/v/10.1.1) | <code>10.1.1</code> | ISC |
 | npm | [html-escaper](https://www.npmjs.com/package/html-escaper/v/3.0.3) | <code>3.0.3</code> | MIT |
 | npm | [htmlparser2](https://www.npmjs.com/package/htmlparser2/v/10.1.0) | <code>10.1.0</code> | MIT |
 | npm | [http-errors](https://www.npmjs.com/package/http-errors/v/2.0.1) | <code>2.0.1</code> | MIT |
 | npm | [http_ece](https://www.npmjs.com/package/http_ece/v/1.2.0) | <code>1.2.0</code> | MIT |
 | npm | [https-proxy-agent](https://www.npmjs.com/package/https-proxy-agent/v/7.0.6) | <code>7.0.6</code> | MIT |
-| npm | [iconv-lite](https://www.npmjs.com/package/iconv-lite/v/0.7.2) | <code>0.7.2</code> | MIT |
+| npm | [human-signals](https://www.npmjs.com/package/human-signals/v/8.0.1) | <code>8.0.1</code> | Apache-2.0 |
+| npm | [iconv-lite](https://www.npmjs.com/package/iconv-lite/v/0.7.3) | <code>0.7.3</code> | MIT |
 | npm | [ieee754](https://www.npmjs.com/package/ieee754/v/1.2.1) | <code>1.2.1</code> | BSD-3-Clause |
-| npm | [ignore](https://www.npmjs.com/package/ignore/v/7.0.5) | <code>7.0.5</code> | MIT |
+| npm | [ignore](https://www.npmjs.com/package/ignore/v/7.0.6) | <code>7.0.6</code> | MIT |
 | npm | [immediate](https://www.npmjs.com/package/immediate/v/3.0.6) | <code>3.0.6</code> | MIT |
 | npm | [inherits](https://www.npmjs.com/package/inherits/v/2.0.4) | <code>2.0.4</code> | ISC |
-| npm | [ip-address](https://www.npmjs.com/package/ip-address/v/10.2.0) | <code>10.2.0</code> | MIT |
+| npm | [ip-address](https://www.npmjs.com/package/ip-address/v/10.7.0) | <code>10.7.0</code> | MIT |
 | npm | [ipaddr.js](https://www.npmjs.com/package/ipaddr.js/v/1.9.1) | <code>1.9.1</code> | MIT |
 | npm | [is-fullwidth-code-point](https://www.npmjs.com/package/is-fullwidth-code-point/v/3.0.0) | <code>3.0.0</code> | MIT |
+| npm | [is-plain-obj](https://www.npmjs.com/package/is-plain-obj/v/4.1.0) | <code>4.1.0</code> | MIT |
 | npm | [is-promise](https://www.npmjs.com/package/is-promise/v/4.0.0) | <code>4.0.0</code> | MIT |
+| npm | [is-stream](https://www.npmjs.com/package/is-stream/v/4.0.1) | <code>4.0.1</code> | MIT |
+| npm | [is-unicode-supported](https://www.npmjs.com/package/is-unicode-supported/v/2.1.0) | <code>2.1.0</code> | MIT |
 | npm | [isarray](https://www.npmjs.com/package/isarray/v/1.0.0) | <code>1.0.0</code> | MIT |
 | npm | [isexe](https://www.npmjs.com/package/isexe/v/2.0.0) | <code>2.0.0</code> | ISC |
 | npm | [jiti](https://www.npmjs.com/package/jiti/v/2.7.0) | <code>2.7.0</code> | MIT |
-| npm | [jose](https://www.npmjs.com/package/jose/v/6.2.3) | <code>6.2.3</code> | MIT |
-| npm | [js-tokens](https://www.npmjs.com/package/js-tokens/v/9.0.1) | <code>9.0.1</code> | MIT |
+| npm | [jose](https://www.npmjs.com/package/jose/v/6.2.12) | <code>6.2.12</code> | MIT |
 | npm | [json-bigint](https://www.npmjs.com/package/json-bigint/v/1.0.0) | <code>1.0.0</code> | MIT |
 | npm | [json-schema-to-ts](https://www.npmjs.com/package/json-schema-to-ts/v/3.1.1) | <code>3.1.1</code> | MIT |
 | npm | [json-schema-traverse](https://www.npmjs.com/package/json-schema-traverse/v/1.0.0) | <code>1.0.0</code> | MIT |
@@ -312,81 +355,97 @@ a separately listed tracked file says otherwise.
 | npm | [jszip](https://www.npmjs.com/package/jszip/v/3.10.1) | <code>3.10.1</code> | MIT (selected from MIT OR GPL-3.0-or-later) |
 | npm | [jwa](https://www.npmjs.com/package/jwa/v/2.0.1) | <code>2.0.1</code> | MIT |
 | npm | [jws](https://www.npmjs.com/package/jws/v/4.0.1) | <code>4.0.1</code> | MIT |
-| npm | [kysely](https://www.npmjs.com/package/kysely/v/0.29.2) | <code>0.29.2</code> | MIT |
+| npm | [koffi](https://www.npmjs.com/package/koffi/v/3.1.6) | <code>3.1.6</code> | MIT |
+| npm | [kysely](https://www.npmjs.com/package/kysely/v/0.29.5) | <code>0.29.5</code> | MIT |
 | npm | [lie](https://www.npmjs.com/package/lie/v/3.3.0) | <code>3.3.0</code> | MIT |
-| npm | [linkedom](https://www.npmjs.com/package/linkedom/v/0.18.12) | <code>0.18.12</code> | ISC |
+| npm | [lightningcss](https://www.npmjs.com/package/lightningcss/v/1.33.0) | <code>1.33.0</code> | MPL-2.0 |
+| npm | [lightningcss-android-arm64](https://www.npmjs.com/package/lightningcss-android-arm64/v/1.33.0) | <code>1.33.0</code> | MPL-2.0 |
+| npm | [lightningcss-darwin-arm64](https://www.npmjs.com/package/lightningcss-darwin-arm64/v/1.33.0) | <code>1.33.0</code> | MPL-2.0 |
+| npm | [lightningcss-darwin-x64](https://www.npmjs.com/package/lightningcss-darwin-x64/v/1.33.0) | <code>1.33.0</code> | MPL-2.0 |
+| npm | [lightningcss-freebsd-x64](https://www.npmjs.com/package/lightningcss-freebsd-x64/v/1.33.0) | <code>1.33.0</code> | MPL-2.0 |
+| npm | [lightningcss-linux-arm-gnueabihf](https://www.npmjs.com/package/lightningcss-linux-arm-gnueabihf/v/1.33.0) | <code>1.33.0</code> | MPL-2.0 |
+| npm | [lightningcss-linux-arm64-gnu](https://www.npmjs.com/package/lightningcss-linux-arm64-gnu/v/1.33.0) | <code>1.33.0</code> | MPL-2.0 |
+| npm | [lightningcss-linux-arm64-musl](https://www.npmjs.com/package/lightningcss-linux-arm64-musl/v/1.33.0) | <code>1.33.0</code> | MPL-2.0 |
+| npm | [lightningcss-linux-x64-gnu](https://www.npmjs.com/package/lightningcss-linux-x64-gnu/v/1.33.0) | <code>1.33.0</code> | MPL-2.0 |
+| npm | [lightningcss-linux-x64-musl](https://www.npmjs.com/package/lightningcss-linux-x64-musl/v/1.33.0) | <code>1.33.0</code> | MPL-2.0 |
+| npm | [lightningcss-win32-arm64-msvc](https://www.npmjs.com/package/lightningcss-win32-arm64-msvc/v/1.33.0) | <code>1.33.0</code> | MPL-2.0 |
+| npm | [lightningcss-win32-x64-msvc](https://www.npmjs.com/package/lightningcss-win32-x64-msvc/v/1.33.0) | <code>1.33.0</code> | MPL-2.0 |
+| npm | [linkedom](https://www.npmjs.com/package/linkedom/v/0.18.13) | <code>0.18.13</code> | ISC |
 | npm | [locate-path](https://www.npmjs.com/package/locate-path/v/5.0.0) | <code>5.0.0</code> | MIT |
 | npm | [long](https://www.npmjs.com/package/long/v/5.3.2) | <code>5.3.2</code> | Apache-2.0 |
-| npm | [loupe](https://www.npmjs.com/package/loupe/v/3.2.1) | <code>3.2.1</code> | MIT |
-| npm | [lru-cache](https://www.npmjs.com/package/lru-cache/v/11.5.1) | <code>11.5.1</code> | BlueOak-1.0.0 |
-| npm | [magic-string](https://www.npmjs.com/package/magic-string/v/0.30.21) | <code>0.30.21</code> | MIT |
+| npm | [lru-cache](https://www.npmjs.com/package/lru-cache/v/11.5.2) | <code>11.5.2</code> | BlueOak-1.0.0 |
+| npm | [magic-string](https://www.npmjs.com/package/magic-string/v/1.2.3) | <code>1.2.3</code> | MIT |
 | npm | [marked](https://www.npmjs.com/package/marked/v/18.0.5) | <code>18.0.5</code> | MIT |
 | npm | [math-intrinsics](https://www.npmjs.com/package/math-intrinsics/v/1.1.0) | <code>1.1.0</code> | MIT |
-| npm | [media-typer](https://www.npmjs.com/package/media-typer/v/1.1.0) | <code>1.1.0</code> | MIT |
+| npm | [media-typer](https://www.npmjs.com/package/media-typer/v/1.1.1) | <code>1.1.1</code> | MIT |
 | npm | [merge-descriptors](https://www.npmjs.com/package/merge-descriptors/v/2.0.0) | <code>2.0.0</code> | MIT |
 | npm | [mime-db](https://www.npmjs.com/package/mime-db/v/1.54.0) | <code>1.54.0</code> | MIT |
 | npm | [mime-types](https://www.npmjs.com/package/mime-types/v/3.0.2) | <code>3.0.2</code> | MIT |
 | npm | [minimalistic-assert](https://www.npmjs.com/package/minimalistic-assert/v/1.0.1) | <code>1.0.1</code> | ISC |
-| npm | [minimatch](https://www.npmjs.com/package/minimatch/v/10.2.5) | <code>10.2.5</code> | BlueOak-1.0.0 |
+| npm | [minimatch](https://www.npmjs.com/package/minimatch/v/10.2.6) | <code>10.2.6</code> | BlueOak-1.0.0 |
 | npm | [minimist](https://www.npmjs.com/package/minimist/v/1.2.8) | <code>1.2.8</code> | MIT |
 | npm | [minipass](https://www.npmjs.com/package/minipass/v/7.1.3) | <code>7.1.3</code> | BlueOak-1.0.0 |
 | npm | [minizlib](https://www.npmjs.com/package/minizlib/v/3.1.0) | <code>3.1.0</code> | MIT |
 | npm | [ms](https://www.npmjs.com/package/ms/v/2.1.3) | <code>2.1.3</code> | MIT |
-| npm | [nanoid](https://www.npmjs.com/package/nanoid/v/3.3.16) | <code>3.3.16</code> | MIT |
-| npm | [negotiator](https://www.npmjs.com/package/negotiator/v/1.0.0) | <code>1.0.0</code> | MIT |
-| npm | [node-addon-api](https://www.npmjs.com/package/node-addon-api/v/8.9.0) | <code>8.9.0</code> | MIT |
+| npm | [nanoid](https://www.npmjs.com/package/nanoid/v/3.3.18) | <code>3.3.18</code> | MIT |
+| npm | [negotiator](https://www.npmjs.com/package/negotiator/v/1.1.0) | <code>1.1.0</code> | MIT |
+| npm | [node-addon-api](https://www.npmjs.com/package/node-addon-api/v/8.9.2) | <code>8.9.2</code> | MIT |
+| npm | [node-domexception](https://www.npmjs.com/package/node-domexception/v/1.0.0) | <code>1.0.0</code> | MIT |
 | npm | [node-edge-tts](https://www.npmjs.com/package/node-edge-tts/v/1.2.10) | <code>1.2.10</code> | MIT |
 | npm | [node-fetch](https://www.npmjs.com/package/node-fetch/v/2.7.0) | <code>2.7.0</code> | MIT |
 | npm | [node-fetch](https://www.npmjs.com/package/node-fetch/v/3.3.2) | <code>3.3.2</code> | MIT |
 | npm | [node-gyp-build](https://www.npmjs.com/package/node-gyp-build/v/4.8.4) | <code>4.8.4</code> | MIT |
-| npm | [nth-check](https://www.npmjs.com/package/nth-check/v/2.1.1) | <code>2.1.1</code> | BSD-2-Clause |
+| npm | [npm-run-path](https://www.npmjs.com/package/npm-run-path/v/6.0.0) | <code>6.0.0</code> | MIT |
+| npm | [nth-check](https://www.npmjs.com/package/nth-check/v/3.0.1) | <code>3.0.1</code> | BSD-2-Clause |
 | npm | [object-assign](https://www.npmjs.com/package/object-assign/v/4.1.1) | <code>4.1.1</code> | MIT |
 | npm | [object-inspect](https://www.npmjs.com/package/object-inspect/v/1.13.4) | <code>1.13.4</code> | MIT |
+| npm | [obug](https://www.npmjs.com/package/obug/v/2.2.1) | <code>2.2.1</code> | MIT |
 | npm | [on-finished](https://www.npmjs.com/package/on-finished/v/2.4.1) | <code>2.4.1</code> | MIT |
 | npm | [once](https://www.npmjs.com/package/once/v/1.4.0) | <code>1.4.0</code> | ISC |
-| npm | [openai](https://www.npmjs.com/package/openai/v/6.45.0) | <code>6.45.0</code> | Apache-2.0 |
-| npm | [openclaw](https://www.npmjs.com/package/openclaw/v/2026.7.1) | <code>2026.7.1</code> | MIT |
+| npm | [openai](https://www.npmjs.com/package/openai/v/7.5.0) | <code>7.5.0</code> | Apache-2.0 |
+| npm | [openclaw](https://www.npmjs.com/package/openclaw/v/2026.9.2) | <code>2026.9.2</code> | MIT |
 | npm | [p-limit](https://www.npmjs.com/package/p-limit/v/2.3.0) | <code>2.3.0</code> | MIT |
+| npm | [p-limit](https://www.npmjs.com/package/p-limit/v/7.3.1) | <code>7.3.1</code> | MIT |
 | npm | [p-locate](https://www.npmjs.com/package/p-locate/v/4.1.0) | <code>4.1.0</code> | MIT |
+| npm | [p-map](https://www.npmjs.com/package/p-map/v/7.0.6) | <code>7.0.6</code> | MIT |
 | npm | [p-retry](https://www.npmjs.com/package/p-retry/v/4.6.2) | <code>4.6.2</code> | MIT |
 | npm | [p-try](https://www.npmjs.com/package/p-try/v/2.2.0) | <code>2.2.0</code> | MIT |
 | npm | [pako](https://www.npmjs.com/package/pako/v/1.0.11) | <code>1.0.11</code> | (MIT AND Zlib) |
+| npm | [parse-ms](https://www.npmjs.com/package/parse-ms/v/4.0.0) | <code>4.0.0</code> | MIT |
 | npm | [parseurl](https://www.npmjs.com/package/parseurl/v/1.3.3) | <code>1.3.3</code> | MIT |
 | npm | [partial-json](https://www.npmjs.com/package/partial-json/v/0.1.7) | <code>0.1.7</code> | MIT |
 | npm | [path-exists](https://www.npmjs.com/package/path-exists/v/4.0.0) | <code>4.0.0</code> | MIT |
 | npm | [path-key](https://www.npmjs.com/package/path-key/v/3.1.1) | <code>3.1.1</code> | MIT |
-| npm | [path-scurry](https://www.npmjs.com/package/path-scurry/v/2.0.2) | <code>2.0.2</code> | BlueOak-1.0.0 |
-| npm | [path-to-regexp](https://www.npmjs.com/package/path-to-regexp/v/8.4.0) | <code>8.4.0</code> | MIT |
-| npm | [pathe](https://www.npmjs.com/package/pathe/v/2.0.3) | <code>2.0.3</code> | MIT |
-| npm | [pathval](https://www.npmjs.com/package/pathval/v/2.0.1) | <code>2.0.1</code> | MIT |
+| npm | [path-key](https://www.npmjs.com/package/path-key/v/4.0.0) | <code>4.0.0</code> | MIT |
+| npm | [path-to-regexp](https://www.npmjs.com/package/path-to-regexp/v/8.4.2) | <code>8.4.2</code> | MIT |
 | npm | [picocolors](https://www.npmjs.com/package/picocolors/v/1.1.1) | <code>1.1.1</code> | ISC |
-| npm | [picomatch](https://www.npmjs.com/package/picomatch/v/4.0.5) | <code>4.0.5</code> | MIT |
+| npm | [picomatch](https://www.npmjs.com/package/picomatch/v/4.0.7) | <code>4.0.7</code> | MIT |
 | npm | [pkce-challenge](https://www.npmjs.com/package/pkce-challenge/v/5.0.1) | <code>5.0.1</code> | MIT |
-| npm | [playwright-core](https://www.npmjs.com/package/playwright-core/v/1.61.1) | <code>1.61.1</code> | Apache-2.0 |
+| npm | [playwright-core](https://www.npmjs.com/package/playwright-core/v/1.62.1) | <code>1.62.1</code> | Apache-2.0 |
 | npm | [pngjs](https://www.npmjs.com/package/pngjs/v/5.0.0) | <code>5.0.0</code> | MIT |
-| npm | [postcss](https://www.npmjs.com/package/postcss/v/8.5.25) | <code>8.5.25</code> | MIT |
+| npm | [postcss](https://www.npmjs.com/package/postcss/v/8.5.28) | <code>8.5.28</code> | MIT |
+| npm | [pretty-ms](https://www.npmjs.com/package/pretty-ms/v/9.3.0) | <code>9.3.0</code> | MIT |
 | npm | [process-nextick-args](https://www.npmjs.com/package/process-nextick-args/v/2.0.1) | <code>2.0.1</code> | MIT |
-| npm | [proper-lockfile](https://www.npmjs.com/package/proper-lockfile/v/4.1.2) | <code>4.1.2</code> | MIT |
-| npm | [protobufjs](https://www.npmjs.com/package/protobufjs/v/7.6.3) | <code>7.6.3</code> | BSD-3-Clause |
+| npm | [protobufjs](https://www.npmjs.com/package/protobufjs/v/7.6.6) | <code>7.6.6</code> | BSD-3-Clause |
 | npm | [proxy-addr](https://www.npmjs.com/package/proxy-addr/v/2.0.7) | <code>2.0.7</code> | MIT |
 | npm | [qrcode](https://www.npmjs.com/package/qrcode/v/1.5.4) | <code>1.5.4</code> | MIT |
-| npm | [qs](https://www.npmjs.com/package/qs/v/6.15.2) | <code>6.15.2</code> | BSD-3-Clause |
-| npm | [quickjs-wasi](https://www.npmjs.com/package/quickjs-wasi/v/3.0.2) | <code>3.0.2</code> | MIT |
+| npm | [qs](https://www.npmjs.com/package/qs/v/6.16.0) | <code>6.16.0</code> | BSD-3-Clause |
+| npm | [quickjs-wasi](https://www.npmjs.com/package/quickjs-wasi/v/3.5.0) | <code>3.5.0</code> | MIT |
 | npm | [range-parser](https://www.npmjs.com/package/range-parser/v/1.3.0) | <code>1.3.0</code> | MIT |
-| npm | [rastermill](https://www.npmjs.com/package/rastermill/v/0.3.1) | <code>0.3.1</code> | MIT |
+| npm | [rastermill](https://www.npmjs.com/package/rastermill/v/0.3.2) | <code>0.3.2</code> | MIT |
 | npm | [raw-body](https://www.npmjs.com/package/raw-body/v/3.0.2) | <code>3.0.2</code> | MIT |
 | npm | [readable-stream](https://www.npmjs.com/package/readable-stream/v/2.3.8) | <code>2.3.8</code> | MIT |
-| npm | [readdirp](https://www.npmjs.com/package/readdirp/v/5.0.0) | <code>5.0.0</code> | MIT |
+| npm | [readdirp](https://www.npmjs.com/package/readdirp/v/5.1.1) | <code>5.1.1</code> | MIT |
 | npm | [require-directory](https://www.npmjs.com/package/require-directory/v/2.1.1) | <code>2.1.1</code> | MIT |
 | npm | [require-from-string](https://www.npmjs.com/package/require-from-string/v/2.0.2) | <code>2.0.2</code> | MIT |
 | npm | [require-main-filename](https://www.npmjs.com/package/require-main-filename/v/2.0.0) | <code>2.0.0</code> | ISC |
-| npm | [retry](https://www.npmjs.com/package/retry/v/0.12.0) | <code>0.12.0</code> | MIT |
 | npm | [retry](https://www.npmjs.com/package/retry/v/0.13.1) | <code>0.13.1</code> | MIT |
-| npm | [rollup](https://www.npmjs.com/package/rollup/v/4.62.3) | <code>4.62.3</code> | MIT |
+| npm | [rolldown](https://www.npmjs.com/package/rolldown/v/1.2.7) | <code>1.2.7</code> | MIT |
 | npm | [router](https://www.npmjs.com/package/router/v/2.2.0) | <code>2.2.0</code> | MIT |
 | npm | [safe-buffer](https://www.npmjs.com/package/safe-buffer/v/5.1.2) | <code>5.1.2</code> | MIT |
 | npm | [safe-buffer](https://www.npmjs.com/package/safe-buffer/v/5.2.1) | <code>5.2.1</code> | MIT |
 | npm | [safer-buffer](https://www.npmjs.com/package/safer-buffer/v/2.1.2) | <code>2.1.2</code> | MIT |
+| npm | [semver](https://www.npmjs.com/package/semver/v/7.8.5) | <code>7.8.5</code> | ISC |
 | npm | [send](https://www.npmjs.com/package/send/v/1.2.1) | <code>1.2.1</code> | MIT |
 | npm | [serve-static](https://www.npmjs.com/package/serve-static/v/2.2.1) | <code>2.2.1</code> | MIT |
 | npm | [set-blocking](https://www.npmjs.com/package/set-blocking/v/2.0.0) | <code>2.0.0</code> | ISC |
@@ -399,7 +458,7 @@ a separately listed tracked file says otherwise.
 | npm | [side-channel-map](https://www.npmjs.com/package/side-channel-map/v/1.0.1) | <code>1.0.1</code> | MIT |
 | npm | [side-channel-weakmap](https://www.npmjs.com/package/side-channel-weakmap/v/1.0.2) | <code>1.0.2</code> | MIT |
 | npm | [siginfo](https://www.npmjs.com/package/siginfo/v/2.0.0) | <code>2.0.0</code> | ISC |
-| npm | [signal-exit](https://www.npmjs.com/package/signal-exit/v/3.0.7) | <code>3.0.7</code> | ISC |
+| npm | [signal-exit](https://www.npmjs.com/package/signal-exit/v/4.1.0) | <code>4.1.0</code> | ISC |
 | npm | [sisteransi](https://www.npmjs.com/package/sisteransi/v/1.0.5) | <code>1.0.5</code> | MIT |
 | npm | [source-map](https://www.npmjs.com/package/source-map/v/0.6.1) | <code>0.6.1</code> | BSD-3-Clause |
 | npm | [source-map-js](https://www.npmjs.com/package/source-map-js/v/1.2.1) | <code>1.2.1</code> | BSD-3-Clause |
@@ -411,54 +470,52 @@ a separately listed tracked file says otherwise.
 | npm | [sqlite-vec-linux-x64](https://www.npmjs.com/package/sqlite-vec-linux-x64/v/0.1.9) | <code>0.1.9</code> | MIT OR Apache-2.0 (lockfile: MIT OR Apache) |
 | npm | [sqlite-vec-windows-x64](https://www.npmjs.com/package/sqlite-vec-windows-x64/v/0.1.9) | <code>0.1.9</code> | MIT OR Apache-2.0 (lockfile: MIT OR Apache) |
 | npm | [stackback](https://www.npmjs.com/package/stackback/v/0.0.2) | <code>0.0.2</code> | MIT |
-| npm | [standardwebhooks](https://www.npmjs.com/package/standardwebhooks/v/1.0.0) | <code>1.0.0</code> | MIT |
+| npm | [standardwebhooks](https://www.npmjs.com/package/standardwebhooks/v/1.1.1) | <code>1.1.1</code> | MIT |
 | npm | [statuses](https://www.npmjs.com/package/statuses/v/2.0.2) | <code>2.0.2</code> | MIT |
-| npm | [std-env](https://www.npmjs.com/package/std-env/v/3.10.0) | <code>3.10.0</code> | MIT |
+| npm | [std-env](https://www.npmjs.com/package/std-env/v/4.2.0) | <code>4.2.0</code> | MIT |
 | npm | [string-width](https://www.npmjs.com/package/string-width/v/4.2.3) | <code>4.2.3</code> | MIT |
 | npm | [string_decoder](https://www.npmjs.com/package/string_decoder/v/1.1.1) | <code>1.1.1</code> | MIT |
 | npm | [strip-ansi](https://www.npmjs.com/package/strip-ansi/v/6.0.1) | <code>6.0.1</code> | MIT |
-| npm | [strip-literal](https://www.npmjs.com/package/strip-literal/v/3.1.0) | <code>3.1.0</code> | MIT |
+| npm | [strip-final-newline](https://www.npmjs.com/package/strip-final-newline/v/4.0.0) | <code>4.0.0</code> | MIT |
 | npm | [strtok3](https://www.npmjs.com/package/strtok3/v/10.3.5) | <code>10.3.5</code> | MIT |
-| npm | [tar](https://www.npmjs.com/package/tar/v/7.5.19) | <code>7.5.19</code> | BlueOak-1.0.0 |
-| npm | [tinybench](https://www.npmjs.com/package/tinybench/v/2.9.0) | <code>2.9.0</code> | MIT |
-| npm | [tinyexec](https://www.npmjs.com/package/tinyexec/v/0.3.2) | <code>0.3.2</code> | MIT |
+| npm | [tar](https://www.npmjs.com/package/tar/v/7.5.22) | <code>7.5.22</code> | BlueOak-1.0.0 |
+| npm | [tinybench](https://www.npmjs.com/package/tinybench/v/6.1.4) | <code>6.1.4</code> | MIT |
+| npm | [tinyexec](https://www.npmjs.com/package/tinyexec/v/1.3.0) | <code>1.3.0</code> | MIT |
 | npm | [tinyglobby](https://www.npmjs.com/package/tinyglobby/v/0.2.17) | <code>0.2.17</code> | MIT |
-| npm | [tinypool](https://www.npmjs.com/package/tinypool/v/1.1.1) | <code>1.1.1</code> | MIT |
-| npm | [tinyrainbow](https://www.npmjs.com/package/tinyrainbow/v/2.0.0) | <code>2.0.0</code> | MIT |
-| npm | [tinyspy](https://www.npmjs.com/package/tinyspy/v/4.0.4) | <code>4.0.4</code> | MIT |
 | npm | [toidentifier](https://www.npmjs.com/package/toidentifier/v/1.0.1) | <code>1.0.1</code> | MIT |
 | npm | [token-types](https://www.npmjs.com/package/token-types/v/6.1.2) | <code>6.1.2</code> | MIT |
 | npm | [tr46](https://www.npmjs.com/package/tr46/v/0.0.3) | <code>0.0.3</code> | MIT |
 | npm | [tree-sitter-bash](https://www.npmjs.com/package/tree-sitter-bash/v/0.25.1) | <code>0.25.1</code> | MIT |
 | npm | [ts-algebra](https://www.npmjs.com/package/ts-algebra/v/2.0.0) | <code>2.0.0</code> | MIT |
 | npm | [tslib](https://www.npmjs.com/package/tslib/v/2.8.1) | <code>2.8.1</code> | 0BSD |
-| npm | [tslog](https://www.npmjs.com/package/tslog/v/4.10.2) | <code>4.10.2</code> | MIT |
+| npm | [tslog](https://www.npmjs.com/package/tslog/v/4.11.0) | <code>4.11.0</code> | MIT |
 | npm | [type-is](https://www.npmjs.com/package/type-is/v/2.1.0) | <code>2.1.0</code> | MIT |
 | npm | [typebox](https://www.npmjs.com/package/typebox/v/1.1.38) | <code>1.1.38</code> | MIT |
-| npm | [typebox](https://www.npmjs.com/package/typebox/v/1.3.3) | <code>1.3.3</code> | MIT |
+| npm | [typebox](https://www.npmjs.com/package/typebox/v/1.3.18) | <code>1.3.18</code> | MIT |
 | npm | [typescript](https://www.npmjs.com/package/typescript/v/6.0.3) | <code>6.0.3</code> | Apache-2.0 |
 | npm | [uhyphen](https://www.npmjs.com/package/uhyphen/v/0.2.0) | <code>0.2.0</code> | ISC |
 | npm | [uint8array-extras](https://www.npmjs.com/package/uint8array-extras/v/1.5.0) | <code>1.5.0</code> | MIT |
-| npm | [undici](https://www.npmjs.com/package/undici/v/8.5.0) | <code>8.5.0</code> | MIT |
-| npm | [undici-types](https://www.npmjs.com/package/undici-types/v/8.3.0) | <code>8.3.0</code> | MIT |
+| npm | [undici](https://www.npmjs.com/package/undici/v/8.10.2) | <code>8.10.2</code> | MIT |
+| npm | [undici-types](https://www.npmjs.com/package/undici-types/v/8.9.0) | <code>8.9.0</code> | MIT |
+| npm | [unicorn-magic](https://www.npmjs.com/package/unicorn-magic/v/0.3.0) | <code>0.3.0</code> | MIT |
 | npm | [unpipe](https://www.npmjs.com/package/unpipe/v/1.0.0) | <code>1.0.0</code> | MIT |
 | npm | [util-deprecate](https://www.npmjs.com/package/util-deprecate/v/1.0.2) | <code>1.0.2</code> | MIT |
 | npm | [vary](https://www.npmjs.com/package/vary/v/1.1.2) | <code>1.1.2</code> | MIT |
-| npm | [vite](https://www.npmjs.com/package/vite/v/7.3.6) | <code>7.3.6</code> | MIT |
-| npm | [vite-node](https://www.npmjs.com/package/vite-node/v/3.2.4) | <code>3.2.4</code> | MIT |
-| npm | [vitest](https://www.npmjs.com/package/vitest/v/3.2.7) | <code>3.2.7</code> | MIT |
+| npm | [vite](https://www.npmjs.com/package/vite/v/8.2.2) | <code>8.2.2</code> | MIT |
+| npm | [vitest](https://www.npmjs.com/package/vitest/v/5.0.0) | <code>5.0.0</code> | MIT |
 | npm | [web-push](https://www.npmjs.com/package/web-push/v/3.6.7) | <code>3.6.7</code> | MPL-2.0 |
 | npm | [web-streams-polyfill](https://www.npmjs.com/package/web-streams-polyfill/v/3.3.3) | <code>3.3.3</code> | MIT |
-| npm | [web-tree-sitter](https://www.npmjs.com/package/web-tree-sitter/v/0.26.10) | <code>0.26.10</code> | MIT |
+| npm | [web-tree-sitter](https://www.npmjs.com/package/web-tree-sitter/v/0.26.13) | <code>0.26.13</code> | MIT |
 | npm | [webidl-conversions](https://www.npmjs.com/package/webidl-conversions/v/3.0.1) | <code>3.0.1</code> | BSD-2-Clause |
 | npm | [whatwg-url](https://www.npmjs.com/package/whatwg-url/v/5.0.0) | <code>5.0.0</code> | MIT |
 | npm | [which](https://www.npmjs.com/package/which/v/2.0.2) | <code>2.0.2</code> | ISC |
+| npm | [which-command](https://www.npmjs.com/package/which-command/v/0.1.0) | <code>0.1.0</code> | MIT |
 | npm | [which-module](https://www.npmjs.com/package/which-module/v/2.0.1) | <code>2.0.1</code> | ISC |
 | npm | [why-is-node-running](https://www.npmjs.com/package/why-is-node-running/v/2.3.0) | <code>2.3.0</code> | MIT |
 | npm | [wrap-ansi](https://www.npmjs.com/package/wrap-ansi/v/6.2.0) | <code>6.2.0</code> | MIT |
 | npm | [wrap-ansi](https://www.npmjs.com/package/wrap-ansi/v/7.0.0) | <code>7.0.0</code> | MIT |
 | npm | [wrappy](https://www.npmjs.com/package/wrappy/v/1.0.2) | <code>1.0.2</code> | ISC |
-| npm | [ws](https://www.npmjs.com/package/ws/v/8.21.0) | <code>8.21.0</code> | MIT |
+| npm | [ws](https://www.npmjs.com/package/ws/v/8.21.3) | <code>8.21.3</code> | MIT |
 | npm | [y18n](https://www.npmjs.com/package/y18n/v/4.0.3) | <code>4.0.3</code> | ISC |
 | npm | [y18n](https://www.npmjs.com/package/y18n/v/5.0.8) | <code>5.0.8</code> | ISC |
 | npm | [yallist](https://www.npmjs.com/package/yallist/v/5.0.0) | <code>5.0.0</code> | BlueOak-1.0.0 |
@@ -467,13 +524,15 @@ a separately listed tracked file says otherwise.
 | npm | [yargs](https://www.npmjs.com/package/yargs/v/17.7.3) | <code>17.7.3</code> | MIT |
 | npm | [yargs-parser](https://www.npmjs.com/package/yargs-parser/v/18.1.3) | <code>18.1.3</code> | ISC |
 | npm | [yargs-parser](https://www.npmjs.com/package/yargs-parser/v/21.1.1) | <code>21.1.1</code> | ISC |
+| npm | [yocto-queue](https://www.npmjs.com/package/yocto-queue/v/1.2.2) | <code>1.2.2</code> | MIT |
+| npm | [yoctocolors](https://www.npmjs.com/package/yoctocolors/v/2.2.0) | <code>2.2.0</code> | MIT |
 | npm | [zod](https://www.npmjs.com/package/zod/v/4.4.3) | <code>4.4.3</code> | MIT |
 | npm | [zod-to-json-schema](https://www.npmjs.com/package/zod-to-json-schema/v/3.25.2) | <code>3.25.2</code> | ISC |
 
-## Python dependency inventory (209 external identities)
+## Python dependency inventory (208 external identities)
 
 The six editable projects are not duplicated in this table: five are
-first-party Industrial Claw packages, and editable <code>gr00t</code> is
+first-party Policy-Gated Factory Robot Orchestrator Reference packages, and editable <code>gr00t</code> is
 covered by the pinned Isaac-GR00T source notice above.
 
 | Ecosystem | Package | Version | License / terms | Source |
@@ -663,7 +722,6 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [tokenizers](https://pypi.org/project/tokenizers/0.22.2/) | <code>0.22.2</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [tomli](https://pypi.org/project/tomli/2.4.1/) | <code>2.4.1</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [torch](https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple/) | <code>2.10.0</code> | BSD-3-Clause | [Jetson AI Lab index](https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple/) |
-| python | [torchcodec](https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple/) | <code>0.10.0</code> | BSD-3-Clause | [Jetson AI Lab index](https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple/) |
 | python | [torchvision](https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple/) | <code>0.25.0</code> | BSD-3-Clause | [Jetson AI Lab index](https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple/) |
 | python | [tqdm](https://pypi.org/project/tqdm/4.67.3/) | <code>4.67.3</code> | MPL-2.0 AND MIT | [PyPI](https://pypi.org/) |
 | python | [traitlets](https://pypi.org/project/traitlets/5.14.3/) | <code>5.14.3</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |

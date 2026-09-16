@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "ic/cell-protocol/floor_state.v1",
-  "title": "/ic/floor_state payload (authoritative world snapshot, ~1Hz)",
+  "$id": "pgfr/cell-protocol/floor_state.v1",
+  "title": "/pgfr/floor_state payload (authoritative world snapshot, ~1Hz)",
   "type": "object",
   "required": [
     "endpoints",

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "ic/cell-protocol/result.v1",
-  "title": "/ic/result payload",
+  "$id": "pgfr/cell-protocol/result.v1",
+  "title": "/pgfr/result payload",
   "type": "object",
   "required": [
     "success",
