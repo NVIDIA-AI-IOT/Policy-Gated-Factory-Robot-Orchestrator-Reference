@@ -96,9 +96,23 @@ def run_smoke(root: Path) -> dict:
     restored = Qwen3VLForConditionalGeneration.from_pretrained(
         root / "model", attn_implementation="eager"
     ).eval()
+    original_state = model.state_dict()
+    restored_state = restored.state_dict()
+    assert original_state.keys() == restored_state.keys(), "Checkpoint tensor names changed"
+    for name, tensor in original_state.items():
+        torch.testing.assert_close(tensor, restored_state[name], rtol=0, atol=0, msg=name)
     with torch.no_grad():
         restored_logits = restored(**batch).logits
-    torch.testing.assert_close(logits, restored_logits, rtol=0, atol=0)
+        restored_text_logits = restored(input_ids=torch.tensor([[1, 1, 1, 1]])).logits
+    # Serialization must preserve tensors exactly. FP32 inference can differ by
+    # a few ULPs after loading, so compare both forward passes with a small tolerance.
+    comparisons = {
+        "image_text": (logits, restored_logits),
+        "text": (text_logits, restored_text_logits),
+    }
+    for name, (expected, actual) in comparisons.items():
+        assert torch.isfinite(expected).all() and torch.isfinite(actual).all(), name
+        torch.testing.assert_close(expected, actual, rtol=1e-5, atol=1e-7, msg=name)
     values = {
         f"input_{k}": v.cpu().numpy()
         for k, v in batch.items()
@@ -110,7 +124,12 @@ def run_smoke(root: Path) -> dict:
         "source": __import__("transformers").__file__,
         "parameters": sum(p.numel() for p in model.parameters()),
         "output_shapes": {k: list(v.shape) for k, v in values.items()},
-        "round_trip_exact": True,
+        "round_trip_weights_exact": True,
+        "round_trip_logits_close": True,
+        "round_trip_max_abs_error": {
+            name: (expected - actual).abs().max().item()
+            for name, (expected, actual) in comparisons.items()
+        },
     }
 
 
