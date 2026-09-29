@@ -10,3 +10,4 @@ ui/src/i18n/locales/en.ts -linguist-generated
 reference/isaac-cell/deployment/pgfr_cams_rp.py -whitespace
 reference/isaac-cell/deployment/our_factory.usda -whitespace
 reference/groot/patches/*.patch -whitespace
+reference/groot/security/patches/*.patch -whitespace

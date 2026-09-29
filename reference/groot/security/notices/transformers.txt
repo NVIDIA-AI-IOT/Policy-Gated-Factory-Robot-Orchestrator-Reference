@@ -1,0 +1,30 @@
+PGFR security changes to Hugging Face Transformers 4.57.6
+
+This Apache-2.0 patch retains the upstream source copyright and license notices.
+The resulting 4.57.6+pgfr.security1 package is a locally modified distribution,
+not an upstream Hugging Face release.
+
+Modified on 2026-09-27:
+- CVE-2026-1839: Trainer RNG checkpoint loading now checks the PyTorch version
+  and explicitly uses weights_only=True.
+  https://github.com/huggingface/transformers/commit/03c8082ba4594c9b8d6fe190ca9bed0e5f8ca396
+- CVE-2026-4372: config loading ignores hidden attention implementation fields;
+  Hub attention kernels must use the kernels-community namespace. The backport
+  also validates the complete 4.x wrapper/repository grammar before loading.
+  https://github.com/huggingface/transformers/commit/a7f8e7ff37d87d1a1a0c8cf607971c607741452f
+- CVE-2026-5241: LightGlue resolves nested keypoint configuration only through
+  built-in models and does not propagate serialized remote-code trust.
+  https://github.com/huggingface/transformers/commit/676559d5022b74aaa0cee1cee0842b7f27c5320e
+- CVE-2026-9856: tokenizer and processor template names cannot resolve outside
+  the template directory.
+  https://github.com/huggingface/transformers/commit/eaaaf8494dd5386634ae37d1d122212fdc315be5
+- CVE-2025-14921: deprecated Transformer-XL raw-pickle vocabulary and corpus
+  loading is disabled even when TRUST_REMOTE_CODE=True. Text vocabularies and
+  weights-only Torch caches remain supported; the latter now read cache.pt.
+  This is a PGFR change based on the reported deserialization issue:
+  https://www.zerodayinitiative.com/advisories/ZDI-25-1149/
+- The package version is 4.57.6+pgfr.security1.
+
+The Qwen3-VL model and processor implementation is unchanged. These changes do
+not establish closure of other legacy-converter findings without assessment
+of the affected artifact and function in the security report.

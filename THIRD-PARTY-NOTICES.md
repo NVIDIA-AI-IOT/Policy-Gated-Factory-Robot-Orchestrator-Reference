@@ -62,6 +62,23 @@ Isaac-GR00T source. The patch identifies modified upstream files; the
 Policy-Gated Factory Robot Orchestrator Reference relay, executor, scene, service, and orchestration code is
 separately authored integration code.
 
+## Modified Transformers and Accelerate dependencies
+
+The source patches under `reference/groot/security/` modify Apache-2.0-licensed
+Hugging Face Transformers and Accelerate. Their upstream licenses and
+modification notices are retained in that directory and in generated wheels.
+The builder verifies exact upstream wheel, patch, modified-file, and output
+hashes recorded in `manifest.json` and `manifest-training.json`.
+
+Thor uses Transformers `4.57.6+pgfr.security1` and Accelerate
+`1.12.0+pgfr.security1`; workstation training uses `4.57.3+pgfr.security1` and
+`1.13.0+pgfr.security1`, respectively. These are locally patched distributions,
+not upstream releases. Operators build them during setup; this repository and
+its CI do not publish the generated wheels. Patch scope and provenance are
+recorded in `reference/groot/security/README.md` and the modification notices.
+The training setup applies a separate patch to the pinned upstream training
+lock; the inventory below lists the six standalone lockfiles in this repository.
+
 ## Containers, system packages, codecs, and remote assets
 
 | Runtime item | Pinned or declared identity | Terms / review status |
@@ -296,7 +313,7 @@ any redistributed native bundles remains a separate review item.
 | npm | [fast-sha256](https://www.npmjs.com/package/fast-sha256/v/1.3.0) | <code>1.3.0</code> | Unlicense |
 | npm | [fast-string-truncated-width](https://www.npmjs.com/package/fast-string-truncated-width/v/3.0.3) | <code>3.0.3</code> | MIT |
 | npm | [fast-string-width](https://www.npmjs.com/package/fast-string-width/v/3.0.2) | <code>3.0.2</code> | MIT |
-| npm | [fast-uri](https://www.npmjs.com/package/fast-uri/v/3.1.7) | <code>3.1.7</code> | BSD-3-Clause |
+| npm | [fast-uri](https://www.npmjs.com/package/fast-uri/v/3.1.8) | <code>3.1.8</code> | BSD-3-Clause |
 | npm | [fast-wrap-ansi](https://www.npmjs.com/package/fast-wrap-ansi/v/0.2.2) | <code>0.2.2</code> | MIT |
 | npm | [fdir](https://www.npmjs.com/package/fdir/v/6.5.0) | <code>6.5.0</code> | MIT |
 | npm | [fetch-blob](https://www.npmjs.com/package/fetch-blob/v/3.2.0) | <code>3.2.0</code> | MIT |
@@ -529,7 +546,7 @@ any redistributed native bundles remains a separate review item.
 | npm | [zod](https://www.npmjs.com/package/zod/v/4.4.3) | <code>4.4.3</code> | MIT |
 | npm | [zod-to-json-schema](https://www.npmjs.com/package/zod-to-json-schema/v/3.25.2) | <code>3.25.2</code> | ISC |
 
-## Python dependency inventory (208 external identities)
+## Python dependency inventory (207 external identities)
 
 The six editable projects are not duplicated in this table: five are
 first-party Policy-Gated Factory Robot Orchestrator Reference packages, and editable <code>gr00t</code> is
@@ -537,11 +554,9 @@ covered by the pinned Isaac-GR00T source notice above.
 
 | Ecosystem | Package | Version | License / terms | Source |
 |---|---|---:|---|---|
-| python | [accelerate](https://pypi.org/project/accelerate/1.12.0/) | <code>1.12.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [accelerate](https://pypi.org/project/accelerate/1.12.0/) | <code>1.12.0+pgfr.security1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [aiohappyeyeballs](https://pypi.org/project/aiohappyeyeballs/2.6.1/) | <code>2.6.1</code> | PSF-2.0 | [PyPI](https://pypi.org/) |
 | python | [aiohappyeyeballs](https://pypi.org/project/aiohappyeyeballs/2.7.1/) | <code>2.7.1</code> | PSF-2.0 | [PyPI](https://pypi.org/) |
-| python | [aiohttp](https://pypi.org/project/aiohttp/3.13.4/) | <code>3.13.4</code> | Apache-2.0 AND MIT | [PyPI](https://pypi.org/) |
-| python | [aiohttp](https://pypi.org/project/aiohttp/3.14.1/) | <code>3.14.1</code> | Apache-2.0 AND MIT | [PyPI](https://pypi.org/) |
 | python | [aiohttp](https://pypi.org/project/aiohttp/3.14.3/) | <code>3.14.3</code> | Apache-2.0 AND MIT | [PyPI](https://pypi.org/) |
 | python | [aiosignal](https://pypi.org/project/aiosignal/1.4.0/) | <code>1.4.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [albucore](https://pypi.org/project/albucore/0.0.17/) | <code>0.0.17</code> | MIT | [PyPI](https://pypi.org/) |
@@ -566,12 +581,11 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [cffi](https://pypi.org/project/cffi/2.1.0/) | <code>2.1.0</code> | MIT-0 | [PyPI](https://pypi.org/) |
 | python | [cfgv](https://pypi.org/project/cfgv/3.5.0/) | <code>3.5.0</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [charset-normalizer](https://pypi.org/project/charset-normalizer/3.4.4/) | <code>3.4.4</code> | MIT | [PyPI](https://pypi.org/) |
-| python | [click](https://pypi.org/project/click/8.1.8/) | <code>8.1.8</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
+| python | [click](https://pypi.org/project/click/8.2.1/) | <code>8.2.1</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [click](https://pypi.org/project/click/8.4.2/) | <code>8.4.2</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [cloudpickle](https://pypi.org/project/cloudpickle/3.1.2/) | <code>3.1.2</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [colorama](https://pypi.org/project/colorama/0.4.6/) | <code>0.4.6</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [contourpy](https://pypi.org/project/contourpy/1.3.2/) | <code>1.3.2</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
-| python | [cryptography](https://pypi.org/project/cryptography/46.0.7/) | <code>46.0.7</code> | Apache-2.0 OR BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [cryptography](https://pypi.org/project/cryptography/50.0.0/) | <code>50.0.0</code> | Apache-2.0 OR BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [cuda-toolkit](https://pypi.nvidia.com/) | <code>13.1.1</code> | NVIDIA SDK terms | [NVIDIA Python index](https://pypi.nvidia.com/) |
 | python | [cycler](https://pypi.org/project/cycler/0.12.1/) | <code>0.12.1</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
@@ -595,8 +609,7 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [fonttools](https://pypi.org/project/fonttools/4.61.1/) | <code>4.61.1</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [frozenlist](https://pypi.org/project/frozenlist/1.8.0/) | <code>1.8.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [fsspec](https://pypi.org/project/fsspec/2025.3.0/) | <code>2025.3.0</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
-| python | [gitdb](https://pypi.org/project/gitdb/4.0.12/) | <code>4.0.12</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
-| python | [gitpython](https://pypi.org/project/gitpython/3.1.50/) | <code>3.1.50</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
+| python | [googleapis-common-protos](https://pypi.org/project/googleapis-common-protos/1.75.4/) | <code>1.75.4</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [gymnasium](https://pypi.org/project/gymnasium/1.2.2/) | <code>1.2.2</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [h11](https://pypi.org/project/h11/0.16.0/) | <code>0.16.0</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [hf-xet](https://pypi.org/project/hf-xet/1.2.0/) | <code>1.2.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
@@ -605,7 +618,6 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [httpx-sse](https://pypi.org/project/httpx-sse/0.4.3/) | <code>0.4.3</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [huggingface-hub](https://pypi.org/project/huggingface-hub/0.36.2/) | <code>0.36.2</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [identify](https://pypi.org/project/identify/2.6.16/) | <code>2.6.16</code> | MIT | [PyPI](https://pypi.org/) |
-| python | [idna](https://pypi.org/project/idna/3.11/) | <code>3.11</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [idna](https://pypi.org/project/idna/3.18/) | <code>3.18</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [imageio](https://pypi.org/project/imageio/2.37.2/) | <code>2.37.2</code> | BSD-2-Clause | [PyPI](https://pypi.org/) |
 | python | [importlib-metadata](https://pypi.org/project/importlib-metadata/8.7.1/) | <code>8.7.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
@@ -630,7 +642,7 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [mdurl](https://pypi.org/project/mdurl/0.1.2/) | <code>0.1.2</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [ml-dtypes](https://pypi.org/project/ml-dtypes/0.5.4/) | <code>0.5.4</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [mpmath](https://pypi.org/project/mpmath/1.3.0/) | <code>1.3.0</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
-| python | [msgpack](https://pypi.org/project/msgpack/1.1.0/) | <code>1.1.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [msgpack](https://pypi.org/project/msgpack/1.2.1/) | <code>1.2.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [msgpack-numpy](https://pypi.org/project/msgpack-numpy/0.4.8/) | <code>0.4.8</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [multidict](https://pypi.org/project/multidict/6.7.1/) | <code>6.7.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [multiprocess](https://pypi.org/project/multiprocess/0.70.16/) | <code>0.70.16</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
@@ -643,10 +655,16 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [nvidia-cudnn-cu13](https://pypi.nvidia.com/) | <code>9.19.1.2</code> | NVIDIA SDK terms | [NVIDIA Python index](https://pypi.nvidia.com/) |
 | python | [nvidia-cudss-cu13](https://pypi.nvidia.com/) | <code>0.7.1.6</code> | NVIDIA SDK terms | [NVIDIA Python index](https://pypi.nvidia.com/) |
 | python | [omegaconf](https://pypi.org/project/omegaconf/2.3.0/) | <code>2.3.0</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
-| python | [onnx](https://pypi.org/project/onnx/1.20.1/) | <code>1.20.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [onnx](https://pypi.org/project/onnx/1.23.0/) | <code>1.23.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [onnx-ir](https://pypi.org/project/onnx-ir/0.2.0/) | <code>0.2.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [onnxscript](https://pypi.org/project/onnxscript/0.6.2/) | <code>0.6.2</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [opencv-python-headless](https://pypi.org/project/opencv-python-headless/4.11.0.86/) | <code>4.11.0.86</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [opentelemetry-api](https://pypi.org/project/opentelemetry-api/1.43.0/) | <code>1.43.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [opentelemetry-exporter-otlp-proto-common](https://pypi.org/project/opentelemetry-exporter-otlp-proto-common/1.43.0/) | <code>1.43.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [opentelemetry-exporter-otlp-proto-http](https://pypi.org/project/opentelemetry-exporter-otlp-proto-http/1.43.0/) | <code>1.43.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [opentelemetry-proto](https://pypi.org/project/opentelemetry-proto/1.43.0/) | <code>1.43.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [opentelemetry-sdk](https://pypi.org/project/opentelemetry-sdk/1.43.0/) | <code>1.43.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [opentelemetry-semantic-conventions](https://pypi.org/project/opentelemetry-semantic-conventions/0.64b0/) | <code>0.64b0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [packaging](https://pypi.org/project/packaging/26.0/) | <code>26.0</code> | Apache-2.0 OR BSD-2-Clause | [PyPI](https://pypi.org/) |
 | python | [packaging](https://pypi.org/project/packaging/26.2/) | <code>26.2</code> | Apache-2.0 OR BSD-2-Clause | [PyPI](https://pypi.org/) |
 | python | [pandas](https://pypi.org/project/pandas/2.2.3/) | <code>2.2.3</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
@@ -655,7 +673,7 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [peft](https://pypi.org/project/peft/0.17.1/) | <code>0.17.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [pexpect](https://pypi.org/project/pexpect/4.9.0/) | <code>4.9.0</code> | ISC | [PyPI](https://pypi.org/) |
 | python | [pfzy](https://pypi.org/project/pfzy/0.3.4/) | <code>0.3.4</code> | MIT | [PyPI](https://pypi.org/) |
-| python | [pillow](https://pypi.org/project/pillow/12.2.0/) | <code>12.2.0</code> | MIT-CMU | [PyPI](https://pypi.org/) |
+| python | [pillow](https://pypi.org/project/pillow/12.3.0/) | <code>12.3.0</code> | MIT-CMU | [PyPI](https://pypi.org/) |
 | python | [platformdirs](https://pypi.org/project/platformdirs/4.7.0/) | <code>4.7.0</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [pluggy](https://pypi.org/project/pluggy/1.6.0/) | <code>1.6.0</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [pre-commit](https://pypi.org/project/pre-commit/4.5.1/) | <code>4.5.1</code> | MIT | [PyPI](https://pypi.org/) |
@@ -702,11 +720,9 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [safetensors](https://pypi.org/project/safetensors/0.7.0/) | <code>0.7.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [scikit-image](https://pypi.org/project/scikit-image/0.25.2/) | <code>0.25.2</code> | BSD-3-Clause AND bundled BSD/MIT notices | [PyPI](https://pypi.org/) |
 | python | [scipy](https://pypi.org/project/scipy/1.15.3/) | <code>1.15.3</code> | BSD-3-Clause; bundled components require binary review | [PyPI](https://pypi.org/) |
-| python | [sentry-sdk](https://pypi.org/project/sentry-sdk/2.52.0/) | <code>2.52.0</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
-| python | [setuptools](https://pypi.org/project/setuptools/82.0.0/) | <code>82.0.0</code> | MIT | [PyPI](https://pypi.org/) |
+| python | [setuptools](https://pypi.org/project/setuptools/83.0.0/) | <code>83.0.0</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [shtab](https://pypi.org/project/shtab/1.8.0/) | <code>1.8.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [six](https://pypi.org/project/six/1.17.0/) | <code>1.17.0</code> | MIT | [PyPI](https://pypi.org/) |
-| python | [smmap](https://pypi.org/project/smmap/5.0.2/) | <code>5.0.2</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [sniffio](https://pypi.org/project/sniffio/1.3.1/) | <code>1.3.1</code> | Apache-2.0 OR MIT | [PyPI](https://pypi.org/) |
 | python | [sse-starlette](https://pypi.org/project/sse-starlette/3.4.6/) | <code>3.4.6</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [stack-data](https://pypi.org/project/stack-data/0.6.3/) | <code>0.6.3</code> | MIT | [PyPI](https://pypi.org/) |
@@ -725,7 +741,7 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [torchvision](https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple/) | <code>0.25.0</code> | BSD-3-Clause | [Jetson AI Lab index](https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple/) |
 | python | [tqdm](https://pypi.org/project/tqdm/4.67.3/) | <code>4.67.3</code> | MPL-2.0 AND MIT | [PyPI](https://pypi.org/) |
 | python | [traitlets](https://pypi.org/project/traitlets/5.14.3/) | <code>5.14.3</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
-| python | [transformers](https://pypi.org/project/transformers/4.57.6/) | <code>4.57.6</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [transformers](https://pypi.org/project/transformers/4.57.6/) | <code>4.57.6+pgfr.security1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [triton](https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple/) | <code>3.5.0</code> | MIT | [Jetson AI Lab index](https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple/) |
 | python | [typeguard](https://pypi.org/project/typeguard/4.4.4/) | <code>4.4.4</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [types-pyyaml](https://pypi.org/project/types-pyyaml/6.0.12.20260518/) | <code>6.0.12.20260518</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
@@ -738,7 +754,7 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [uvicorn](https://pypi.org/project/uvicorn/0.51.0/) | <code>0.51.0</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [uvicorn](https://pypi.org/project/uvicorn/0.52.1/) | <code>0.52.1</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [virtualenv](https://pypi.org/project/virtualenv/20.36.1/) | <code>20.36.1</code> | MIT | [PyPI](https://pypi.org/) |
-| python | [wandb](https://pypi.org/project/wandb/0.23.0/) | <code>0.23.0</code> | MIT | [PyPI](https://pypi.org/) |
+| python | [wandb](https://pypi.org/project/wandb/0.30.0/) | <code>0.30.0</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [wcwidth](https://pypi.org/project/wcwidth/0.6.0/) | <code>0.6.0</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [xxhash](https://pypi.org/project/xxhash/3.6.0/) | <code>3.6.0</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [yarl](https://pypi.org/project/yarl/1.22.0/) | <code>1.22.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |

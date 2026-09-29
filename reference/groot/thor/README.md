@@ -26,7 +26,8 @@ This prepares NVIDIA Isaac-GR00T at upstream commit
 `$HOME/groot_shadow/Isaac-GR00T`. It verifies the SHA-256 of the
 [project patch](../patches/isaac-groot-e574-policy-gated-factory-robot-orchestrator-reference.patch),
 checks that it applies cleanly, applies it, and checks the resulting source
-diff. It also materializes the checksum-verified TorchCodec wheel and invokes
+diff. It also materializes the checksum-verified TorchCodec wheel, builds the
+[patched Transformers and Accelerate wheels](../security/README.md), and invokes
 the Thor installer. `PGFR_GROOT_SOURCE_ROOT` can select another preparation
 directory, but the shared-profile installer requires the default path above.
 Preparation refuses an existing destination or active known profiles and starts

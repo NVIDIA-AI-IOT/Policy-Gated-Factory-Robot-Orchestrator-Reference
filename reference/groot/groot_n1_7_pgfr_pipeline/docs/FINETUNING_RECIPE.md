@@ -19,8 +19,9 @@ Python 3.10 and CUDA 12.8; the separate Jetson Thor Python 3.12 environment is
 for serving and must not be substituted for this workstation setup.
 Install Git LFS and uv through your normal system provisioning first. Create a
 new training checkout/virtual environment; keep it separate from the recorder
-and Thor serving environments. Use the pinned source and lockfile, then select
-the CPU FFmpeg executable and compatible TorchCodec libraries described below.
+and Thor serving environments. Use the pinned source with the dependency
+security patches, then select the CPU FFmpeg executable and compatible
+TorchCodec libraries described below.
 
 ```bash
 export REPO=/absolute/path/Policy-Gated-Factory-Robot-Orchestrator-Reference
@@ -32,10 +33,18 @@ git -C "$ISAAC_GROOT_ROOT" submodule update --init --recursive
 git -C "$ISAAC_GROOT_ROOT" apply --check "$REPO/reference/groot/patches/isaac-groot-e574-policy-gated-factory-robot-orchestrator-reference.patch"
 git -C "$ISAAC_GROOT_ROOT" apply "$REPO/reference/groot/patches/isaac-groot-e574-policy-gated-factory-robot-orchestrator-reference.patch"
 cd "$ISAAC_GROOT_ROOT"
-uv sync --frozen --python 3.10
+"$REPO/ops/sync-groot-training-deps.sh" --groot-root "$ISAAC_GROOT_ROOT"
 export GROOT_PYTHON="$ISAAC_GROOT_ROOT/.venv/bin/python"
 "$GROOT_PYTHON" -c 'import gr00t, torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))'
 ```
+
+The dependency setup verifies the original project files, builds the
+[security-patched libraries](../../security/README.md), and applies a pinned
+training lock update. Transformers 4.57.3, Accelerate 1.13.0, and the existing
+Torch/CUDA baseline are retained; supporting libraries with known High findings
+are updated. Later frozen syncs continue to use the patched local wheels.
+To prepare and inspect the changes without installing dependencies, add
+`--prepare-only`; rerun the same command without it to install.
 
 The public capture conversion does not require upstream demo-data LFS blobs.
 Do not use `--skip-weight-loading` for actual training. Confirm the NVIDIA GPU
@@ -50,6 +59,7 @@ git -C "$REPO" rev-parse HEAD > "$TRAIN_PROVENANCE/pgfr-commit.txt"
 git -C "$ISAAC_GROOT_ROOT" rev-parse HEAD > "$TRAIN_PROVENANCE/groot-commit.txt"
 git -C "$ISAAC_GROOT_ROOT" diff --binary > "$TRAIN_PROVENANCE/groot-local-changes.patch"
 sha256sum "$ISAAC_GROOT_ROOT/uv.lock" > "$TRAIN_PROVENANCE/uv-lock.sha256"
+sha256sum "$ISAAC_GROOT_ROOT"/.pgfr-security/wheels/*.whl > "$TRAIN_PROVENANCE/security-wheels.sha256"
 uv --version > "$TRAIN_PROVENANCE/uv-version.txt"
 "$GROOT_PYTHON" --version > "$TRAIN_PROVENANCE/python-version.txt"
 uv pip freeze --python "$GROOT_PYTHON" > "$TRAIN_PROVENANCE/python-packages.txt"

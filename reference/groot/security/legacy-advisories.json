@@ -1,0 +1,237 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-09-28",
+  "scope": "Exact pinned PyPI Transformers wheels and source distributions. PGFR builds security wheels from these hash-verified wheels; it does not install a development-branch source checkout.",
+  "upstream_release_policy": {
+    "commit": "e0ae9b59747445d6e470e04dc3ed45128123ee4d",
+    "url": "https://github.com/huggingface/transformers/pull/35296",
+    "behavior": "Release preparation deletes src/transformers/models/**/convert*.py before producing release artifacts."
+  },
+  "release_removal": {
+    "commit": "8ac2b916b042b1f78b75c9eb941c0f5d2cdd8e10",
+    "parent": "2ccc6cae21faaf11631efa5fb9054687ae5dc931",
+    "url": "https://github.com/huggingface/transformers/commit/8ac2b916b042b1f78b75c9eb941c0f5d2cdd8e10",
+    "paths": [
+      "src/transformers/models/glm4/convert_glm4_weights_to_hf.py",
+      "src/transformers/models/hubert/convert_distilhubert_original_s3prl_checkpoint_to_pytorch.py",
+      "src/transformers/models/hubert/convert_hubert_original_pytorch_checkpoint_to_pytorch.py",
+      "src/transformers/models/hubert/convert_hubert_original_s3prl_checkpoint_to_pytorch.py",
+      "src/transformers/models/megatron_gpt2/convert_megatron_gpt2_checkpoint.py",
+      "src/transformers/models/perceiver/convert_perceiver_haiku_to_pytorch.py",
+      "src/transformers/models/sew/convert_sew_original_pytorch_checkpoint_to_pytorch.py",
+      "src/transformers/models/sew_d/convert_sew_d_original_pytorch_checkpoint_to_pytorch.py",
+      "src/transformers/models/x_clip/convert_x_clip_original_pytorch_to_hf.py"
+    ]
+  },
+  "release_source_trees": [
+    {
+      "release": "4.57.0",
+      "commit": "8ac2b916b042b1f78b75c9eb941c0f5d2cdd8e10",
+      "converter_paths_present": [],
+      "url": "https://github.com/huggingface/transformers/tree/8ac2b916b042b1f78b75c9eb941c0f5d2cdd8e10"
+    },
+    {
+      "release": "4.57.1",
+      "commit": "8cb5963cc22174954e7dca2c0a3320b7dc2f4edc",
+      "converter_paths_present": [],
+      "url": "https://github.com/huggingface/transformers/tree/8cb5963cc22174954e7dca2c0a3320b7dc2f4edc"
+    },
+    {
+      "release": "4.57.3",
+      "commit": "47b0e478f324b54f177ea7998a0791870fdd0324",
+      "converter_paths_present": [],
+      "url": "https://github.com/huggingface/transformers/tree/47b0e478f324b54f177ea7998a0791870fdd0324"
+    },
+    {
+      "release": "4.57.6",
+      "commit": "753d61104116eefc8ffc977327b441ee0c8d599f",
+      "converter_paths_present": [],
+      "url": "https://github.com/huggingface/transformers/tree/753d61104116eefc8ffc977327b441ee0c8d599f"
+    }
+  ],
+  "artifacts": [
+    {
+      "version": "4.57.6",
+      "kind": "wheel",
+      "filename": "transformers-4.57.6-py3-none-any.whl",
+      "sha256": "4c9e9de11333ddfe5114bc872c9f370509198acf0b87a832a0ab9458e2bd0550",
+      "url": "https://files.pythonhosted.org/packages/03/b8/e484ef633af3887baeeb4b6ad12743363af7cce68ae51e938e00aaa0529d/transformers-4.57.6-py3-none-any.whl",
+      "excluded_converter_count": 9,
+      "convert_config_definition_count": 0,
+      "python_files_inspected": 2214
+    },
+    {
+      "version": "4.57.6",
+      "kind": "sdist",
+      "filename": "transformers-4.57.6.tar.gz",
+      "sha256": "55e44126ece9dc0a291521b7e5492b572e6ef2766338a610b9ab5afbb70689d3",
+      "url": "https://files.pythonhosted.org/packages/c4/35/67252acc1b929dc88b6602e8c4a982e64f31e733b804c14bc24b47da35e6/transformers-4.57.6.tar.gz",
+      "excluded_converter_count": 9,
+      "convert_config_definition_count": 0,
+      "python_files_inspected": 2214
+    },
+    {
+      "version": "4.57.3",
+      "kind": "wheel",
+      "filename": "transformers-4.57.3-py3-none-any.whl",
+      "sha256": "c77d353a4851b1880191603d36acb313411d3577f6e2897814f333841f7003f4",
+      "url": "https://files.pythonhosted.org/packages/6a/6b/2f416568b3c4c91c96e5a365d164f8a4a4a88030aa8ab4644181fdadce97/transformers-4.57.3-py3-none-any.whl",
+      "excluded_converter_count": 9,
+      "convert_config_definition_count": 0,
+      "python_files_inspected": 2214
+    },
+    {
+      "version": "4.57.3",
+      "kind": "sdist",
+      "filename": "transformers-4.57.3.tar.gz",
+      "sha256": "df4945029aaddd7c09eec5cad851f30662f8bd1746721b34cc031d70c65afebc",
+      "url": "https://files.pythonhosted.org/packages/dd/70/d42a739e8dfde3d92bb2fff5819cbf331fe9657323221e79415cd5eb65ee/transformers-4.57.3.tar.gz",
+      "excluded_converter_count": 9,
+      "convert_config_definition_count": 0,
+      "python_files_inspected": 2214
+    }
+  ],
+  "findings": [
+    {
+      "cve": "CVE-2025-14920",
+      "model": "perceiver",
+      "cna_reported_version": "9c8bd3fc1befe54f3efb9f385561eef49f060a70",
+      "advisory": "https://www.zerodayinitiative.com/advisories/ZDI-25-1150/",
+      "cna": "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2025/14xxx/CVE-2025-14920.json",
+      "assessment": "affected_conversion_code_absent_from_pinned_artifacts",
+      "mapping_basis": "Source inference: public CNA names the model and unsafe deserialization, without specifying a function. The matching unsafe converter below is absent from every pinned artifact; runtime model files contain no equivalent unsafe loader.",
+      "source_evidence": [
+        {
+          "ref": "9c8bd3fc1befe54f3efb9f385561eef49f060a70",
+          "path": "src/transformers/models/perceiver/convert_perceiver_haiku_to_pytorch.py",
+          "function": "convert_perceiver_checkpoint",
+          "line": 270,
+          "unsafe_operation": "pickle.loads(f.read())",
+          "sha256": "afd9dbf2d591d7bd12efce94f3975a8231456e0c0bdfbbe6a5d3aa53e0cf7a74",
+          "url": "https://github.com/huggingface/transformers/blob/9c8bd3fc1befe54f3efb9f385561eef49f060a70/src/transformers/models/perceiver/convert_perceiver_haiku_to_pytorch.py#L270"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2025-14924",
+      "model": "megatron_gpt2",
+      "cna_reported_version": "95faabf0a6cd845f4c5548697e288a79e424b096",
+      "advisory": "https://www.zerodayinitiative.com/advisories/ZDI-25-1141/",
+      "cna": "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2025/14xxx/CVE-2025-14924.json",
+      "assessment": "affected_conversion_code_absent_from_pinned_artifacts",
+      "mapping_basis": "Source inference: public CNA names the model and unsafe deserialization, without specifying a function. The matching unsafe converter below is absent from every pinned artifact; runtime model files contain no equivalent unsafe loader.",
+      "source_evidence": [
+        {
+          "ref": "95faabf0a6cd845f4c5548697e288a79e424b096",
+          "path": "src/transformers/models/megatron_gpt2/convert_megatron_gpt2_checkpoint.py",
+          "function": "main",
+          "line": 340,
+          "unsafe_operation": "torch.load(..., weights_only=False)",
+          "sha256": "798cb5b60c19f68fc1ee85dd9077ca18178c2d4523a2e3ce911c647442ff5095",
+          "url": "https://github.com/huggingface/transformers/blob/95faabf0a6cd845f4c5548697e288a79e424b096/src/transformers/models/megatron_gpt2/convert_megatron_gpt2_checkpoint.py#L340"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2025-14926",
+      "model": "sew",
+      "cna_reported_version": "4.57.0",
+      "advisory": "https://www.zerodayinitiative.com/advisories/ZDI-25-1147/",
+      "cna": "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2025/14xxx/CVE-2025-14926.json",
+      "assessment": "affected_conversion_code_absent_from_pinned_artifacts",
+      "mapping_basis": "CNA names convert_config; upstream source locates its eval call.",
+      "source_evidence": [
+        {
+          "ref": "2ccc6cae21faaf11631efa5fb9054687ae5dc931",
+          "path": "src/transformers/models/sew/convert_sew_original_pytorch_checkpoint_to_pytorch.py",
+          "function": "convert_config",
+          "line": 181,
+          "unsafe_operation": "eval(fs_config.conv_feature_layers)",
+          "sha256": "9985642478a786b9498c4beaa0dd730ee1229c453f4fcd538682cf65ba3e17df",
+          "url": "https://github.com/huggingface/transformers/blob/2ccc6cae21faaf11631efa5fb9054687ae5dc931/src/transformers/models/sew/convert_sew_original_pytorch_checkpoint_to_pytorch.py#L181"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2025-14927",
+      "model": "sew_d",
+      "cna_reported_version": "4.57.0",
+      "advisory": "https://www.zerodayinitiative.com/advisories/ZDI-25-1148/",
+      "cna": "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2025/14xxx/CVE-2025-14927.json",
+      "assessment": "affected_conversion_code_absent_from_pinned_artifacts",
+      "mapping_basis": "CNA names convert_config; upstream source locates its eval call.",
+      "source_evidence": [
+        {
+          "ref": "2ccc6cae21faaf11631efa5fb9054687ae5dc931",
+          "path": "src/transformers/models/sew_d/convert_sew_d_original_pytorch_checkpoint_to_pytorch.py",
+          "function": "convert_config",
+          "line": 185,
+          "unsafe_operation": "eval(fs_config.conv_feature_layers)",
+          "sha256": "3b62a7ef90c58ffdbe762a29464c6e95ee30c7cab601cbe0b2cf1dc0a3fc4f84",
+          "url": "https://github.com/huggingface/transformers/blob/2ccc6cae21faaf11631efa5fb9054687ae5dc931/src/transformers/models/sew_d/convert_sew_d_original_pytorch_checkpoint_to_pytorch.py#L185"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2025-14928",
+      "model": "hubert",
+      "cna_reported_version": "4.57.0",
+      "advisory": "https://www.zerodayinitiative.com/advisories/ZDI-25-1146/",
+      "cna": "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2025/14xxx/CVE-2025-14928.json",
+      "assessment": "affected_conversion_code_absent_from_pinned_artifacts",
+      "mapping_basis": "CNA names convert_config; upstream source locates its eval call.",
+      "source_evidence": [
+        {
+          "ref": "2ccc6cae21faaf11631efa5fb9054687ae5dc931",
+          "path": "src/transformers/models/hubert/convert_distilhubert_original_s3prl_checkpoint_to_pytorch.py",
+          "function": "convert_config",
+          "line": 162,
+          "unsafe_operation": "eval(fs_config.extractor_conv_feature_layers)",
+          "sha256": "a886404e89b0760ff71875bc331b41eb1e87e9602aeb1119190f178833e6c52e",
+          "url": "https://github.com/huggingface/transformers/blob/2ccc6cae21faaf11631efa5fb9054687ae5dc931/src/transformers/models/hubert/convert_distilhubert_original_s3prl_checkpoint_to_pytorch.py#L162"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2025-14929",
+      "model": "x_clip",
+      "cna_reported_version": "d1c6310d6a02481d48d81607cba7840be04580d1",
+      "advisory": "https://www.zerodayinitiative.com/advisories/ZDI-25-1144/",
+      "cna": "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2025/14xxx/CVE-2025-14929.json",
+      "assessment": "affected_conversion_code_absent_from_pinned_artifacts",
+      "mapping_basis": "Source inference: public CNA names the model and unsafe deserialization, without specifying a function. The matching unsafe converter below is absent from every pinned artifact; runtime model files contain no equivalent unsafe loader.",
+      "source_evidence": [
+        {
+          "ref": "d1c6310d6a02481d48d81607cba7840be04580d1",
+          "path": "src/transformers/models/x_clip/convert_x_clip_original_pytorch_to_hf.py",
+          "function": "convert_xclip_checkpoint",
+          "line": 284,
+          "unsafe_operation": "torch.hub.load_state_dict_from_url(checkpoint_url)",
+          "sha256": "ce8b482b9400815cc5c780ed11c1ed8c6fcd3a7091b01a9660dd8564216b3480",
+          "url": "https://github.com/huggingface/transformers/blob/d1c6310d6a02481d48d81607cba7840be04580d1/src/transformers/models/x_clip/convert_x_clip_original_pytorch_to_hf.py#L284"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2025-14930",
+      "model": "glm4",
+      "cna_reported_version": "4.57.1",
+      "advisory": "https://www.zerodayinitiative.com/advisories/ZDI-25-1145/",
+      "cna": "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2025/14xxx/CVE-2025-14930.json",
+      "assessment": "affected_conversion_code_absent_from_pinned_artifacts",
+      "mapping_basis": "Source inference: public CNA names the model and unsafe deserialization, without specifying a function. The matching unsafe converter below is absent from every pinned artifact; runtime model files contain no equivalent unsafe loader.",
+      "source_evidence": [
+        {
+          "ref": "2ccc6cae21faaf11631efa5fb9054687ae5dc931",
+          "path": "src/transformers/models/glm4/convert_glm4_weights_to_hf.py",
+          "function": "load_weights",
+          "line": 61,
+          "unsafe_operation": "torch.load(file, map_location=\"cpu\")",
+          "sha256": "643c256aceb53402d13838f0bad12077b29116ec5d72f047b8f33d6b108a8e57",
+          "url": "https://github.com/huggingface/transformers/blob/2ccc6cae21faaf11631efa5fb9054687ae5dc931/src/transformers/models/glm4/convert_glm4_weights_to_hf.py#L61"
+        }
+      ]
+    }
+  ],
+  "limits": "These are artifact-specific applicability assessments, not upstream claims of fixed versions or scanner clearance. Four advisory-to-converter mappings are source inferences because their public CNA descriptions do not name a function. Normal model loading remains available; no model family was removed or upgraded."
+}

@@ -59,6 +59,12 @@ printf '%s  %s\n' "$TORCHCODEC_WHEEL_SHA256" "$TORCHCODEC_WHL" \
     | sha256sum --check --strict \
     || { echo "ERROR: torchcodec wheel checksum does not match the validated Thor artifact" >&2; exit 1; }
 
+# Verify/build patched Python dependencies before changing host packages.
+# Their local-wheel sources in uv.lock prevent fallback to unpatched releases.
+python3 "$SCRIPT_DIR/../security/build_security_wheels.py" \
+    --manifest "$SCRIPT_DIR/../security/manifest.json" \
+    --output-dir "$SCRIPT_DIR/wheels/security"
+
 # The Thor-specific pyproject.toml and uv.lock are consumed in place from
 # $SCRIPT_DIR via `uv sync --project` below — we no longer copy them over
 # the repo root, which used to leave the working tree dirty after install.

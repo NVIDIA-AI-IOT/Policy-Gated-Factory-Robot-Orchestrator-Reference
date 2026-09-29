@@ -111,12 +111,21 @@ In a ROS 2 Jazzy shell, create the recorder environment and verify importability
 ```bash
 source /opt/ros/jazzy/setup.bash
 python3 -m venv --system-site-packages "$DATA_ROOT/recorder-env"
-"$DATA_ROOT/recorder-env/bin/pip" install "$REPO/pgfr-spine" 'numpy==1.26.4' Pillow
+"$DATA_ROOT/recorder-env/bin/pip" install "$REPO/pgfr-spine" 'numpy==1.26.4' 'Pillow==12.3.0'
 export RECORDER_PYTHON="$DATA_ROOT/recorder-env/bin/python"
 export ROS_DOMAIN_ID="$CAPTURE_DOMAIN"
 export PGFR_CAPTURE_ONLY=1
 export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-"$RECORDER_PYTHON" -c 'import rclpy, numpy, PIL; from sensor_msgs.msg import Image'
+"$RECORDER_PYTHON" - <<'PY_RECORDER'
+import numpy
+import PIL
+import rclpy
+from sensor_msgs.msg import Image
+
+if PIL.__version__ != "12.3.0":
+    raise SystemExit(f"Expected Pillow 12.3.0, imported {PIL.__version__} from {PIL.__file__}")
+print("Recorder imports verified; Pillow", PIL.__version__)
+PY_RECORDER
 ros2 topic list
 ```
 

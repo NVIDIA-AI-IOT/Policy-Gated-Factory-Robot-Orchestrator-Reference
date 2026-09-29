@@ -1,0 +1,1054 @@
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -1,3 +1,5 @@
++# PGFR dependency security update, 2026-09-28; see reference/groot/security
++# in the PGFR source repository for changes and provenance.
+ # Default platform pyproject.toml (x86, GB200, and any non-Jetson GPU)
+ 
+ [build-system]
+@@ -9,6 +11,9 @@
+ version = "0.1.0"
+ requires-python = "==3.10.*"
+ dependencies = [
++    "accelerate==1.13.0+pgfr.security1",
++    "aiohttp==3.14.3",
++    "pillow==12.3.0",
+     "albumentations==1.4.18",
+     "huggingface-hub[cli]",
+     "opencv-python-headless>=4.5,<4.13",
+@@ -22,13 +27,12 @@
+     "termcolor==3.2.0",
+     "torch==2.7.1",
+     "torchvision==0.22.1",
+-    "transformers==4.57.3",
++    "transformers==4.57.3+pgfr.security1",
+     "tyro==0.9.17",
+-    "click==8.1.8",
++    "click==8.2.1",
+     "datasets==3.6.0",
+     "cryptography>=46.0.7",
+     "einops==0.8.1",
+-    "gitpython==3.1.50",
+     "jsonlines==4.0.0",
+     "gymnasium==1.2.2",
+     "matplotlib==3.10.1",
+@@ -38,7 +42,10 @@
+     # x86_64: PyPI wheel; aarch64 Linux: prebuilt wheel in scripts/deployment/dgpu/wheels/
+     "torchcodec==0.4.0; platform_machine == 'x86_64'",
+     "torchcodec==0.10.0a0; platform_machine == 'aarch64' and sys_platform == 'linux'",
+-    "wandb==0.23.0",
++    "wandb==0.30.0",
++    "opentelemetry-api==1.43.0",
++    "opentelemetry-sdk==1.43.0",
++    "opentelemetry-exporter-otlp-proto-http==1.43.0",
+     "pyzmq==27.0.1",
+     # deepspeed publishes wheels only for x86_64 Linux.
+     "deepspeed==0.17.6; sys_platform == 'linux' and platform_machine == 'x86_64'",
+@@ -46,7 +53,7 @@
+     "triton==3.3.1; sys_platform == 'linux' and platform_machine == 'aarch64'",
+     # flash-attn wheels are sourced from `[tool.uv.sources]` below (x86_64 cp310/cp312 and aarch64 cp310).
+     "flash-attn==2.7.4.post1; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+-    "onnx>=1.20.0",
++    "onnx==1.23.0",
+     "onnxscript",
+     # cu12 wheels only exist for x86_64; Blackwell / aarch64 requires cu13.
+     "tensorrt-cu12>=10.15.1.29; platform_machine == 'x86_64'",
+@@ -82,6 +89,8 @@
+ ]
+ 
+ [tool.uv.sources]
++accelerate = { path = ".pgfr-security/wheels/accelerate-1.13.0+pgfr.security1-py3-none-any.whl" }
++transformers = { path = ".pgfr-security/wheels/transformers-4.57.3+pgfr.security1-py3-none-any.whl" }
+ torch = [
+     { index = "pytorch-cu128", marker = "sys_platform == 'linux'" },
+ ]
+--- a/uv.lock
++++ b/uv.lock
+@@ -24,8 +24,8 @@
+ 
+ [[package]]
+ name = "accelerate"
+-version = "1.13.0"
+-source = { registry = "https://pypi.org/simple" }
++version = "1.13.0+pgfr.security1"
++source = { path = ".pgfr-security/wheels/accelerate-1.13.0+pgfr.security1-py3-none-any.whl" }
+ dependencies = [
+     { name = "huggingface-hub" },
+     { name = "numpy" },
+@@ -36,10 +36,83 @@
+     { name = "torch", version = "2.7.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
+     { name = "torch", version = "2.7.1+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "sys_platform == 'linux'" },
+ ]
+-sdist = { url = "https://files.pythonhosted.org/packages/ca/14/787e5498cd062640f0f3d92ef4ae4063174f76f9afd29d13fc52a319daae/accelerate-1.13.0.tar.gz", hash = "sha256:d631b4e0f5b3de4aff2d7e9e6857d164810dfc3237d54d017f075122d057b236", size = 402835, upload-time = "2026-03-04T19:34:12.359Z" }
+-wheels = [
+-    { url = "https://files.pythonhosted.org/packages/7e/46/02ac5e262d4af18054b3e922b2baedbb2a03289ee792162de60a865defc5/accelerate-1.13.0-py3-none-any.whl", hash = "sha256:cf1a3efb96c18f7b152eb0fa7490f3710b19c3f395699358f08decca2b8b62e0", size = 383744, upload-time = "2026-03-04T19:34:10.313Z" },
+-]
++wheels = [
++    { filename = "accelerate-1.13.0+pgfr.security1-py3-none-any.whl", hash = "sha256:8a21bb52843fffaa93e00d484d3af733eea42dcce3664be9b805cfe167c0308b" },
++]
++
++[package.metadata]
++requires-dist = [
++    { name = "bitsandbytes", marker = "extra == 'dev'" },
++    { name = "bitsandbytes", marker = "extra == 'test-dev'" },
++    { name = "bitsandbytes", marker = "extra == 'testing'" },
++    { name = "comet-ml", marker = "extra == 'test-trackers'" },
++    { name = "datasets", marker = "extra == 'dev'" },
++    { name = "datasets", marker = "extra == 'test-dev'" },
++    { name = "datasets", marker = "extra == 'testing'" },
++    { name = "deepspeed", marker = "extra == 'deepspeed'" },
++    { name = "diffusers", marker = "extra == 'dev'" },
++    { name = "diffusers", marker = "extra == 'test-dev'" },
++    { name = "diffusers", marker = "extra == 'testing'" },
++    { name = "dvclive", marker = "extra == 'test-trackers'" },
++    { name = "evaluate", marker = "extra == 'dev'" },
++    { name = "evaluate", marker = "extra == 'test-dev'" },
++    { name = "evaluate", marker = "extra == 'testing'" },
++    { name = "huggingface-hub", specifier = ">=0.21.0" },
++    { name = "matplotlib", marker = "extra == 'test-trackers'" },
++    { name = "numpy", specifier = ">=1.17" },
++    { name = "packaging", specifier = ">=20.0" },
++    { name = "parameterized", marker = "extra == 'dev'" },
++    { name = "parameterized", marker = "extra == 'test-prod'" },
++    { name = "parameterized", marker = "extra == 'testing'" },
++    { name = "psutil" },
++    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.2.0" },
++    { name = "pytest", marker = "extra == 'test-prod'", specifier = ">=7.2.0" },
++    { name = "pytest", marker = "extra == 'testing'", specifier = ">=7.2.0" },
++    { name = "pytest-order", marker = "extra == 'dev'" },
++    { name = "pytest-order", marker = "extra == 'test-prod'" },
++    { name = "pytest-order", marker = "extra == 'testing'" },
++    { name = "pytest-subtests", marker = "extra == 'dev'" },
++    { name = "pytest-subtests", marker = "extra == 'test-prod'" },
++    { name = "pytest-subtests", marker = "extra == 'testing'" },
++    { name = "pytest-xdist", marker = "extra == 'dev'" },
++    { name = "pytest-xdist", marker = "extra == 'test-prod'" },
++    { name = "pytest-xdist", marker = "extra == 'testing'" },
++    { name = "pyyaml" },
++    { name = "rich", marker = "extra == 'dev'" },
++    { name = "rich", marker = "extra == 'rich'" },
++    { name = "ruff", marker = "extra == 'dev'", specifier = "==0.13.1" },
++    { name = "ruff", marker = "extra == 'quality'", specifier = "==0.13.1" },
++    { name = "safetensors", specifier = ">=0.4.3" },
++    { name = "sagemaker", marker = "extra == 'sagemaker'" },
++    { name = "scikit-learn", marker = "extra == 'dev'" },
++    { name = "scikit-learn", marker = "extra == 'test-dev'" },
++    { name = "scikit-learn", marker = "extra == 'testing'" },
++    { name = "scipy", marker = "extra == 'dev'" },
++    { name = "scipy", marker = "extra == 'test-dev'" },
++    { name = "scipy", marker = "extra == 'testing'" },
++    { name = "swanlab", extras = ["dashboard"], marker = "extra == 'test-trackers'" },
++    { name = "tensorboard", marker = "extra == 'test-trackers'" },
++    { name = "timm", marker = "extra == 'dev'" },
++    { name = "timm", marker = "extra == 'test-dev'" },
++    { name = "timm", marker = "extra == 'testing'" },
++    { name = "torch", specifier = ">=2.0.0" },
++    { name = "torchao", marker = "extra == 'test-fp8'" },
++    { name = "torchdata", marker = "extra == 'dev'", specifier = ">=0.8.0" },
++    { name = "torchdata", marker = "extra == 'test-dev'", specifier = ">=0.8.0" },
++    { name = "torchdata", marker = "extra == 'testing'", specifier = ">=0.8.0" },
++    { name = "torchpippy", marker = "extra == 'dev'", specifier = ">=0.2.0" },
++    { name = "torchpippy", marker = "extra == 'test-dev'", specifier = ">=0.2.0" },
++    { name = "torchpippy", marker = "extra == 'testing'", specifier = ">=0.2.0" },
++    { name = "tqdm", marker = "extra == 'dev'" },
++    { name = "tqdm", marker = "extra == 'test-dev'" },
++    { name = "tqdm", marker = "extra == 'testing'" },
++    { name = "trackio", marker = "extra == 'test-trackers'" },
++    { name = "transformers", marker = "extra == 'dev'" },
++    { name = "transformers", marker = "extra == 'test-dev'" },
++    { name = "transformers", marker = "extra == 'testing'" },
++    { name = "wandb", marker = "extra == 'test-trackers'" },
++]
++provides-extras = ["quality", "docs", "test-prod", "test-dev", "testing", "deepspeed", "rich", "test-fp8", "test-trackers", "dev", "sagemaker"]
+ 
+ [[package]]
+ name = "aiohappyeyeballs"
+@@ -52,7 +125,7 @@
+ 
+ [[package]]
+ name = "aiohttp"
+-version = "3.14.0"
++version = "3.14.3"
+ source = { registry = "https://pypi.org/simple" }
+ dependencies = [
+     { name = "aiohappyeyeballs" },
+@@ -65,26 +138,26 @@
+     { name = "typing-extensions" },
+     { name = "yarl" },
+ ]
+-sdist = { url = "https://files.pythonhosted.org/packages/ee/ab/93ce242f899b68c51b0578c027aafa791ab3614cb9345fa5d37b5f5c8e3e/aiohttp-3.14.0.tar.gz", hash = "sha256:2882de819734c715fd1b9c11c97e09fa020d14438203d1d354d8ed1702791c9b", size = 7940674, upload-time = "2026-06-01T19:41:02.763Z" }
+-wheels = [
+-    { url = "https://files.pythonhosted.org/packages/ef/f0/f81190ba488cd106c2fc6d92680e56bb223bbbbf1e6908c2617011290112/aiohttp-3.14.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:692e409052e7436029bbb32977cd7c5bf806ac5fa4085b973996785ffadad33c", size = 760606, upload-time = "2026-06-01T19:36:39.054Z" },
+-    { url = "https://files.pythonhosted.org/packages/f6/54/444d37eebf0f15db661ca44ec7caf93962f3c5ca92eb4c9a5d888b70aaa2/aiohttp-3.14.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:40af7ebe53c7990e110dc4ad03566b12c3ac996254298a3d39046dd69cfcb2c2", size = 514677, upload-time = "2026-06-01T19:36:42.408Z" },
+-    { url = "https://files.pythonhosted.org/packages/d0/d1/da280e23321c132c0a3fa7c8cc2830621d79174edc64c829443346489a36/aiohttp-3.14.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:02cb2ffbb7da32f82e21ad9952669c45bd88a80e0878264c2f59fe1c6fb2badd", size = 510155, upload-time = "2026-06-01T19:36:44.072Z" },
+-    { url = "https://files.pythonhosted.org/packages/09/b8/2e36d54d0991ec5bba451444004591ee0af58cb1662a3a81c562878b9c1f/aiohttp-3.14.0-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:2e2514cb7195f6d7c219339635bea71ae47d1569b051300d32df9dcfabcdb869", size = 1699947, upload-time = "2026-06-01T19:36:45.762Z" },
+-    { url = "https://files.pythonhosted.org/packages/57/95/a31d8ea1a0b9ecc084f5a7dd0b431ce64ef585918bb7bdc82afe11843877/aiohttp-3.14.0-cp310-cp310-manylinux2014_armv7l.manylinux_2_17_armv7l.manylinux_2_31_armv7l.whl", hash = "sha256:30e8b7eeb42d02c120ca90d6c6e076a221a16b70a6dac9ae44c7ab5104cc7fe4", size = 1664364, upload-time = "2026-06-01T19:36:47.653Z" },
+-    { url = "https://files.pythonhosted.org/packages/01/f6/5de3ddffc87a9e8d09b3be38fbd6dd1a736b2ad477a7e787dcb85f57f338/aiohttp-3.14.0-cp310-cp310-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:63e38be0d75a654deaa06be32fb4cab883a4222940be1d05861b6717679cbadb", size = 1761186, upload-time = "2026-06-01T19:36:49.355Z" },
+-    { url = "https://files.pythonhosted.org/packages/33/8c/03c5438ec35d7e3a4f33fe895d6c3ec7540a7cec46065f21851211e1ee4d/aiohttp-3.14.0-cp310-cp310-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:1210d4c87cc00128160c7384ab41877a701295b97cffa6362f908a49b6e8a7ca", size = 1849727, upload-time = "2026-06-01T19:36:51.478Z" },
+-    { url = "https://files.pythonhosted.org/packages/22/32/5a05303b0874458920b73f48b8779cc3a93d503f121b38dcc0456dbd698c/aiohttp-3.14.0-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:1a78a77366ed158a0a54b076990e575d7b7cdb728cbfd02711eadab150f2269f", size = 1708197, upload-time = "2026-06-01T19:36:53.241Z" },
+-    { url = "https://files.pythonhosted.org/packages/7d/62/478f169488d61414c0a05e7fe423b59ae3d9dcc933d1f0e4acc2c5d5bc3e/aiohttp-3.14.0-cp310-cp310-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:f4d2038c64f36df96cfd3fa0937910e231eafbf897e70a06c155a817bb632fa6", size = 1578147, upload-time = "2026-06-01T19:36:55.154Z" },
+-    { url = "https://files.pythonhosted.org/packages/1d/af/b20af85765658972d3337834bd5eebba91b962794f2b4fc3e0ee8c85c0e1/aiohttp-3.14.0-cp310-cp310-musllinux_1_2_aarch64.whl", hash = "sha256:4714c70067a08b604d0bf3bc4dfdf82e52944afab41d0428d460862763d2f79b", size = 1665836, upload-time = "2026-06-01T19:36:56.94Z" },
+-    { url = "https://files.pythonhosted.org/packages/8d/a3/771879cfd59948f4544b172189048905feff802f20f1c6c5411e998a3e06/aiohttp-3.14.0-cp310-cp310-musllinux_1_2_armv7l.whl", hash = "sha256:f79bfd2847513a7ac801bbafd1de02348a37926ac439eeb4bfe96fcff4eada15", size = 1680335, upload-time = "2026-06-01T19:36:58.642Z" },
+-    { url = "https://files.pythonhosted.org/packages/f4/16/582e36ad1d32133cd40659f3bc98e71c22179665a1cfbbb4713bce339c06/aiohttp-3.14.0-cp310-cp310-musllinux_1_2_ppc64le.whl", hash = "sha256:25e9f1d2465a210d60edb64d7b204a147e85d4c194eecef3d1604fb5ace678ce", size = 1731180, upload-time = "2026-06-01T19:37:00.583Z" },
+-    { url = "https://files.pythonhosted.org/packages/11/bc/80708fe3f64a07a2c306a42fc7b009118a952709761d215f6d1b4c57195b/aiohttp-3.14.0-cp310-cp310-musllinux_1_2_riscv64.whl", hash = "sha256:b5314743ebe926c2fda35d0a298c565c885505f6635c2a30936363404cf274a7", size = 1565805, upload-time = "2026-06-01T19:37:02.446Z" },
+-    { url = "https://files.pythonhosted.org/packages/57/8f/8d25897f8273a32fe4ad40a8885eec4f397377ed46e8e383078169f60316/aiohttp-3.14.0-cp310-cp310-musllinux_1_2_s390x.whl", hash = "sha256:28eee8de1d69711c53116df8202f1c2aa0e3f80ef912a88fc18d159d53e7110b", size = 1742496, upload-time = "2026-06-01T19:37:04.222Z" },
+-    { url = "https://files.pythonhosted.org/packages/9f/7d/c341d32ab2dec56c8478740695743dc6c21b383cace9376a3eab16311a07/aiohttp-3.14.0-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:89ed35666c95d3efe1955056afcde09e62a57a34e2a4398b17f9f6c1564f0b25", size = 1691240, upload-time = "2026-06-01T19:37:06.277Z" },
+-    { url = "https://files.pythonhosted.org/packages/37/0f/a81207dd7a2d4a4f645b3a3f8b5a1da1159dc63117ffb137b698fd6df50f/aiohttp-3.14.0-cp310-cp310-win32.whl", hash = "sha256:5e4646e9a6af29af354204011bf5769cb0276ec5b64653e42f90b3e13845169f", size = 454686, upload-time = "2026-06-01T19:37:07.96Z" },
+-    { url = "https://files.pythonhosted.org/packages/7f/ae/842357f2afb9c915715c6f5775239d987f5d0f845abf7675fa794e0a9d40/aiohttp-3.14.0-cp310-cp310-win_amd64.whl", hash = "sha256:22a8d06f204e0518a586d770032db3c7043c9ba3693081b3e3ad425e1458d594", size = 478677, upload-time = "2026-06-01T19:37:09.652Z" },
+-    { url = "https://files.pythonhosted.org/packages/6b/d1/330fb22c9535ec177b52396905131c6e39447244b6ca876262939af668ef/aiohttp-3.14.0-cp310-cp310-win_arm64.whl", hash = "sha256:4acfc34bd4d3c58754fc9f22ff1b5e92aabce68f3d4bf7b71a0b732d9bceb78a", size = 450364, upload-time = "2026-06-01T19:37:11.279Z" },
++sdist = { url = "https://files.pythonhosted.org/packages/58/d9/22ce5786ac0c1653ae8b6c23bded02c1686d11f0dbb45b31ce128e0df985/aiohttp-3.14.3.tar.gz", hash = "sha256:9491196535a88924a60afd5b5f434b5b203b6cc616250878dbdb223a8f7844bc", size = 7971213, upload-time = "2026-07-23T01:57:27.037Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/2d/4d/4a99fb425c5e0cad715eea7bd190aff46f38b959a0a2dadb993705d34b26/aiohttp-3.14.3-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:eb0495d778817619273c108784292be161a924b9f5ae5cbbc70a2caa6838250b", size = 765848, upload-time = "2026-07-23T01:52:08.217Z" },
++    { url = "https://files.pythonhosted.org/packages/74/e8/43b85dc55b8e950dc644babe762add781319ea881b57b33d2cce12017d12/aiohttp-3.14.3-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:c3c200cf9757edd785051dc699c7ecbec22110dbfcb3fefc7a9f9695eda8ea7a", size = 517476, upload-time = "2026-07-23T01:52:10.846Z" },
++    { url = "https://files.pythonhosted.org/packages/7f/9e/73b582c4dbbc3c12ef4473822475effaabf1f934b56f14f5b03fe5d3a2af/aiohttp-3.14.3-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:fd51ebf9d3a00c074df4ede271023f4d2dba289bcc740b88191872716014e3c5", size = 515334, upload-time = "2026-07-23T01:52:12.636Z" },
++    { url = "https://files.pythonhosted.org/packages/79/03/e98c3c9e05a5bdf97defe5ff9169baba4f0ec9a901f2d60e0f060c2f051e/aiohttp-3.14.3-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:134ac5ddcf61c6fad984b9a5727d83492ada43d63471db20fb73042c13fca62f", size = 1708830, upload-time = "2026-07-23T01:52:14.538Z" },
++    { url = "https://files.pythonhosted.org/packages/d7/2c/26e60b694844dfd2176c57f913a22d0cd6a16f9ff202cbda7580d0328b98/aiohttp-3.14.3-cp310-cp310-manylinux2014_armv7l.manylinux_2_17_armv7l.manylinux_2_31_armv7l.whl", hash = "sha256:70c987b27534f9ae1a723f47ae921571d616da21d3208282bf4c52af5164ac43", size = 1674012, upload-time = "2026-07-23T01:52:16.486Z" },
++    { url = "https://files.pythonhosted.org/packages/38/65/672df92e3172cd876aacfa97a952ac560877eb169384b2991ac5b273de4c/aiohttp-3.14.3-cp310-cp310-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:1b59533861b70a2185c8f4f350f791f39d64358ef6944ce71c5240c9ec0982c9", size = 1767015, upload-time = "2026-07-23T01:52:18.28Z" },
++    { url = "https://files.pythonhosted.org/packages/9e/c5/228dec7bfec1c373cc2217cdeb47d6456dcd7a13a4c55144930a75ae3851/aiohttp-3.14.3-cp310-cp310-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:1c5281acc88b92396f88c7e1e2748f8466689df22b80170e4f51efa712fb47a8", size = 1858700, upload-time = "2026-07-23T01:52:20.08Z" },
++    { url = "https://files.pythonhosted.org/packages/bd/ff/cb36724e8c8d17f90ada567a9ff3efe1d6e9b549fba697a242aece180f21/aiohttp-3.14.3-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:48d67b87db6279c044760787eb01f6413032c2e6f3ba1cafaa492b1c8e578479", size = 1714075, upload-time = "2026-07-23T01:52:22.071Z" },
++    { url = "https://files.pythonhosted.org/packages/9f/3a/296a4135c6366376263aeef54b15caca1f07676c2ae0c525d7832f2f808a/aiohttp-3.14.3-cp310-cp310-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:f53bcd52f585e1ac3e590d61434eb61f9a88c38df041b4ea126d97144344a77b", size = 1588234, upload-time = "2026-07-23T01:52:23.757Z" },
++    { url = "https://files.pythonhosted.org/packages/7d/81/9d5d853ef892dc066d1eb6db0e87a47348b920c1c879aa554612fdbd9d79/aiohttp-3.14.3-cp310-cp310-musllinux_1_2_aarch64.whl", hash = "sha256:0fdea2281997af69da84c77ffa6f5938a0285f21fb3887c249d67419ca865b3d", size = 1677300, upload-time = "2026-07-23T01:52:25.861Z" },
++    { url = "https://files.pythonhosted.org/packages/68/96/021d386ae32d9b26d4b88df2e794546232ff56bb6be952bf6be227c0bbc7/aiohttp-3.14.3-cp310-cp310-musllinux_1_2_armv7l.whl", hash = "sha256:cda5fd5c95ad7a125a2e8464acc78b98b94c475a3780d6aa0aa157c93f470f4d", size = 1691501, upload-time = "2026-07-23T01:52:28Z" },
++    { url = "https://files.pythonhosted.org/packages/29/9f/af66adce26a14af135c003cbd0f44ccaa68cebd30ff8ac99ca47fb4958f7/aiohttp-3.14.3-cp310-cp310-musllinux_1_2_ppc64le.whl", hash = "sha256:6debfa7312ff9d4c124dc71d72e9a0a4b9e0879e48ba6fcb42bef5c3300289e2", size = 1735113, upload-time = "2026-07-23T01:52:29.995Z" },
++    { url = "https://files.pythonhosted.org/packages/2f/90/28c390d4c9851effe52ac25b5a2e1d92246acd00728b4fc7975dafb67484/aiohttp-3.14.3-cp310-cp310-musllinux_1_2_riscv64.whl", hash = "sha256:f4e05329faa0ea1a404b37de4f034fd2c2defcca06a68dc6745e4e56c88e8a48", size = 1577486, upload-time = "2026-07-23T01:52:31.937Z" },
++    { url = "https://files.pythonhosted.org/packages/db/c2/00e23a1bf2abb70dd353f6987db7e7f2491d0261f7363997738c71c98f95/aiohttp-3.14.3-cp310-cp310-musllinux_1_2_s390x.whl", hash = "sha256:a3a8296e7ab5c295f53f1041487cb088e1480775aafbf7fe545d93b770a0f96f", size = 1751353, upload-time = "2026-07-23T01:52:33.688Z" },
++    { url = "https://files.pythonhosted.org/packages/6e/7d/d51a706a8cbfa57f0611127daf61ab3ae02ab8420b0407412079227d1c65/aiohttp-3.14.3-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:5373dc80ad1aa2fb9ad95c83f24eef418bbda3a61375f128e5b0192e4f3f9b32", size = 1698681, upload-time = "2026-07-23T01:52:38.167Z" },
++    { url = "https://files.pythonhosted.org/packages/ec/b0/90bd5cd9fdd9787cb4211d284d1fb8401339a933cb0227a15b71e789232f/aiohttp-3.14.3-cp310-cp310-win32.whl", hash = "sha256:a3e22975f905b89a55a488c2a08f2fdb2186175349e917d48985cc468a3d4c6e", size = 456733, upload-time = "2026-07-23T01:52:41.823Z" },
++    { url = "https://files.pythonhosted.org/packages/d8/15/fe5b8f6a71ae112bc677163d0b0701bda5dc15005249582258ede0eb88c7/aiohttp-3.14.3-cp310-cp310-win_amd64.whl", hash = "sha256:bdd0e2834dce1a26c1bbe26464861e16bbe217042cbff619247c11594472518c", size = 480460, upload-time = "2026-07-23T01:52:43.905Z" },
++    { url = "https://files.pythonhosted.org/packages/54/00/45e98b6645cd7f00a4b78b749ebd309094b0eaeb2d2e96157eadbc0d0050/aiohttp-3.14.3-cp310-cp310-win_arm64.whl", hash = "sha256:eac645b09bcfdf73df7536331f0678c1086ea250981118ddb5199e17ccef72bb", size = 453479, upload-time = "2026-07-23T01:52:46.075Z" },
+ ]
+ 
+ [[package]]
+@@ -286,14 +359,14 @@
+ 
+ [[package]]
+ name = "click"
+-version = "8.1.8"
++version = "8.2.1"
+ source = { registry = "https://pypi.org/simple" }
+ dependencies = [
+     { name = "colorama", marker = "sys_platform == 'win32'" },
+ ]
+-sdist = { url = "https://files.pythonhosted.org/packages/b9/2e/0090cbf739cee7d23781ad4b89a9894a41538e4fcf4c31dcdd705b78eb8b/click-8.1.8.tar.gz", hash = "sha256:ed53c9d8990d83c2a27deae68e4ee337473f6330c040a31d4225c9574d16096a", size = 226593, upload-time = "2024-12-21T18:38:44.339Z" }
+-wheels = [
+-    { url = "https://files.pythonhosted.org/packages/7e/d4/7ebdbd03970677812aac39c869717059dbb71a4cfc033ca6e5221787892c/click-8.1.8-py3-none-any.whl", hash = "sha256:63c132bbbed01578a06712a2d1f497bb62d9c1c0d329b7903a866228027263b2", size = 98188, upload-time = "2024-12-21T18:38:41.666Z" },
++sdist = { url = "https://files.pythonhosted.org/packages/60/6c/8ca2efa64cf75a977a0d7fac081354553ebe483345c734fb6b6515d96bbc/click-8.2.1.tar.gz", hash = "sha256:27c491cc05d968d271d5a1db13e3b5a184636d9d930f148c50b038f0d0646202", size = 286342, upload-time = "2025-05-20T23:19:49.832Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/85/32/10bb5764d90a8eee674e9dc6f4db6a0ab47c8c4d0d83c27f7c39ac415a4d/click-8.2.1-py3-none-any.whl", hash = "sha256:61a3265b914e850b85317d0b3109c7f8cd35a670f963866005d6ef1d5175a12b", size = 102215, upload-time = "2025-05-20T23:19:47.796Z" },
+ ]
+ 
+ [[package]]
+@@ -696,27 +769,15 @@
+ ]
+ 
+ [[package]]
+-name = "gitdb"
+-version = "4.0.12"
+-source = { registry = "https://pypi.org/simple" }
+-dependencies = [
+-    { name = "smmap" },
+-]
+-sdist = { url = "https://files.pythonhosted.org/packages/72/94/63b0fc47eb32792c7ba1fe1b694daec9a63620db1e313033d18140c2320a/gitdb-4.0.12.tar.gz", hash = "sha256:5ef71f855d191a3326fcfbc0d5da835f26b13fbcba60c32c21091c349ffdb571", size = 394684, upload-time = "2025-01-02T07:20:46.413Z" }
+-wheels = [
+-    { url = "https://files.pythonhosted.org/packages/a0/61/5c78b91c3143ed5c14207f463aecfc8f9dbb5092fb2869baf37c273b2705/gitdb-4.0.12-py3-none-any.whl", hash = "sha256:67073e15955400952c6565cc3e707c554a4eea2e428946f7a4c162fab9bd9bcf", size = 62794, upload-time = "2025-01-02T07:20:43.624Z" },
+-]
+-
+-[[package]]
+-name = "gitpython"
+-version = "3.1.50"
+-source = { registry = "https://pypi.org/simple" }
+-dependencies = [
+-    { name = "gitdb" },
+-]
+-sdist = { url = "https://files.pythonhosted.org/packages/33/f6/354ae6491228b5eb40e10d89c4d13c651fe1cf7556e35ebdded50cff57ce/gitpython-3.1.50.tar.gz", hash = "sha256:80da2d12504d52e1f998772dc5baf6e553f8d2fcfe1fcc226c9d9a2ee3372dcc", size = 219798, upload-time = "2026-05-06T04:01:26.571Z" }
+-wheels = [
+-    { url = "https://files.pythonhosted.org/packages/20/7a/1c6e3562dfd8950adbb11ffbc65d21e7c89d01a6e4f137fa981056de25c5/gitpython-3.1.50-py3-none-any.whl", hash = "sha256:d352abe2908d07355014abdd21ddf798c2a961469239afec4962e9da884858f9", size = 212507, upload-time = "2026-05-06T04:01:23.799Z" },
++name = "googleapis-common-protos"
++version = "1.75.4"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "protobuf" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/4b/13/f83676de1dce4f8106bcba91725b3f3f4baf6ca1977685102b008b8e0097/googleapis_common_protos-1.75.4.tar.gz", hash = "sha256:4587babdc82a8d7e5a3d4f5a6697e064bf44a598b4d08341c212b68185eadbcd", size = 154248, upload-time = "2026-09-24T23:20:21.759Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/11/59/6474c44460037b8474d85c1a82311ec7244f3aabd53197be5b06a4db778e/googleapis_common_protos-1.75.4-py3-none-any.whl", hash = "sha256:e8eb9cffa9a9f3423090cc7a086012004196abab388a0561690e81887fd79cc1", size = 307743, upload-time = "2026-09-24T23:19:57.136Z" },
+ ]
+ 
+ [[package]]
+@@ -724,6 +785,8 @@
+ version = "0.1.0"
+ source = { editable = "." }
+ dependencies = [
++    { name = "accelerate" },
++    { name = "aiohttp" },
+     { name = "albumentations" },
+     { name = "click" },
+     { name = "cryptography" },
+@@ -734,7 +797,6 @@
+     { name = "einops" },
+     { name = "flash-attn", version = "2.7.4.post1", source = { url = "https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.7cxx11abiFALSE-cp310-cp310-linux_x86_64.whl" }, marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+     { name = "flash-attn", version = "2.7.4.post1", source = { path = "scripts/deployment/dgpu/wheels/flash_attn-2.7.4.post1-cp310-cp310-linux_aarch64.whl" }, marker = "platform_machine == 'aarch64' and sys_platform == 'linux'" },
+-    { name = "gitpython" },
+     { name = "gymnasium" },
+     { name = "huggingface-hub", extra = ["cli"] },
+     { name = "jsonlines" },
+@@ -747,8 +809,12 @@
+     { name = "onnx" },
+     { name = "onnxscript" },
+     { name = "opencv-python-headless" },
++    { name = "opentelemetry-api" },
++    { name = "opentelemetry-exporter-otlp-proto-http" },
++    { name = "opentelemetry-sdk" },
+     { name = "pandas" },
+     { name = "peft" },
++    { name = "pillow" },
+     { name = "pyzmq" },
+     { name = "scipy" },
+     { name = "tensorrt-cu12", marker = "platform_machine == 'x86_64'" },
+@@ -786,10 +852,12 @@
+ 
+ [package.metadata]
+ requires-dist = [
++    { name = "accelerate", path = ".pgfr-security/wheels/accelerate-1.13.0+pgfr.security1-py3-none-any.whl" },
++    { name = "aiohttp", specifier = "==3.14.3" },
+     { name = "albumentations", specifier = "==1.4.18" },
+     { name = "boto3", marker = "extra == 'dev'" },
+     { name = "build", marker = "extra == 'dev'" },
+-    { name = "click", specifier = "==8.1.8" },
++    { name = "click", specifier = "==8.2.1" },
+     { name = "cryptography", specifier = ">=46.0.7" },
+     { name = "datasets", specifier = "==3.6.0" },
+     { name = "deepspeed", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = "==0.17.6" },
+@@ -800,7 +868,6 @@
+     { name = "flash-attn", marker = "python_full_version == '3.10.*' and platform_machine == 'aarch64' and sys_platform == 'linux'", path = "scripts/deployment/dgpu/wheels/flash_attn-2.7.4.post1-cp310-cp310-linux_aarch64.whl" },
+     { name = "flash-attn", marker = "python_full_version == '3.10.*' and platform_machine == 'x86_64' and sys_platform == 'linux'", url = "https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.7cxx11abiFALSE-cp310-cp310-linux_x86_64.whl" },
+     { name = "flash-attn", marker = "python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux'", url = "https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.7cxx11abiFALSE-cp312-cp312-linux_x86_64.whl" },
+-    { name = "gitpython", specifier = "==3.1.50" },
+     { name = "gymnasium", specifier = "==1.2.2" },
+     { name = "huggingface-hub", extras = ["cli"] },
+     { name = "ipython", marker = "extra == 'dev'" },
+@@ -811,11 +878,15 @@
+     { name = "msgpack-numpy", specifier = "==0.4.8" },
+     { name = "numpy", specifier = "==1.26.4" },
+     { name = "omegaconf", specifier = "==2.3.0" },
+-    { name = "onnx", specifier = ">=1.20.0" },
++    { name = "onnx", specifier = "==1.23.0" },
+     { name = "onnxscript" },
+     { name = "opencv-python-headless", specifier = ">=4.5,<4.13" },
++    { name = "opentelemetry-api", specifier = "==1.43.0" },
++    { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.43.0" },
++    { name = "opentelemetry-sdk", specifier = "==1.43.0" },
+     { name = "pandas", specifier = "==2.2.3" },
+     { name = "peft", specifier = "==0.17.1" },
++    { name = "pillow", specifier = "==12.3.0" },
+     { name = "pip-licenses", marker = "extra == 'dev'" },
+     { name = "pre-commit", marker = "extra == 'dev'" },
+     { name = "pytest", marker = "extra == 'dev'" },
+@@ -837,10 +908,10 @@
+     { name = "torchcodec", marker = "platform_machine == 'x86_64'", specifier = "==0.4.0" },
+     { name = "torchvision", marker = "sys_platform != 'linux'", specifier = "==0.22.1" },
+     { name = "torchvision", marker = "sys_platform == 'linux'", specifier = "==0.22.1", index = "https://download.pytorch.org/whl/cu128" },
+-    { name = "transformers", specifier = "==4.57.3" },
++    { name = "transformers", path = ".pgfr-security/wheels/transformers-4.57.3+pgfr.security1-py3-none-any.whl" },
+     { name = "triton", marker = "platform_machine == 'aarch64' and sys_platform == 'linux'", specifier = "==3.3.1", index = "https://download.pytorch.org/whl/cu128" },
+     { name = "tyro", specifier = "==0.9.17" },
+-    { name = "wandb", specifier = "==0.23.0" },
++    { name = "wandb", specifier = "==0.30.0" },
+ ]
+ provides-extras = ["dev"]
+ 
+@@ -1460,7 +1531,7 @@
+ 
+ [[package]]
+ name = "onnx"
+-version = "1.20.1"
++version = "1.23.0"
+ source = { registry = "https://pypi.org/simple" }
+ dependencies = [
+     { name = "ml-dtypes" },
+@@ -1468,19 +1539,20 @@
+     { name = "protobuf" },
+     { name = "typing-extensions" },
+ ]
+-sdist = { url = "https://files.pythonhosted.org/packages/3b/8a/335c03a8683a88a32f9a6bb98899ea6df241a41df64b37b9696772414794/onnx-1.20.1.tar.gz", hash = "sha256:ded16de1df563d51fbc1ad885f2a426f814039d8b5f4feb77febe09c0295ad67", size = 12048980, upload-time = "2026-01-10T01:40:03.043Z" }
+-wheels = [
+-    { url = "https://files.pythonhosted.org/packages/79/cc/4ba3c80cfaffdb541dc5a23eaccb045a627361e94ecaeba30496270f15b3/onnx-1.20.1-cp310-cp310-macosx_12_0_universal2.whl", hash = "sha256:3fe243e83ad737637af6512708454e720d4b0864def2b28e6b0ee587b80a50be", size = 17904206, upload-time = "2026-01-10T01:38:58.574Z" },
+-    { url = "https://files.pythonhosted.org/packages/f3/fc/3a1c4ae2cd5cfab2d0ebc1842769b04b417fe13946144a7c8ce470dd9c85/onnx-1.20.1-cp310-cp310-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:e24e96b48f27e4d6b44cb0b195b367a2665da2d819621eec51903d575fc49d38", size = 17414849, upload-time = "2026-01-10T01:39:01.494Z" },
+-    { url = "https://files.pythonhosted.org/packages/a4/ab/5017945291b981f2681fb620f2d5b6070e02170c648770711ef1eac79d56/onnx-1.20.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:0903e6088ed5e8f59ebd381ab2a6e9b2a60b4c898f79aa2fe76bb79cf38a5031", size = 17513600, upload-time = "2026-01-10T01:39:04.348Z" },
+-    { url = "https://files.pythonhosted.org/packages/2e/b0/063e79dc365972af876d786bacc6acd8909691af2b9296615ff74ad182f3/onnx-1.20.1-cp310-cp310-win32.whl", hash = "sha256:17483e59082b2ca6cadd2b48fd8dce937e5b2c985ed5583fefc38af928be1826", size = 16239159, upload-time = "2026-01-10T01:39:07.254Z" },
+-    { url = "https://files.pythonhosted.org/packages/2a/73/a992271eb3683e676239d71b5a78ad3cf4d06d2223c387e701bf305da199/onnx-1.20.1-cp310-cp310-win_amd64.whl", hash = "sha256:e2b0cf797faedfd3b83491dc168ab5f1542511448c65ceb482f20f04420cbf3a", size = 16391718, upload-time = "2026-01-10T01:39:09.96Z" },
+-    { url = "https://files.pythonhosted.org/packages/7c/4c/4b17e82f91ab9aa07ff595771e935ca73547b035030dc5f5a76e63fbfea9/onnx-1.20.1-cp312-abi3-macosx_12_0_universal2.whl", hash = "sha256:1d923bb4f0ce1b24c6859222a7e6b2f123e7bfe7623683662805f2e7b9e95af2", size = 17903547, upload-time = "2026-01-10T01:39:31.015Z" },
+-    { url = "https://files.pythonhosted.org/packages/64/5e/1bfa100a9cb3f2d3d5f2f05f52f7e60323b0e20bb0abace1ae64dbc88f25/onnx-1.20.1-cp312-abi3-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:ddc0b7d8b5a94627dc86c533d5e415af94cbfd103019a582669dad1f56d30281", size = 17412021, upload-time = "2026-01-10T01:39:33.885Z" },
+-    { url = "https://files.pythonhosted.org/packages/fb/71/d3fec0dcf9a7a99e7368112d9c765154e81da70fcba1e3121131a45c245b/onnx-1.20.1-cp312-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9336b6b8e6efcf5c490a845f6afd7e041c89a56199aeda384ed7d58fb953b080", size = 17510450, upload-time = "2026-01-10T01:39:36.589Z" },
+-    { url = "https://files.pythonhosted.org/packages/74/a7/edce1403e05a46e59b502fae8e3350ceeac5841f8e8f1561e98562ed9b09/onnx-1.20.1-cp312-abi3-win32.whl", hash = "sha256:564c35a94811979808ab5800d9eb4f3f32c12daedba7e33ed0845f7c61ef2431", size = 16238216, upload-time = "2026-01-10T01:39:39.46Z" },
+-    { url = "https://files.pythonhosted.org/packages/8b/c7/8690c81200ae652ac550c1df52f89d7795e6cc941f3cb38c9ef821419e80/onnx-1.20.1-cp312-abi3-win_amd64.whl", hash = "sha256:9fe7f9a633979d50984b94bda8ceb7807403f59a341d09d19342dc544d0ca1d5", size = 16389207, upload-time = "2026-01-10T01:39:41.955Z" },
+-    { url = "https://files.pythonhosted.org/packages/01/a0/4fb0e6d36eaf079af366b2c1f68bafe92df6db963e2295da84388af64abc/onnx-1.20.1-cp312-abi3-win_arm64.whl", hash = "sha256:21d747348b1c8207406fa2f3e12b82f53e0d5bb3958bcd0288bd27d3cb6ebb00", size = 16344155, upload-time = "2026-01-10T01:39:45.536Z" },
++sdist = { url = "https://files.pythonhosted.org/packages/29/3a/b73bfb8f506a7b5be43eebf71dbdd351c4116f8100e1103a91bfcbcd3502/onnx-1.23.0.tar.gz", hash = "sha256:3f4b7323ea3397c63aa6ff5d43abe16013ffefc0a96cb8a0be6527ff1e1add40", size = 6022619, upload-time = "2026-09-18T19:30:37.511Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/db/d7/6863eccd1e35f886154f54b9a6ebca4f2b6d9593da246e0de8ac33baed9f/onnx-1.23.0-cp310-cp310-macosx_13_0_universal2.whl", hash = "sha256:334ae2bc453edba1132c53ddcfaa2c13a8ddfac476867363b9e74c1fed375f25", size = 9724890, upload-time = "2026-09-18T19:29:38.493Z" },
++    { url = "https://files.pythonhosted.org/packages/ee/60/6e9ba231b2a4edf18c6c7ca621da1a9d97b0704761ba211716c9a1a60456/onnx-1.23.0-cp310-cp310-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:26c16aacc8d26b16211ff99dc5a120c20a7f61e3a3ed11e47c8681d6a984c348", size = 8644281, upload-time = "2026-09-18T19:29:41.613Z" },
++    { url = "https://files.pythonhosted.org/packages/c7/08/8124d6bf0895f4166b20968b73b92ee9c0f21fabea43097c01d76f7616fd/onnx-1.23.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:459d4765350b4991585063729f26329e15d7b9348cd44b323c49d5e55b818a9e", size = 8886371, upload-time = "2026-09-18T19:29:44.689Z" },
++    { url = "https://files.pythonhosted.org/packages/0e/3b/90f3f4679a4c8cf44c5145e6ad218035cc90540117167b4aa3b37d90b44e/onnx-1.23.0-cp310-cp310-win32.whl", hash = "sha256:aaf285206a5deeaeb8d002f94fbbaf650a7bc016bb103a0d6fd1256523155c19", size = 7737812, upload-time = "2026-09-18T19:29:47.138Z" },
++    { url = "https://files.pythonhosted.org/packages/7c/0f/a553bb3ebb644e61375f2154e6c45e8c79d20c76dffa2d6ba8b6522b6121/onnx-1.23.0-cp310-cp310-win_amd64.whl", hash = "sha256:01b7515c62bbbe0af18d845fbaf762ee42927e2b76a42adc85d5732006241587", size = 7875023, upload-time = "2026-09-18T19:29:49.681Z" },
++    { url = "https://files.pythonhosted.org/packages/63/f9/54d8047c2f409cfc314a0df520c6e5703afe78b1395e8c44287724c4b37e/onnx-1.23.0-cp312-abi3-macosx_13_0_universal2.whl", hash = "sha256:6cc93aa89502acbf453a16d79b465d47d9c454f3a3cb3fc5507a8cb59ab53208", size = 9725329, upload-time = "2026-09-18T19:30:07.486Z" },
++    { url = "https://files.pythonhosted.org/packages/c6/ff/a7d3fe41debd5b8947182a632b4e001bd3a7a103212e58ef6ca0c3daab91/onnx-1.23.0-cp312-abi3-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:95b77466b4f6bc7c2c63d6004b8db7d963fb17bf24aff13007752e9d2ebf9390", size = 8640232, upload-time = "2026-09-18T19:30:10.058Z" },
++    { url = "https://files.pythonhosted.org/packages/09/86/63cdd5740f566fd9de2cadc106529adee0566f2fcafe69a65767eedc1681/onnx-1.23.0-cp312-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:f336004196a22fbdc16c62e7f26f20635af1826db6147c80ff3b4b8d428fc7ef", size = 8881347, upload-time = "2026-09-18T19:30:12.792Z" },
++    { url = "https://files.pythonhosted.org/packages/cd/24/7844929ef08aee3f9cb857d5ce34bb60d44496c9cc5c66cdfd8255917283/onnx-1.23.0-cp312-abi3-pyemscripten_2026_0_wasm32.whl", hash = "sha256:05ad734997f09fcc9633fc2e3715033239792fc9f12aec6ec0c48e32b214e47e", size = 7314556, upload-time = "2026-09-18T19:30:15.456Z" },
++    { url = "https://files.pythonhosted.org/packages/52/68/ee1ad44118d0031e28a1cabb1cc02a4c9e30273bdc25571c5847aec5e4e8/onnx-1.23.0-cp312-abi3-win32.whl", hash = "sha256:221037cb9ffe67b701fb180ca871f1ee9089f431d944f3d0313ffae68c356a80", size = 7736116, upload-time = "2026-09-18T19:30:18.06Z" },
++    { url = "https://files.pythonhosted.org/packages/81/5a/766abb1411b9f9b06dc4e8fe9ff195d3b715535677c362ab3d950fa0e93f/onnx-1.23.0-cp312-abi3-win_amd64.whl", hash = "sha256:70a2f930b221f9dbdff62704838ce8bf81442787b25048f8b9cdc9118168799e", size = 7872197, upload-time = "2026-09-18T19:30:20.619Z" },
++    { url = "https://files.pythonhosted.org/packages/94/34/483fa56b4d47a5210d64dccb522a60b46e0953ca3f72d75b3c4759266f5f/onnx-1.23.0-cp312-abi3-win_arm64.whl", hash = "sha256:dcd4d269818a13c48444c96b7f17c7539d8cda7810ef802431393b6cf5df794b", size = 8037224, upload-time = "2026-09-18T19:30:22.682Z" },
+ ]
+ 
+ [[package]]
+@@ -1531,6 +1603,87 @@
+     { url = "https://files.pythonhosted.org/packages/dd/5c/c139a7876099916879609372bfa513b7f1257f7f1a908b0bdc1c2328241b/opencv_python_headless-4.11.0.86-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0e0a27c19dd1f40ddff94976cfe43066fbbe9dfbb2ec1907d66c19caef42a57b", size = 49969856, upload-time = "2025-01-16T13:53:29.654Z" },
+     { url = "https://files.pythonhosted.org/packages/95/dd/ed1191c9dc91abcc9f752b499b7928aacabf10567bb2c2535944d848af18/opencv_python_headless-4.11.0.86-cp37-abi3-win32.whl", hash = "sha256:f447d8acbb0b6f2808da71fddd29c1cdd448d2bc98f72d9bb78a7a898fc9621b", size = 29324425, upload-time = "2025-01-16T13:52:49.048Z" },
+     { url = "https://files.pythonhosted.org/packages/86/8a/69176a64335aed183529207ba8bc3d329c2999d852b4f3818027203f50e6/opencv_python_headless-4.11.0.86-cp37-abi3-win_amd64.whl", hash = "sha256:6c304df9caa7a6a5710b91709dd4786bf20a74d57672b3c31f7033cc638174ca", size = 39402386, upload-time = "2025-01-16T13:52:56.418Z" },
++]
++
++[[package]]
++name = "opentelemetry-api"
++version = "1.43.0"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "typing-extensions" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/ae/cc/e4c9584181f86494df0f6bdec1a4f3280c50db44704dc2a407e994fc87bb/opentelemetry_api-1.43.0.tar.gz", hash = "sha256:107d0d03857ea8fc7c5fcbbbd83f800c281f0d560553d61c1d675fccfd1761c1", size = 73476, upload-time = "2026-06-24T15:19:55.323Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/17/83/6dba32b85f31868400440dc7ad2ca1eab94cbbf3a7b0459ed39f8311a9e2/opentelemetry_api-1.43.0-py3-none-any.whl", hash = "sha256:20acf45e9b21851926835292e4045d290acade1edd2ff3de86d2f069687ba1fd", size = 61912, upload-time = "2026-06-24T15:19:35.434Z" },
++]
++
++[[package]]
++name = "opentelemetry-exporter-otlp-proto-common"
++version = "1.43.0"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "opentelemetry-proto" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/55/c1/e8098490ab15abf116dcaf9fa89ededcb35547c7d08d4b5a62f573dc1e63/opentelemetry_exporter_otlp_proto_common-1.43.0.tar.gz", hash = "sha256:c4e32ba6d6b13bdb2b8f6764c4fd28d00192826561aa04f6d14eedfce7ac076f", size = 20197, upload-time = "2026-06-24T15:20:00.247Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/d0/b2/41ebc74ae1d5859901f1b69305de58724bf043381103d6ef413521cbc35a/opentelemetry_exporter_otlp_proto_common-1.43.0-py3-none-any.whl", hash = "sha256:123c3f9cc87218562490c63b36f497bf3a722faf174a515d1443f31ababa6264", size = 17048, upload-time = "2026-06-24T15:19:41.264Z" },
++]
++
++[[package]]
++name = "opentelemetry-exporter-otlp-proto-http"
++version = "1.43.0"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "googleapis-common-protos" },
++    { name = "opentelemetry-api" },
++    { name = "opentelemetry-exporter-otlp-proto-common" },
++    { name = "opentelemetry-proto" },
++    { name = "opentelemetry-sdk" },
++    { name = "requests" },
++    { name = "typing-extensions" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/fc/92/0b9f56412483a8891d4843890294796c9df8ab42417bd9bad8035d840cb3/opentelemetry_exporter_otlp_proto_http-1.43.0.tar.gz", hash = "sha256:fa8a42bb7d00ee5391f4c0b04d8e6a46c03caa437903296ab73a81dc11ba118f", size = 25406, upload-time = "2026-06-24T15:20:01.515Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/b3/20/b685ed7af2e17c29ffc8af56f1fa8bc2033258fc30fb0d2b722f49d13ba0/opentelemetry_exporter_otlp_proto_http-1.43.0-py3-none-any.whl", hash = "sha256:647f603aa8efdbdb4dbff842e0729d0406a6fff26b295a72d3d60e7d963b2610", size = 21795, upload-time = "2026-06-24T15:19:43.164Z" },
++]
++
++[[package]]
++name = "opentelemetry-proto"
++version = "1.43.0"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "protobuf" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/e0/b9/d357faefb40bda1d4799913e6af611171ff22a2dedcb93576bc92242d056/opentelemetry_proto-1.43.0.tar.gz", hash = "sha256:224778df17e1f3fafeaaa21d874236ca5f6ffc2f86e0899298ec7351aac27924", size = 46481, upload-time = "2026-06-24T15:20:07.625Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/ed/a7/3e5308cf548b8f72529c7db1afdb3a404211982376a12927fd7759f77bf3/opentelemetry_proto-1.43.0-py3-none-any.whl", hash = "sha256:c58f1f7ef84bc7dc2834016c0c37fe0081dde7ca9f6339be1970fbf9cdaaa90d", size = 72489, upload-time = "2026-06-24T15:19:51.164Z" },
++]
++
++[[package]]
++name = "opentelemetry-sdk"
++version = "1.43.0"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "opentelemetry-api" },
++    { name = "opentelemetry-semantic-conventions" },
++    { name = "typing-extensions" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/3e/eb/5041074274ac0956b03637cc039d434569112468e875eddfcc9a0674ce06/opentelemetry_sdk-1.43.0.tar.gz", hash = "sha256:d8187c81c162df9913e4003dd6485f7390d9a24fc17026ec7387b8b8218b08e9", size = 254744, upload-time = "2026-06-24T15:20:08.467Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/49/e3/b17be23af124201c9f52eececd4cc8ddfed1597d37b4ee771895d325805c/opentelemetry_sdk-1.43.0-py3-none-any.whl", hash = "sha256:d1323a547c1ce69d6a069a17a44b7da82bb8b332051ecb074041f87642c86823", size = 178852, upload-time = "2026-06-24T15:19:52.169Z" },
++]
++
++[[package]]
++name = "opentelemetry-semantic-conventions"
++version = "0.64b0"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "opentelemetry-api" },
++    { name = "typing-extensions" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/5a/30/5f26df29509eccd86b99b481ac9ffa39da49ba9577cc69071c552ae30447/opentelemetry_semantic_conventions-0.64b0.tar.gz", hash = "sha256:72f76fb2d1582d9d033dd1fcd84532e961e6ff3d90d24ba6fabc72975a83864c", size = 148340, upload-time = "2026-06-24T15:20:09.267Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/f2/ca/23ba87a221b574a7c5a99d48849d80bfe8b047624681357e2b002e566187/opentelemetry_semantic_conventions-0.64b0-py3-none-any.whl", hash = "sha256:ea77e85e354b8f604ddbe5f3d9135216f982fa4d77e5859ac30f6d8a50505aa6", size = 203713, upload-time = "2026-06-24T15:19:53.339Z" },
+ ]
+ 
+ [[package]]
+@@ -1617,21 +1770,19 @@
+ 
+ [[package]]
+ name = "pillow"
+-version = "12.2.0"
+-source = { registry = "https://pypi.org/simple" }
+-sdist = { url = "https://files.pythonhosted.org/packages/8c/21/c2bcdd5906101a30244eaffc1b6e6ce71a31bd0742a01eb89e660ebfac2d/pillow-12.2.0.tar.gz", hash = "sha256:a830b1a40919539d07806aa58e1b114df53ddd43213d9c8b75847eee6c0182b5", size = 46987819, upload-time = "2026-04-01T14:46:17.687Z" }
+-wheels = [
+-    { url = "https://files.pythonhosted.org/packages/3a/aa/d0b28e1c811cd4d5f5c2bfe2e022292bd255ae5744a3b9ac7d6c8f72dd75/pillow-12.2.0-cp310-cp310-macosx_10_10_x86_64.whl", hash = "sha256:a4e8f36e677d3336f35089648c8955c51c6d386a13cf6ee9c189c5f5bd713a9f", size = 5354355, upload-time = "2026-04-01T14:42:15.402Z" },
+-    { url = "https://files.pythonhosted.org/packages/27/8e/1d5b39b8ae2bd7650d0c7b6abb9602d16043ead9ebbfef4bc4047454da2a/pillow-12.2.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:2e589959f10d9824d39b350472b92f0ce3b443c0a3442ebf41c40cb8361c5b97", size = 4695871, upload-time = "2026-04-01T14:42:18.234Z" },
+-    { url = "https://files.pythonhosted.org/packages/f0/c5/dcb7a6ca6b7d3be41a76958e90018d56c8462166b3ef223150360850c8da/pillow-12.2.0-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:a52edc8bfff4429aaabdf4d9ee0daadbbf8562364f940937b941f87a4290f5ff", size = 6269734, upload-time = "2026-04-01T14:42:20.608Z" },
+-    { url = "https://files.pythonhosted.org/packages/ea/f1/aa1bb13b2f4eba914e9637893c73f2af8e48d7d4023b9d3750d4c5eb2d0c/pillow-12.2.0-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:975385f4776fafde056abb318f612ef6285b10a1f12b8570f3647ad0d74b48ec", size = 8076080, upload-time = "2026-04-01T14:42:23.095Z" },
+-    { url = "https://files.pythonhosted.org/packages/a1/2a/8c79d6a53169937784604a8ae8d77e45888c41537f7f6f65ed1f407fe66d/pillow-12.2.0-cp310-cp310-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:bd9c0c7a0c681a347b3194c500cb1e6ca9cab053ea4d82a5cf45b6b754560136", size = 6382236, upload-time = "2026-04-01T14:42:25.82Z" },
+-    { url = "https://files.pythonhosted.org/packages/b5/42/bbcb6051030e1e421d103ce7a8ecadf837aa2f39b8f82ef1a8d37c3d4ebc/pillow-12.2.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:88d387ff40b3ff7c274947ed3125dedf5262ec6919d83946753b5f3d7c67ea4c", size = 7070220, upload-time = "2026-04-01T14:42:28.68Z" },
+-    { url = "https://files.pythonhosted.org/packages/3f/e1/c2a7d6dd8cfa6b231227da096fd2d58754bab3603b9d73bf609d3c18b64f/pillow-12.2.0-cp310-cp310-musllinux_1_2_aarch64.whl", hash = "sha256:51c4167c34b0d8ba05b547a3bb23578d0ba17b80a5593f93bd8ecb123dd336a3", size = 6493124, upload-time = "2026-04-01T14:42:31.579Z" },
+-    { url = "https://files.pythonhosted.org/packages/5f/41/7c8617da5d32e1d2f026e509484fdb6f3ad7efaef1749a0c1928adbb099e/pillow-12.2.0-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:34c0d99ecccea270c04882cb3b86e7b57296079c9a4aff88cb3b33563d95afaa", size = 7194324, upload-time = "2026-04-01T14:42:34.615Z" },
+-    { url = "https://files.pythonhosted.org/packages/2d/de/a777627e19fd6d62f84070ee1521adde5eeda4855b5cf60fe0b149118bca/pillow-12.2.0-cp310-cp310-win32.whl", hash = "sha256:b85f66ae9eb53e860a873b858b789217ba505e5e405a24b85c0464822fe88032", size = 6376363, upload-time = "2026-04-01T14:42:37.19Z" },
+-    { url = "https://files.pythonhosted.org/packages/e7/34/fc4cb5204896465842767b96d250c08410f01f2f28afc43b257de842eed5/pillow-12.2.0-cp310-cp310-win_amd64.whl", hash = "sha256:673aa32138f3e7531ccdbca7b3901dba9b70940a19ccecc6a37c77d5fdeb05b5", size = 7083523, upload-time = "2026-04-01T14:42:39.62Z" },
+-    { url = "https://files.pythonhosted.org/packages/2d/a0/32852d36bc7709f14dc3f64f929a275e958ad8c19a6deba9610d458e28b3/pillow-12.2.0-cp310-cp310-win_arm64.whl", hash = "sha256:3e080565d8d7c671db5802eedfb438e5565ffa40115216eabb8cd52d0ecce024", size = 2463318, upload-time = "2026-04-01T14:42:42.063Z" },
++version = "12.3.0"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/1c/3d/bb7fca845737cf9d7dbde16ed1843984665ff2e0a518f5db43e77ec540b9/pillow-12.3.0.tar.gz", hash = "sha256:3b8182a766685eaa002637e28b4ec8d6b18819a0c71f579bf0dbaa5830297cce", size = 47025035, upload-time = "2026-07-01T11:56:38.965Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/25/c2/669d88644cddb1485bd9534e63e8cf476c8e51cb3c3a1297677023505c0e/pillow-12.3.0-cp310-cp310-macosx_10_10_x86_64.whl", hash = "sha256:6c0016e7b354317c4e9e525b937ac8596c38d2d232b419529b9cd7a1cd46e39a", size = 5392418, upload-time = "2026-07-01T11:53:27.808Z" },
++    { url = "https://files.pythonhosted.org/packages/6b/ba/3762f376a2948e3036488d773a146e0ae6ecc2ca03ac20e2615bd0b2ba02/pillow-12.3.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:bcc33feacfaefce60c12fd500a277533bdc02b10a19f7f6d348763d8140bbba7", size = 4785287, upload-time = "2026-07-01T11:53:29.761Z" },
++    { url = "https://files.pythonhosted.org/packages/07/50/b5d688cc9c52d4482f3d5bcab6ce20bc2a74a85d2343841c907444a3be2c/pillow-12.3.0-cp310-cp310-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:5594fc43d548a7ed94949d139aa1341b270f1863f11cfd37f5a6c8b778a6b67f", size = 6253754, upload-time = "2026-07-01T11:53:32.298Z" },
++    { url = "https://files.pythonhosted.org/packages/4e/89/36f4cd76cf4baf05c50ababb976249153f18c959171c7f6ba09a6f217260/pillow-12.3.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:f0606c8bf2cdefea14a43530f7657cbbb7ecf1c4222512492ef4a4434a9501ec", size = 6925605, upload-time = "2026-07-01T11:53:34.487Z" },
++    { url = "https://files.pythonhosted.org/packages/eb/c0/4de58cf6633b9e3a6061ef4be6fb91fc3c90b812ece886f531e3c523d777/pillow-12.3.0-cp310-cp310-musllinux_1_2_aarch64.whl", hash = "sha256:85f998ea1848bc6757289e739cfbdda3a04adfd58b02fc018ce54d754a5ce468", size = 6327788, upload-time = "2026-07-01T11:53:36.433Z" },
++    { url = "https://files.pythonhosted.org/packages/87/3c/14d53682a19550dbbaf3b598f807d5457646c510805a44c7d7891cd1cd1a/pillow-12.3.0-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:25b9b82bb22e6e2b3cd07b39c68b7b862001226cb3dff7130d1cb914121b39ed", size = 7036288, upload-time = "2026-07-01T11:53:38.712Z" },
++    { url = "https://files.pythonhosted.org/packages/38/1d/36279e3c77efe034e4cc2b0393ee74ffdb5a62391dacbf9b916154f5f0b8/pillow-12.3.0-cp310-cp310-win32.whl", hash = "sha256:37dc8f7bbb66efe481bb60defacef820c950c24713fb44962ed6aa2a50966de1", size = 6472396, upload-time = "2026-07-01T11:53:40.781Z" },
++    { url = "https://files.pythonhosted.org/packages/48/7c/8fa0039574c476d7c6fa57dd7c32a130436877c6ec1e5ce1cc8ec44878c1/pillow-12.3.0-cp310-cp310-win_amd64.whl", hash = "sha256:300557495eb45ebb8aec96c2da9c4be642fbf7cd937278b4013ba894ea8eb0eb", size = 7226887, upload-time = "2026-07-01T11:53:42.764Z" },
++    { url = "https://files.pythonhosted.org/packages/fa/17/e324be141d173c1c919428066c3259f21c1b8982e564e01a4a81e96dbdcf/pillow-12.3.0-cp310-cp310-win_arm64.whl", hash = "sha256:514435a37670e3e5e08f3945b68718b6ed329bb84367777e16f9f4dfe1e61a0f", size = 2568039, upload-time = "2026-07-01T11:53:45.372Z" },
+ ]
+ 
+ [[package]]
+@@ -2189,19 +2340,6 @@
+ ]
+ 
+ [[package]]
+-name = "sentry-sdk"
+-version = "2.55.0"
+-source = { registry = "https://pypi.org/simple" }
+-dependencies = [
+-    { name = "certifi" },
+-    { name = "urllib3" },
+-]
+-sdist = { url = "https://files.pythonhosted.org/packages/e9/b8/285293dc60fc198fffc3fcdbc7c6d4e646e0f74e61461c355d40faa64ceb/sentry_sdk-2.55.0.tar.gz", hash = "sha256:3774c4d8820720ca4101548131b9c162f4c9426eb7f4d24aca453012a7470f69", size = 424505, upload-time = "2026-03-17T14:15:51.707Z" }
+-wheels = [
+-    { url = "https://files.pythonhosted.org/packages/9a/66/20465097782d7e1e742d846407ea7262d338c6e876ddddad38ca8907b38f/sentry_sdk-2.55.0-py2.py3-none-any.whl", hash = "sha256:97026981cb15699394474a196b88503a393cbc58d182ece0d3abe12b9bd978d4", size = 449284, upload-time = "2026-03-17T14:15:49.604Z" },
+-]
+-
+-[[package]]
+ name = "setuptools"
+ version = "82.0.1"
+ source = { registry = "https://pypi.org/simple" }
+@@ -2226,15 +2364,6 @@
+ sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031, upload-time = "2024-12-04T17:35:28.174Z" }
+ wheels = [
+     { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
+-]
+-
+-[[package]]
+-name = "smmap"
+-version = "5.0.3"
+-source = { registry = "https://pypi.org/simple" }
+-sdist = { url = "https://files.pythonhosted.org/packages/1f/ea/49c993d6dfdd7338c9b1000a0f36817ed7ec84577ae2e52f890d1a4ff909/smmap-5.0.3.tar.gz", hash = "sha256:4d9debb8b99007ae47165abc08670bd74cb74b5227dda7f643eccc4e9eb5642c", size = 22506, upload-time = "2026-03-09T03:43:26.1Z" }
+-wheels = [
+-    { url = "https://files.pythonhosted.org/packages/c1/d4/59e74daffcb57a07668852eeeb6035af9f32cbfd7a1d2511f17d2fe6a738/smmap-5.0.3-py3-none-any.whl", hash = "sha256:c106e05d5a61449cf6ba9a1e650227ecfb141590d2a98412103ff35d89fc7b2f", size = 24390, upload-time = "2026-03-09T03:43:24.361Z" },
+ ]
+ 
+ [[package]]
+@@ -2542,8 +2671,8 @@
+ 
+ [[package]]
+ name = "transformers"
+-version = "4.57.3"
+-source = { registry = "https://pypi.org/simple" }
++version = "4.57.3+pgfr.security1"
++source = { path = ".pgfr-security/wheels/transformers-4.57.3+pgfr.security1-py3-none-any.whl" }
+ dependencies = [
+     { name = "filelock" },
+     { name = "huggingface-hub" },
+@@ -2556,10 +2685,429 @@
+     { name = "tokenizers" },
+     { name = "tqdm" },
+ ]
+-sdist = { url = "https://files.pythonhosted.org/packages/dd/70/d42a739e8dfde3d92bb2fff5819cbf331fe9657323221e79415cd5eb65ee/transformers-4.57.3.tar.gz", hash = "sha256:df4945029aaddd7c09eec5cad851f30662f8bd1746721b34cc031d70c65afebc", size = 10139680, upload-time = "2025-11-25T15:51:30.139Z" }
+-wheels = [
+-    { url = "https://files.pythonhosted.org/packages/6a/6b/2f416568b3c4c91c96e5a365d164f8a4a4a88030aa8ab4644181fdadce97/transformers-4.57.3-py3-none-any.whl", hash = "sha256:c77d353a4851b1880191603d36acb313411d3577f6e2897814f333841f7003f4", size = 11993463, upload-time = "2025-11-25T15:51:26.493Z" },
+-]
++wheels = [
++    { filename = "transformers-4.57.3+pgfr.security1-py3-none-any.whl", hash = "sha256:61a2477b5033fb131fafbdffccd7bf8c111acf8f1602ce98b90f3085a78721a5" },
++]
++
++[package.metadata]
++requires-dist = [
++    { name = "accelerate", marker = "extra == 'accelerate'", specifier = ">=0.26.0" },
++    { name = "accelerate", marker = "extra == 'all'", specifier = ">=0.26.0" },
++    { name = "accelerate", marker = "extra == 'deepspeed'", specifier = ">=0.26.0" },
++    { name = "accelerate", marker = "extra == 'deepspeed-testing'", specifier = ">=0.26.0" },
++    { name = "accelerate", marker = "extra == 'dev'", specifier = ">=0.26.0" },
++    { name = "accelerate", marker = "extra == 'dev-tensorflow'", specifier = ">=0.26.0" },
++    { name = "accelerate", marker = "extra == 'dev-torch'", specifier = ">=0.26.0" },
++    { name = "accelerate", marker = "extra == 'serving'", specifier = ">=0.26.0" },
++    { name = "accelerate", marker = "extra == 'testing'", specifier = ">=0.26.0" },
++    { name = "accelerate", marker = "extra == 'torch'", specifier = ">=0.26.0" },
++    { name = "av", marker = "extra == 'all'" },
++    { name = "av", marker = "extra == 'dev'" },
++    { name = "av", marker = "extra == 'video'" },
++    { name = "beautifulsoup4", marker = "extra == 'deepspeed-testing'" },
++    { name = "beautifulsoup4", marker = "extra == 'dev'" },
++    { name = "beautifulsoup4", marker = "extra == 'dev-tensorflow'" },
++    { name = "beautifulsoup4", marker = "extra == 'dev-torch'" },
++    { name = "beautifulsoup4", marker = "extra == 'testing'" },
++    { name = "blobfile", marker = "extra == 'tiktoken'" },
++    { name = "codecarbon", marker = "extra == 'all'", specifier = ">=2.8.1" },
++    { name = "codecarbon", marker = "extra == 'codecarbon'", specifier = ">=2.8.1" },
++    { name = "codecarbon", marker = "extra == 'dev'", specifier = ">=2.8.1" },
++    { name = "codecarbon", marker = "extra == 'dev-torch'", specifier = ">=2.8.1" },
++    { name = "cookiecutter", marker = "extra == 'deepspeed-testing'", specifier = "==1.7.3" },
++    { name = "cookiecutter", marker = "extra == 'dev'", specifier = "==1.7.3" },
++    { name = "cookiecutter", marker = "extra == 'dev-tensorflow'", specifier = "==1.7.3" },
++    { name = "cookiecutter", marker = "extra == 'dev-torch'", specifier = "==1.7.3" },
++    { name = "cookiecutter", marker = "extra == 'modelcreation'", specifier = "==1.7.3" },
++    { name = "cookiecutter", marker = "extra == 'testing'", specifier = "==1.7.3" },
++    { name = "datasets", marker = "extra == 'deepspeed-testing'", specifier = ">=2.15.0" },
++    { name = "datasets", marker = "extra == 'dev'", specifier = ">=2.15.0" },
++    { name = "datasets", marker = "extra == 'dev-tensorflow'", specifier = ">=2.15.0" },
++    { name = "datasets", marker = "extra == 'dev-torch'", specifier = ">=2.15.0" },
++    { name = "datasets", marker = "extra == 'quality'", specifier = ">=2.15.0" },
++    { name = "datasets", marker = "extra == 'retrieval'", specifier = ">=2.15.0" },
++    { name = "datasets", marker = "extra == 'testing'", specifier = ">=2.15.0" },
++    { name = "deepspeed", marker = "extra == 'deepspeed'", specifier = ">=0.9.3" },
++    { name = "deepspeed", marker = "extra == 'deepspeed-testing'", specifier = ">=0.9.3" },
++    { name = "dill", marker = "extra == 'deepspeed-testing'", specifier = "<0.3.5" },
++    { name = "dill", marker = "extra == 'dev'", specifier = "<0.3.5" },
++    { name = "dill", marker = "extra == 'dev-tensorflow'", specifier = "<0.3.5" },
++    { name = "dill", marker = "extra == 'dev-torch'", specifier = "<0.3.5" },
++    { name = "dill", marker = "extra == 'testing'", specifier = "<0.3.5" },
++    { name = "evaluate", marker = "extra == 'deepspeed-testing'", specifier = ">=0.2.0" },
++    { name = "evaluate", marker = "extra == 'dev'", specifier = ">=0.2.0" },
++    { name = "evaluate", marker = "extra == 'dev-tensorflow'", specifier = ">=0.2.0" },
++    { name = "evaluate", marker = "extra == 'dev-torch'", specifier = ">=0.2.0" },
++    { name = "evaluate", marker = "extra == 'testing'", specifier = ">=0.2.0" },
++    { name = "faiss-cpu", marker = "extra == 'deepspeed-testing'" },
++    { name = "faiss-cpu", marker = "extra == 'dev'" },
++    { name = "faiss-cpu", marker = "extra == 'dev-tensorflow'" },
++    { name = "faiss-cpu", marker = "extra == 'dev-torch'" },
++    { name = "faiss-cpu", marker = "extra == 'retrieval'" },
++    { name = "faiss-cpu", marker = "extra == 'testing'" },
++    { name = "fastapi", marker = "extra == 'deepspeed-testing'" },
++    { name = "fastapi", marker = "extra == 'dev'" },
++    { name = "fastapi", marker = "extra == 'dev-tensorflow'" },
++    { name = "fastapi", marker = "extra == 'dev-torch'" },
++    { name = "fastapi", marker = "extra == 'serving'" },
++    { name = "fastapi", marker = "extra == 'testing'" },
++    { name = "filelock" },
++    { name = "filelock", marker = "extra == 'torchhub'" },
++    { name = "flax", marker = "extra == 'all'", specifier = ">=0.4.1,<=0.7.0" },
++    { name = "flax", marker = "extra == 'dev'", specifier = ">=0.4.1,<=0.7.0" },
++    { name = "flax", marker = "extra == 'flax'", specifier = ">=0.4.1,<=0.7.0" },
++    { name = "ftfy", marker = "extra == 'ftfy'" },
++    { name = "fugashi", marker = "extra == 'dev'", specifier = ">=1.0" },
++    { name = "fugashi", marker = "extra == 'dev-torch'", specifier = ">=1.0" },
++    { name = "fugashi", marker = "extra == 'ja'", specifier = ">=1.0" },
++    { name = "gitpython", marker = "extra == 'deepspeed-testing'", specifier = "<3.1.19" },
++    { name = "gitpython", marker = "extra == 'dev'", specifier = "<3.1.19" },
++    { name = "gitpython", marker = "extra == 'dev-tensorflow'", specifier = "<3.1.19" },
++    { name = "gitpython", marker = "extra == 'dev-torch'", specifier = "<3.1.19" },
++    { name = "gitpython", marker = "extra == 'quality'", specifier = "<3.1.19" },
++    { name = "gitpython", marker = "extra == 'testing'", specifier = "<3.1.19" },
++    { name = "hf-xet", marker = "extra == 'hf-xet'" },
++    { name = "huggingface-hub", specifier = ">=0.34.0,<1.0" },
++    { name = "huggingface-hub", marker = "extra == 'torchhub'", specifier = ">=0.34.0,<1.0" },
++    { name = "importlib-metadata", marker = "extra == 'torchhub'" },
++    { name = "ipadic", marker = "extra == 'dev'", specifier = ">=1.0.0,<2.0" },
++    { name = "ipadic", marker = "extra == 'dev-torch'", specifier = ">=1.0.0,<2.0" },
++    { name = "ipadic", marker = "extra == 'ja'", specifier = ">=1.0.0,<2.0" },
++    { name = "jax", marker = "extra == 'all'", specifier = ">=0.4.1,<=0.4.13" },
++    { name = "jax", marker = "extra == 'dev'", specifier = ">=0.4.1,<=0.4.13" },
++    { name = "jax", marker = "extra == 'flax'", specifier = ">=0.4.1,<=0.4.13" },
++    { name = "jaxlib", marker = "extra == 'all'", specifier = ">=0.4.1,<=0.4.13" },
++    { name = "jaxlib", marker = "extra == 'dev'", specifier = ">=0.4.1,<=0.4.13" },
++    { name = "jaxlib", marker = "extra == 'flax'", specifier = ">=0.4.1,<=0.4.13" },
++    { name = "jinja2", marker = "extra == 'all'", specifier = ">=3.1.0" },
++    { name = "jinja2", marker = "extra == 'chat-template'", specifier = ">=3.1.0" },
++    { name = "jinja2", marker = "extra == 'dev'", specifier = ">=3.1.0" },
++    { name = "kenlm", marker = "extra == 'all'" },
++    { name = "kenlm", marker = "extra == 'audio'" },
++    { name = "kenlm", marker = "extra == 'dev'" },
++    { name = "kenlm", marker = "extra == 'dev-tensorflow'" },
++    { name = "kenlm", marker = "extra == 'dev-torch'" },
++    { name = "kenlm", marker = "extra == 'flax-speech'" },
++    { name = "kenlm", marker = "extra == 'speech'" },
++    { name = "kenlm", marker = "extra == 'tf-speech'" },
++    { name = "kenlm", marker = "extra == 'torch-speech'" },
++    { name = "keras", marker = "extra == 'tf-cpu'", specifier = ">2.9,<2.16" },
++    { name = "keras-nlp", marker = "extra == 'all'", specifier = ">=0.3.1,<0.14.0" },
++    { name = "keras-nlp", marker = "extra == 'dev'", specifier = ">=0.3.1,<0.14.0" },
++    { name = "keras-nlp", marker = "extra == 'dev-tensorflow'", specifier = ">=0.3.1,<0.14.0" },
++    { name = "keras-nlp", marker = "extra == 'tf'", specifier = ">=0.3.1,<0.14.0" },
++    { name = "keras-nlp", marker = "extra == 'tf-cpu'", specifier = ">=0.3.1,<0.14.0" },
++    { name = "kernels", marker = "extra == 'all'", specifier = ">=0.6.1,<=0.9" },
++    { name = "kernels", marker = "extra == 'dev'", specifier = ">=0.6.1,<=0.9" },
++    { name = "kernels", marker = "extra == 'dev-torch'", specifier = ">=0.6.1,<=0.9" },
++    { name = "kernels", marker = "extra == 'hub-kernels'", specifier = ">=0.6.1,<=0.9" },
++    { name = "kernels", marker = "extra == 'integrations'", specifier = ">=0.6.1,<=0.9" },
++    { name = "libcst", marker = "extra == 'deepspeed-testing'" },
++    { name = "libcst", marker = "extra == 'dev'" },
++    { name = "libcst", marker = "extra == 'dev-tensorflow'" },
++    { name = "libcst", marker = "extra == 'dev-torch'" },
++    { name = "libcst", marker = "extra == 'quality'" },
++    { name = "libcst", marker = "extra == 'testing'" },
++    { name = "librosa", marker = "extra == 'all'" },
++    { name = "librosa", marker = "extra == 'audio'" },
++    { name = "librosa", marker = "extra == 'dev'" },
++    { name = "librosa", marker = "extra == 'dev-tensorflow'" },
++    { name = "librosa", marker = "extra == 'dev-torch'" },
++    { name = "librosa", marker = "extra == 'flax-speech'" },
++    { name = "librosa", marker = "extra == 'speech'" },
++    { name = "librosa", marker = "extra == 'tf-speech'" },
++    { name = "librosa", marker = "extra == 'torch-speech'" },
++    { name = "mistral-common", extras = ["opencv"], marker = "extra == 'all'", specifier = ">=1.6.3" },
++    { name = "mistral-common", extras = ["opencv"], marker = "extra == 'deepspeed-testing'", specifier = ">=1.6.3" },
++    { name = "mistral-common", extras = ["opencv"], marker = "extra == 'dev'", specifier = ">=1.6.3" },
++    { name = "mistral-common", extras = ["opencv"], marker = "extra == 'dev-tensorflow'", specifier = ">=1.6.3" },
++    { name = "mistral-common", extras = ["opencv"], marker = "extra == 'dev-torch'", specifier = ">=1.6.3" },
++    { name = "mistral-common", extras = ["opencv"], marker = "extra == 'mistral-common'", specifier = ">=1.6.3" },
++    { name = "mistral-common", extras = ["opencv"], marker = "extra == 'testing'", specifier = ">=1.6.3" },
++    { name = "natten", marker = "extra == 'natten'", specifier = ">=0.14.6,<0.15.0" },
++    { name = "nltk", marker = "extra == 'deepspeed-testing'", specifier = "<=3.8.1" },
++    { name = "nltk", marker = "extra == 'dev'", specifier = "<=3.8.1" },
++    { name = "nltk", marker = "extra == 'dev-tensorflow'", specifier = "<=3.8.1" },
++    { name = "nltk", marker = "extra == 'dev-torch'", specifier = "<=3.8.1" },
++    { name = "nltk", marker = "extra == 'testing'", specifier = "<=3.8.1" },
++    { name = "num2words", marker = "extra == 'all'" },
++    { name = "num2words", marker = "extra == 'dev'" },
++    { name = "num2words", marker = "extra == 'dev-torch'" },
++    { name = "num2words", marker = "extra == 'num2words'" },
++    { name = "numpy", specifier = ">=1.17" },
++    { name = "numpy", marker = "extra == 'torchhub'", specifier = ">=1.17" },
++    { name = "onnxconverter-common", marker = "extra == 'all'" },
++    { name = "onnxconverter-common", marker = "extra == 'dev'" },
++    { name = "onnxconverter-common", marker = "extra == 'dev-tensorflow'" },
++    { name = "onnxconverter-common", marker = "extra == 'onnx'" },
++    { name = "onnxconverter-common", marker = "extra == 'tf'" },
++    { name = "onnxconverter-common", marker = "extra == 'tf-cpu'" },
++    { name = "onnxruntime", marker = "extra == 'dev-tensorflow'", specifier = ">=1.4.0" },
++    { name = "onnxruntime", marker = "extra == 'dev-torch'", specifier = ">=1.4.0" },
++    { name = "onnxruntime", marker = "extra == 'onnx'", specifier = ">=1.4.0" },
++    { name = "onnxruntime", marker = "extra == 'onnxruntime'", specifier = ">=1.4.0" },
++    { name = "onnxruntime-tools", marker = "extra == 'dev-tensorflow'", specifier = ">=1.4.2" },
++    { name = "onnxruntime-tools", marker = "extra == 'dev-torch'", specifier = ">=1.4.2" },
++    { name = "onnxruntime-tools", marker = "extra == 'onnx'", specifier = ">=1.4.2" },
++    { name = "onnxruntime-tools", marker = "extra == 'onnxruntime'", specifier = ">=1.4.2" },
++    { name = "openai", marker = "extra == 'deepspeed-testing'", specifier = ">=1.98.0" },
++    { name = "openai", marker = "extra == 'dev'", specifier = ">=1.98.0" },
++    { name = "openai", marker = "extra == 'dev-tensorflow'", specifier = ">=1.98.0" },
++    { name = "openai", marker = "extra == 'dev-torch'", specifier = ">=1.98.0" },
++    { name = "openai", marker = "extra == 'serving'", specifier = ">=1.98.0" },
++    { name = "openai", marker = "extra == 'testing'", specifier = ">=1.98.0" },
++    { name = "opentelemetry-api", marker = "extra == 'open-telemetry'" },
++    { name = "opentelemetry-exporter-otlp", marker = "extra == 'open-telemetry'" },
++    { name = "opentelemetry-sdk", marker = "extra == 'open-telemetry'" },
++    { name = "optax", marker = "extra == 'all'", specifier = ">=0.0.8,<=0.1.4" },
++    { name = "optax", marker = "extra == 'dev'", specifier = ">=0.0.8,<=0.1.4" },
++    { name = "optax", marker = "extra == 'flax'", specifier = ">=0.0.8,<=0.1.4" },
++    { name = "optimum-benchmark", marker = "extra == 'benchmark'", specifier = ">=0.3.0" },
++    { name = "optuna", marker = "extra == 'all'" },
++    { name = "optuna", marker = "extra == 'deepspeed-testing'" },
++    { name = "optuna", marker = "extra == 'dev'" },
++    { name = "optuna", marker = "extra == 'dev-torch'" },
++    { name = "optuna", marker = "extra == 'integrations'" },
++    { name = "optuna", marker = "extra == 'optuna'" },
++    { name = "packaging", specifier = ">=20.0" },
++    { name = "packaging", marker = "extra == 'torchhub'", specifier = ">=20.0" },
++    { name = "pandas", marker = "extra == 'dev'", specifier = "<2.3.0" },
++    { name = "pandas", marker = "extra == 'dev-tensorflow'", specifier = "<2.3.0" },
++    { name = "pandas", marker = "extra == 'dev-torch'", specifier = "<2.3.0" },
++    { name = "pandas", marker = "extra == 'quality'", specifier = "<2.3.0" },
++    { name = "parameterized", marker = "extra == 'deepspeed-testing'", specifier = ">=0.9" },
++    { name = "parameterized", marker = "extra == 'dev'", specifier = ">=0.9" },
++    { name = "parameterized", marker = "extra == 'dev-tensorflow'", specifier = ">=0.9" },
++    { name = "parameterized", marker = "extra == 'dev-torch'", specifier = ">=0.9" },
++    { name = "parameterized", marker = "extra == 'testing'", specifier = ">=0.9" },
++    { name = "phonemizer", marker = "extra == 'all'" },
++    { name = "phonemizer", marker = "extra == 'audio'" },
++    { name = "phonemizer", marker = "extra == 'dev'" },
++    { name = "phonemizer", marker = "extra == 'dev-tensorflow'" },
++    { name = "phonemizer", marker = "extra == 'dev-torch'" },
++    { name = "phonemizer", marker = "extra == 'flax-speech'" },
++    { name = "phonemizer", marker = "extra == 'speech'" },
++    { name = "phonemizer", marker = "extra == 'tf-speech'" },
++    { name = "phonemizer", marker = "extra == 'torch-speech'" },
++    { name = "pillow", marker = "extra == 'all'", specifier = ">=10.0.1,<=15.0" },
++    { name = "pillow", marker = "extra == 'dev'", specifier = ">=10.0.1,<=15.0" },
++    { name = "pillow", marker = "extra == 'dev-tensorflow'", specifier = ">=10.0.1,<=15.0" },
++    { name = "pillow", marker = "extra == 'dev-torch'", specifier = ">=10.0.1,<=15.0" },
++    { name = "pillow", marker = "extra == 'torch-vision'", specifier = ">=10.0.1,<=15.0" },
++    { name = "pillow", marker = "extra == 'vision'", specifier = ">=10.0.1,<=15.0" },
++    { name = "protobuf", marker = "extra == 'all'" },
++    { name = "protobuf", marker = "extra == 'deepspeed-testing'" },
++    { name = "protobuf", marker = "extra == 'dev'" },
++    { name = "protobuf", marker = "extra == 'dev-tensorflow'" },
++    { name = "protobuf", marker = "extra == 'dev-torch'" },
++    { name = "protobuf", marker = "extra == 'sentencepiece'" },
++    { name = "protobuf", marker = "extra == 'torchhub'" },
++    { name = "psutil", marker = "extra == 'deepspeed-testing'" },
++    { name = "psutil", marker = "extra == 'dev'" },
++    { name = "psutil", marker = "extra == 'dev-tensorflow'" },
++    { name = "psutil", marker = "extra == 'dev-torch'" },
++    { name = "psutil", marker = "extra == 'testing'" },
++    { name = "pyctcdecode", marker = "extra == 'all'", specifier = ">=0.4.0" },
++    { name = "pyctcdecode", marker = "extra == 'audio'", specifier = ">=0.4.0" },
++    { name = "pyctcdecode", marker = "extra == 'dev'", specifier = ">=0.4.0" },
++    { name = "pyctcdecode", marker = "extra == 'dev-tensorflow'", specifier = ">=0.4.0" },
++    { name = "pyctcdecode", marker = "extra == 'dev-torch'", specifier = ">=0.4.0" },
++    { name = "pyctcdecode", marker = "extra == 'flax-speech'", specifier = ">=0.4.0" },
++    { name = "pyctcdecode", marker = "extra == 'speech'", specifier = ">=0.4.0" },
++    { name = "pyctcdecode", marker = "extra == 'tf-speech'", specifier = ">=0.4.0" },
++    { name = "pyctcdecode", marker = "extra == 'torch-speech'", specifier = ">=0.4.0" },
++    { name = "pydantic", marker = "extra == 'deepspeed-testing'", specifier = ">=2" },
++    { name = "pydantic", marker = "extra == 'dev'", specifier = ">=2" },
++    { name = "pydantic", marker = "extra == 'dev-tensorflow'", specifier = ">=2" },
++    { name = "pydantic", marker = "extra == 'dev-torch'", specifier = ">=2" },
++    { name = "pydantic", marker = "extra == 'serving'", specifier = ">=2" },
++    { name = "pydantic", marker = "extra == 'testing'", specifier = ">=2" },
++    { name = "pytest", marker = "extra == 'deepspeed-testing'", specifier = ">=7.2.0" },
++    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.2.0" },
++    { name = "pytest", marker = "extra == 'dev-tensorflow'", specifier = ">=7.2.0" },
++    { name = "pytest", marker = "extra == 'dev-torch'", specifier = ">=7.2.0" },
++    { name = "pytest", marker = "extra == 'testing'", specifier = ">=7.2.0" },
++    { name = "pytest-asyncio", marker = "extra == 'deepspeed-testing'" },
++    { name = "pytest-asyncio", marker = "extra == 'dev'" },
++    { name = "pytest-asyncio", marker = "extra == 'dev-tensorflow'" },
++    { name = "pytest-asyncio", marker = "extra == 'dev-torch'" },
++    { name = "pytest-asyncio", marker = "extra == 'testing'" },
++    { name = "pytest-order", marker = "extra == 'deepspeed-testing'" },
++    { name = "pytest-order", marker = "extra == 'dev'" },
++    { name = "pytest-order", marker = "extra == 'dev-tensorflow'" },
++    { name = "pytest-order", marker = "extra == 'dev-torch'" },
++    { name = "pytest-order", marker = "extra == 'testing'" },
++    { name = "pytest-rerunfailures", marker = "extra == 'deepspeed-testing'", specifier = "<16.0" },
++    { name = "pytest-rerunfailures", marker = "extra == 'dev'", specifier = "<16.0" },
++    { name = "pytest-rerunfailures", marker = "extra == 'dev-tensorflow'", specifier = "<16.0" },
++    { name = "pytest-rerunfailures", marker = "extra == 'dev-torch'", specifier = "<16.0" },
++    { name = "pytest-rerunfailures", marker = "extra == 'testing'", specifier = "<16.0" },
++    { name = "pytest-rich", marker = "extra == 'deepspeed-testing'" },
++    { name = "pytest-rich", marker = "extra == 'dev'" },
++    { name = "pytest-rich", marker = "extra == 'dev-tensorflow'" },
++    { name = "pytest-rich", marker = "extra == 'dev-torch'" },
++    { name = "pytest-rich", marker = "extra == 'testing'" },
++    { name = "pytest-timeout", marker = "extra == 'deepspeed-testing'" },
++    { name = "pytest-timeout", marker = "extra == 'dev'" },
++    { name = "pytest-timeout", marker = "extra == 'dev-tensorflow'" },
++    { name = "pytest-timeout", marker = "extra == 'dev-torch'" },
++    { name = "pytest-timeout", marker = "extra == 'testing'" },
++    { name = "pytest-xdist", marker = "extra == 'deepspeed-testing'" },
++    { name = "pytest-xdist", marker = "extra == 'dev'" },
++    { name = "pytest-xdist", marker = "extra == 'dev-tensorflow'" },
++    { name = "pytest-xdist", marker = "extra == 'dev-torch'" },
++    { name = "pytest-xdist", marker = "extra == 'testing'" },
++    { name = "pyyaml", specifier = ">=5.1" },
++    { name = "ray", extras = ["tune"], marker = "extra == 'all'", specifier = ">=2.7.0" },
++    { name = "ray", extras = ["tune"], marker = "extra == 'dev'", specifier = ">=2.7.0" },
++    { name = "ray", extras = ["tune"], marker = "extra == 'dev-torch'", specifier = ">=2.7.0" },
++    { name = "ray", extras = ["tune"], marker = "extra == 'integrations'", specifier = ">=2.7.0" },
++    { name = "ray", extras = ["tune"], marker = "extra == 'ray'", specifier = ">=2.7.0" },
++    { name = "regex", specifier = "!=2019.12.17" },
++    { name = "regex", marker = "extra == 'torchhub'", specifier = "!=2019.12.17" },
++    { name = "requests" },
++    { name = "requests", marker = "extra == 'torchhub'" },
++    { name = "rhoknp", marker = "extra == 'dev'", specifier = ">=1.1.0,<1.3.1" },
++    { name = "rhoknp", marker = "extra == 'dev-torch'", specifier = ">=1.1.0,<1.3.1" },
++    { name = "rhoknp", marker = "extra == 'ja'", specifier = ">=1.1.0,<1.3.1" },
++    { name = "rich", marker = "extra == 'dev'" },
++    { name = "rich", marker = "extra == 'dev-tensorflow'" },
++    { name = "rich", marker = "extra == 'dev-torch'" },
++    { name = "rich", marker = "extra == 'quality'" },
++    { name = "rjieba", marker = "extra == 'deepspeed-testing'" },
++    { name = "rjieba", marker = "extra == 'dev'" },
++    { name = "rjieba", marker = "extra == 'dev-tensorflow'" },
++    { name = "rjieba", marker = "extra == 'dev-torch'" },
++    { name = "rjieba", marker = "extra == 'testing'" },
++    { name = "rouge-score", marker = "extra == 'deepspeed-testing'", specifier = "!=0.0.7,!=0.0.8,!=0.1,!=0.1.1" },
++    { name = "rouge-score", marker = "extra == 'dev'", specifier = "!=0.0.7,!=0.0.8,!=0.1,!=0.1.1" },
++    { name = "rouge-score", marker = "extra == 'dev-tensorflow'", specifier = "!=0.0.7,!=0.0.8,!=0.1,!=0.1.1" },
++    { name = "rouge-score", marker = "extra == 'dev-torch'", specifier = "!=0.0.7,!=0.0.8,!=0.1,!=0.1.1" },
++    { name = "rouge-score", marker = "extra == 'testing'", specifier = "!=0.0.7,!=0.0.8,!=0.1,!=0.1.1" },
++    { name = "ruff", marker = "extra == 'deepspeed-testing'", specifier = "==0.13.1" },
++    { name = "ruff", marker = "extra == 'dev'", specifier = "==0.13.1" },
++    { name = "ruff", marker = "extra == 'dev-tensorflow'", specifier = "==0.13.1" },
++    { name = "ruff", marker = "extra == 'dev-torch'", specifier = "==0.13.1" },
++    { name = "ruff", marker = "extra == 'quality'", specifier = "==0.13.1" },
++    { name = "ruff", marker = "extra == 'ruff'", specifier = "==0.13.1" },
++    { name = "ruff", marker = "extra == 'testing'", specifier = "==0.13.1" },
++    { name = "sacrebleu", marker = "extra == 'deepspeed-testing'", specifier = ">=1.4.12,<2.0.0" },
++    { name = "sacrebleu", marker = "extra == 'dev'", specifier = ">=1.4.12,<2.0.0" },
++    { name = "sacrebleu", marker = "extra == 'dev-tensorflow'", specifier = ">=1.4.12,<2.0.0" },
++    { name = "sacrebleu", marker = "extra == 'dev-torch'", specifier = ">=1.4.12,<2.0.0" },
++    { name = "sacrebleu", marker = "extra == 'testing'", specifier = ">=1.4.12,<2.0.0" },
++    { name = "sacremoses", marker = "extra == 'deepspeed-testing'" },
++    { name = "sacremoses", marker = "extra == 'dev'" },
++    { name = "sacremoses", marker = "extra == 'dev-tensorflow'" },
++    { name = "sacremoses", marker = "extra == 'dev-torch'" },
++    { name = "sacremoses", marker = "extra == 'testing'" },
++    { name = "safetensors", specifier = ">=0.4.3" },
++    { name = "sagemaker", marker = "extra == 'sagemaker'", specifier = ">=2.31.0" },
++    { name = "scikit-learn", marker = "extra == 'dev'" },
++    { name = "scikit-learn", marker = "extra == 'dev-tensorflow'" },
++    { name = "scikit-learn", marker = "extra == 'dev-torch'" },
++    { name = "scikit-learn", marker = "extra == 'sklearn'" },
++    { name = "scipy", marker = "extra == 'all'", specifier = "<1.13.0" },
++    { name = "scipy", marker = "extra == 'dev'", specifier = "<1.13.0" },
++    { name = "scipy", marker = "extra == 'flax'", specifier = "<1.13.0" },
++    { name = "sentencepiece", marker = "extra == 'all'", specifier = ">=0.1.91,!=0.1.92" },
++    { name = "sentencepiece", marker = "extra == 'deepspeed-testing'", specifier = ">=0.1.91,!=0.1.92" },
++    { name = "sentencepiece", marker = "extra == 'dev'", specifier = ">=0.1.91,!=0.1.92" },
++    { name = "sentencepiece", marker = "extra == 'dev-tensorflow'", specifier = ">=0.1.91,!=0.1.92" },
++    { name = "sentencepiece", marker = "extra == 'dev-torch'", specifier = ">=0.1.91,!=0.1.92" },
++    { name = "sentencepiece", marker = "extra == 'sentencepiece'", specifier = ">=0.1.91,!=0.1.92" },
++    { name = "sentencepiece", marker = "extra == 'testing'", specifier = ">=0.1.91,!=0.1.92" },
++    { name = "sentencepiece", marker = "extra == 'torchhub'", specifier = ">=0.1.91,!=0.1.92" },
++    { name = "sigopt", marker = "extra == 'sigopt'" },
++    { name = "starlette", marker = "extra == 'deepspeed-testing'" },
++    { name = "starlette", marker = "extra == 'dev'" },
++    { name = "starlette", marker = "extra == 'dev-tensorflow'" },
++    { name = "starlette", marker = "extra == 'dev-torch'" },
++    { name = "starlette", marker = "extra == 'serving'" },
++    { name = "starlette", marker = "extra == 'testing'" },
++    { name = "sudachidict-core", marker = "extra == 'dev'", specifier = ">=20220729" },
++    { name = "sudachidict-core", marker = "extra == 'dev-torch'", specifier = ">=20220729" },
++    { name = "sudachidict-core", marker = "extra == 'ja'", specifier = ">=20220729" },
++    { name = "sudachipy", marker = "extra == 'dev'", specifier = ">=0.6.6" },
++    { name = "sudachipy", marker = "extra == 'dev-torch'", specifier = ">=0.6.6" },
++    { name = "sudachipy", marker = "extra == 'ja'", specifier = ">=0.6.6" },
++    { name = "tensorboard", marker = "extra == 'deepspeed-testing'" },
++    { name = "tensorboard", marker = "extra == 'dev'" },
++    { name = "tensorboard", marker = "extra == 'dev-tensorflow'" },
++    { name = "tensorboard", marker = "extra == 'dev-torch'" },
++    { name = "tensorboard", marker = "extra == 'testing'" },
++    { name = "tensorflow", marker = "extra == 'all'", specifier = ">2.9,<2.16" },
++    { name = "tensorflow", marker = "extra == 'dev'", specifier = ">2.9,<2.16" },
++    { name = "tensorflow", marker = "extra == 'dev-tensorflow'", specifier = ">2.9,<2.16" },
++    { name = "tensorflow", marker = "extra == 'tf'", specifier = ">2.9,<2.16" },
++    { name = "tensorflow-cpu", marker = "extra == 'tf-cpu'", specifier = ">2.9,<2.16" },
++    { name = "tensorflow-probability", marker = "extra == 'tf-cpu'", specifier = "<0.24" },
++    { name = "tensorflow-text", marker = "extra == 'all'", specifier = "<2.16" },
++    { name = "tensorflow-text", marker = "extra == 'dev'", specifier = "<2.16" },
++    { name = "tensorflow-text", marker = "extra == 'dev-tensorflow'", specifier = "<2.16" },
++    { name = "tensorflow-text", marker = "extra == 'tf'", specifier = "<2.16" },
++    { name = "tensorflow-text", marker = "extra == 'tf-cpu'", specifier = "<2.16" },
++    { name = "tf2onnx", marker = "extra == 'all'" },
++    { name = "tf2onnx", marker = "extra == 'dev'" },
++    { name = "tf2onnx", marker = "extra == 'dev-tensorflow'" },
++    { name = "tf2onnx", marker = "extra == 'onnx'" },
++    { name = "tf2onnx", marker = "extra == 'tf'" },
++    { name = "tf2onnx", marker = "extra == 'tf-cpu'" },
++    { name = "tiktoken", marker = "extra == 'tiktoken'" },
++    { name = "timeout-decorator", marker = "extra == 'deepspeed-testing'" },
++    { name = "timeout-decorator", marker = "extra == 'dev'" },
++    { name = "timeout-decorator", marker = "extra == 'dev-tensorflow'" },
++    { name = "timeout-decorator", marker = "extra == 'dev-torch'" },
++    { name = "timeout-decorator", marker = "extra == 'testing'" },
++    { name = "timm", marker = "extra == 'all'", specifier = "!=1.0.18,<=1.0.19" },
++    { name = "timm", marker = "extra == 'dev'", specifier = "!=1.0.18,<=1.0.19" },
++    { name = "timm", marker = "extra == 'dev-torch'", specifier = "!=1.0.18,<=1.0.19" },
++    { name = "timm", marker = "extra == 'timm'", specifier = "!=1.0.18,<=1.0.19" },
++    { name = "tokenizers", specifier = ">=0.22.0,<=0.23.0" },
++    { name = "tokenizers", marker = "extra == 'all'", specifier = ">=0.22.0,<=0.23.0" },
++    { name = "tokenizers", marker = "extra == 'dev'", specifier = ">=0.22.0,<=0.23.0" },
++    { name = "tokenizers", marker = "extra == 'dev-tensorflow'", specifier = ">=0.22.0,<=0.23.0" },
++    { name = "tokenizers", marker = "extra == 'dev-torch'", specifier = ">=0.22.0,<=0.23.0" },
++    { name = "tokenizers", marker = "extra == 'tokenizers'", specifier = ">=0.22.0,<=0.23.0" },
++    { name = "tokenizers", marker = "extra == 'torchhub'", specifier = ">=0.22.0,<=0.23.0" },
++    { name = "torch", marker = "extra == 'all'", specifier = ">=2.2" },
++    { name = "torch", marker = "extra == 'deepspeed-testing'", specifier = ">=2.2" },
++    { name = "torch", marker = "extra == 'dev'", specifier = ">=2.2" },
++    { name = "torch", marker = "extra == 'dev-tensorflow'", specifier = ">=2.2" },
++    { name = "torch", marker = "extra == 'dev-torch'", specifier = ">=2.2" },
++    { name = "torch", marker = "extra == 'serving'", specifier = ">=2.2" },
++    { name = "torch", marker = "extra == 'testing'", specifier = ">=2.2" },
++    { name = "torch", marker = "extra == 'torch'", specifier = ">=2.2" },
++    { name = "torch", marker = "extra == 'torchhub'", specifier = ">=2.2" },
++    { name = "torchaudio", marker = "extra == 'all'" },
++    { name = "torchaudio", marker = "extra == 'dev'" },
++    { name = "torchaudio", marker = "extra == 'dev-torch'" },
++    { name = "torchaudio", marker = "extra == 'speech'" },
++    { name = "torchaudio", marker = "extra == 'torch-speech'" },
++    { name = "torchvision", marker = "extra == 'all'" },
++    { name = "torchvision", marker = "extra == 'dev'" },
++    { name = "torchvision", marker = "extra == 'dev-torch'" },
++    { name = "torchvision", marker = "extra == 'torch-vision'" },
++    { name = "tqdm", specifier = ">=4.27" },
++    { name = "tqdm", marker = "extra == 'torchhub'", specifier = ">=4.27" },
++    { name = "unidic", marker = "extra == 'dev'", specifier = ">=1.0.2" },
++    { name = "unidic", marker = "extra == 'dev-torch'", specifier = ">=1.0.2" },
++    { name = "unidic", marker = "extra == 'ja'", specifier = ">=1.0.2" },
++    { name = "unidic-lite", marker = "extra == 'dev'", specifier = ">=1.0.7" },
++    { name = "unidic-lite", marker = "extra == 'dev-torch'", specifier = ">=1.0.7" },
++    { name = "unidic-lite", marker = "extra == 'ja'", specifier = ">=1.0.7" },
++    { name = "urllib3", marker = "extra == 'dev'", specifier = "<2.0.0" },
++    { name = "urllib3", marker = "extra == 'dev-tensorflow'", specifier = "<2.0.0" },
++    { name = "urllib3", marker = "extra == 'dev-torch'", specifier = "<2.0.0" },
++    { name = "urllib3", marker = "extra == 'quality'", specifier = "<2.0.0" },
++    { name = "uvicorn", marker = "extra == 'deepspeed-testing'" },
++    { name = "uvicorn", marker = "extra == 'dev'" },
++    { name = "uvicorn", marker = "extra == 'dev-tensorflow'" },
++    { name = "uvicorn", marker = "extra == 'dev-torch'" },
++    { name = "uvicorn", marker = "extra == 'serving'" },
++    { name = "uvicorn", marker = "extra == 'testing'" },
++]
++provides-extras = ["ja", "sklearn", "tf", "tf-cpu", "torch", "accelerate", "hf-xet", "retrieval", "flax", "tokenizers", "ftfy", "onnxruntime", "onnx", "modelcreation", "sagemaker", "deepspeed", "optuna", "ray", "sigopt", "hub-kernels", "integrations", "serving", "audio", "speech", "torch-speech", "tf-speech", "flax-speech", "vision", "timm", "torch-vision", "natten", "codecarbon", "video", "num2words", "sentencepiece", "tiktoken", "mistral-common", "chat-template", "testing", "deepspeed-testing", "ruff", "quality", "all", "dev-torch", "dev-tensorflow", "dev", "torchhub", "benchmark", "open-telemetry"]
+ 
+ [[package]]
+ name = "triton"
+@@ -2676,31 +3224,32 @@
+ 
+ [[package]]
+ name = "wandb"
+-version = "0.23.0"
++version = "0.30.0"
+ source = { registry = "https://pypi.org/simple" }
+ dependencies = [
+     { name = "click" },
+-    { name = "gitpython" },
++    { name = "opentelemetry-api" },
++    { name = "opentelemetry-exporter-otlp-proto-http" },
++    { name = "opentelemetry-sdk" },
+     { name = "packaging" },
+     { name = "platformdirs" },
+     { name = "protobuf" },
+     { name = "pydantic" },
+     { name = "pyyaml" },
+     { name = "requests" },
+-    { name = "sentry-sdk" },
+     { name = "typing-extensions" },
+-]
+-sdist = { url = "https://files.pythonhosted.org/packages/ef/8b/db2d44395c967cd452517311fd6ede5d1e07310769f448358d4874248512/wandb-0.23.0.tar.gz", hash = "sha256:e5f98c61a8acc3ee84583ca78057f64344162ce026b9f71cb06eea44aec27c93", size = 44413921, upload-time = "2025-11-11T21:06:30.737Z" }
+-wheels = [
+-    { url = "https://files.pythonhosted.org/packages/41/61/a3220c7fa4cadfb2b2a5c09e3fa401787326584ade86d7c1f58bf1cd43bd/wandb-0.23.0-py3-none-macosx_12_0_arm64.whl", hash = "sha256:b682ec5e38fc97bd2e868ac7615a0ab4fc6a15220ee1159e87270a5ebb7a816d", size = 18992250, upload-time = "2025-11-11T21:06:03.412Z" },
+-    { url = "https://files.pythonhosted.org/packages/90/16/e69333cf3d11e7847f424afc6c8ae325e1f6061b2e5118d7a17f41b6525d/wandb-0.23.0-py3-none-macosx_12_0_x86_64.whl", hash = "sha256:ec094eb71b778e77db8c188da19e52c4f96cb9d5b4421d7dc05028afc66fd7e7", size = 20045616, upload-time = "2025-11-11T21:06:07.109Z" },
+-    { url = "https://files.pythonhosted.org/packages/62/79/42dc6c7bb0b425775fe77f1a3f1a22d75d392841a06b43e150a3a7f2553a/wandb-0.23.0-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:4e43f1f04b98c34f407dcd2744cec0a590abce39bed14a61358287f817514a7b", size = 18758848, upload-time = "2025-11-11T21:06:09.832Z" },
+-    { url = "https://files.pythonhosted.org/packages/b8/94/d6ddb78334996ccfc1179444bfcfc0f37ffd07ee79bb98940466da6f68f8/wandb-0.23.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6e5847f98cbb3175caf5291932374410141f5bb3b7c25f9c5e562c1988ce0bf5", size = 20231493, upload-time = "2025-11-11T21:06:12.323Z" },
+-    { url = "https://files.pythonhosted.org/packages/52/4d/0ad6df0e750c19dabd24d2cecad0938964f69a072f05fbdab7281bec2b64/wandb-0.23.0-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:6151355fd922539926e870be811474238c9614b96541773b990f1ce53368aef6", size = 18793473, upload-time = "2025-11-11T21:06:14.967Z" },
+-    { url = "https://files.pythonhosted.org/packages/f8/da/c2ba49c5573dff93dafc0acce691bb1c3d57361bf834b2f2c58e6193439b/wandb-0.23.0-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:df62e426e448ebc44269140deb7240df474e743b12d4b1f53b753afde4aa06d4", size = 20332882, upload-time = "2025-11-11T21:06:17.865Z" },
+-    { url = "https://files.pythonhosted.org/packages/40/65/21bfb10ee5cd93fbcaf794958863c7e05bac4bbeb1cc1b652094aa3743a5/wandb-0.23.0-py3-none-win32.whl", hash = "sha256:6c21d3eadda17aef7df6febdffdddfb0b4835c7754435fc4fe27631724269f5c", size = 19433198, upload-time = "2025-11-11T21:06:21.913Z" },
+-    { url = "https://files.pythonhosted.org/packages/f1/33/cbe79e66c171204e32cf940c7fdfb8b5f7d2af7a00f301c632f3a38aa84b/wandb-0.23.0-py3-none-win_amd64.whl", hash = "sha256:b50635fa0e16e528bde25715bf446e9153368428634ca7a5dbd7a22c8ae4e915", size = 19433201, upload-time = "2025-11-11T21:06:24.607Z" },
+-    { url = "https://files.pythonhosted.org/packages/1c/a0/5ecfae12d78ea036a746c071e4c13b54b28d641efbba61d2947c73b3e6f9/wandb-0.23.0-py3-none-win_arm64.whl", hash = "sha256:fa0181b02ce4d1993588f4a728d8b73ae487eb3cb341e6ce01c156be7a98ec72", size = 17678649, upload-time = "2025-11-11T21:06:27.289Z" },
++    { name = "xxhash" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/86/10/c4481d12b26f57606d1ef7c8d56825ad6af769cbb8cd29ee501ac6bbbc2d/wandb-0.30.0.tar.gz", hash = "sha256:f2d7de3c2019204f493f3f9e9166071c2be36f74140af2e1409b4de0fd84c454", size = 40862616, upload-time = "2026-09-09T00:16:41.551Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/71/5a/83201590d1e84a3b7d0a0cc7b53ee1318def18ba5431a32b26a44e6694f6/wandb-0.30.0-py3-none-macosx_13_0_arm64.whl", hash = "sha256:f4f908ace761db42d239d100230df0b77eb9684924d962a762bba176d829a236", size = 23464329, upload-time = "2026-09-09T00:16:20.505Z" },
++    { url = "https://files.pythonhosted.org/packages/35/b6/c0acf63242a0b8a3df9f877249ca260be80b86ecb08396fc34982967a50e/wandb-0.30.0-py3-none-macosx_13_0_x86_64.whl", hash = "sha256:9cf2492acd5c66ba7217667386e2a90535ccaec08079b97c389c3da5d15cde48", size = 25250085, upload-time = "2026-09-09T00:16:23.401Z" },
++    { url = "https://files.pythonhosted.org/packages/91/69/0593b9e43cd3fc257a0f6ceaf5e078f2b28baf1968e00dfa1be98261ee68/wandb-0.30.0-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:72b564712e85e10d78d37ccdaef4a908d28cbb39240c9c00fa4dde567150c764", size = 24049519, upload-time = "2026-09-09T00:16:25.874Z" },
++    { url = "https://files.pythonhosted.org/packages/26/13/775a4c7d87fb771a2ddb104ce7c5c5d393e48720e448b4e8c43aac7cd4ce/wandb-0.30.0-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:bad9412f137d02303bf178513e0109f4fed37a6c817604085a1a4151047d8790", size = 26105520, upload-time = "2026-09-09T00:16:28.146Z" },
++    { url = "https://files.pythonhosted.org/packages/58/36/4974e9ec44c23dd28a39c8ee699f1b8911dd6619c932c3fe94b016bc8a1f/wandb-0.30.0-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:1f2cc20c033f1650d387ca073177e629f1e2a1b5c4be393698e3db4752b9cf3a", size = 24112309, upload-time = "2026-09-09T00:16:30.3Z" },
++    { url = "https://files.pythonhosted.org/packages/05/77/5eddd97f33f581f4d167f41bbf4736f2a51ad7271b9c9ed5dceb6994cbd6/wandb-0.30.0-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:e7dc3b0b1567f6a121d8f7a58131b5d085861139a653ef8bed1569c9be796721", size = 26320243, upload-time = "2026-09-09T00:16:32.878Z" },
++    { url = "https://files.pythonhosted.org/packages/2f/e7/821c363f0a74aa9826ca058d3f6f8f8e41697001a0a869b5ccc7eca5b0e4/wandb-0.30.0-py3-none-win_amd64.whl", hash = "sha256:217bde0a7c49482f26166a1a7bee760bb9e2658135b2d45a33aacabffec68817", size = 24083356, upload-time = "2026-09-09T00:16:36.766Z" },
++    { url = "https://files.pythonhosted.org/packages/3a/60/fd40e8b1a6136f4df97739a503c239fb4dab67f093cb9cccb5a1dd9d1895/wandb-0.30.0-py3-none-win_arm64.whl", hash = "sha256:36d6d8a5b88b36ad82b0f7ffab79033a8bbba047b5a90c0b7e26d0cf3a09f0b6", size = 21788859, upload-time = "2026-09-09T00:16:39.088Z" },
+ ]
+ 
+ [[package]]

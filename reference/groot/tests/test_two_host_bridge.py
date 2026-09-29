@@ -430,6 +430,8 @@ class TwoHostBridgeTests(unittest.TestCase):
             "[Service]\n"
             f"WorkingDirectory={home}/groot_shadow/Isaac-GR00T\n"
             f"EnvironmentFile={home}/.config/pgfr-spine/groot/%i.env\n"
+            "Environment=TORCH_FORCE_WEIGHTS_ONLY_LOAD=1\n"
+            "UnsetEnvironment=TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD\n"
             f"ExecStartPre={ROOT}/ops/verify-groot-models.sh "
             "${MODEL_PATH} ${PGFR_CHECKPOINT_FINGERPRINT}\n"
             f"ExecStart={home}/groot_shadow/Isaac-GR00T/.venv/bin/python "
@@ -492,6 +494,20 @@ class TwoHostBridgeTests(unittest.TestCase):
                 "PATH": f"{fake_bin}:{environment['PATH']}",
             }
         )
+        policy_unit.write_text(
+            policy_source.replace("Environment=TORCH_FORCE_WEIGHTS_ONLY_LOAD=1\n", ""),
+            encoding="utf-8",
+        )
+        refused = subprocess.run(
+            ("bash", str(THOR_INSTALLER_PATH), "--checkpoint-path", str(model)),
+            capture_output=True, text=True, env=environment,
+        )
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("Environment=TORCH_FORCE_WEIGHTS_ONLY_LOAD=1", refused.stderr)
+        self.assertFalse((config / "pgfr-spine" / "groot").exists())
+        self.assertFalse(port_probe_log.exists())
+        policy_unit.write_text(policy_source, encoding="utf-8")
+        systemctl_log.write_text("", encoding="utf-8")
         for _ in range(2):
             subprocess.run(
                 ("bash", str(THOR_INSTALLER_PATH), "--checkpoint-path", str(model)),

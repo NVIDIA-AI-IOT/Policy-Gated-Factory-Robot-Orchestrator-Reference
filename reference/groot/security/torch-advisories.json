@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-09-28",
+  "scope": "The pinned GR00T inference and training paths used by this reference. This assessment does not apply to arbitrary applications using the same Torch installation.",
+  "decision": {
+    "selection": "Retain the current Torch runtimes and document application applicability.",
+    "authorized_by": "Project owner",
+    "reason": "Preserve the qualified GR00T, CUDA and native-extension compatibility.",
+    "package_fixes_applied": false,
+    "scanner_disposition": "These findings remain library findings; applicability evidence requires release/security review and is not scanner clearance."
+  },
+  "retained_profiles": [
+    {
+      "profile": "Thor inference",
+      "torch": "2.10.0",
+      "platform": "aarch64, CPython 3.12, CUDA 13.0",
+      "source_commit": "449b1768410104d3ed79d3bcfe4ba1d65c7f22c0"
+    },
+    {
+      "profile": "Workstation training",
+      "torch": "2.7.1+cu128",
+      "platform": "Linux x86_64, CUDA 12.8"
+    }
+  ],
+  "validation_scope": {
+    "method": "Isolated CPU reproductions with Torch 2.10.0+cpu and Torch 2.7.1+cpu, plus exact-version upstream source review.",
+    "limitation": "The invalid-input reproducers were not executed against the live GPU services. CPU behavior and common source establish affected code; they do not substitute for GPU compatibility testing."
+  },
+  "groot_revision": "e5749287857afd97b78f1147166137de29746392",
+  "groot_sources": {
+    "policy_loading": {
+      "path": "gr00t/policy/gr00t_policy.py",
+      "line": 100,
+      "symbol": "Gr00tPolicy.__init__: AutoModel.from_pretrained, then model.to(dtype=torch.bfloat16) at line 102",
+      "sha256": "a357118ddb448c4533de165de7ce8c077d630a5e9f4ce74ba5db6f2fdc0cca6e",
+      "url": "https://github.com/NVIDIA/Isaac-GR00T/blob/e5749287857afd97b78f1147166137de29746392/gr00t/policy/gr00t_policy.py#L100"
+    },
+    "backbone_loading": {
+      "path": "gr00t/model/modules/qwen3_backbone.py",
+      "line": 149,
+      "symbol": "Qwen3 backbone: torch_dtype=torch.bfloat16 when loading BF16",
+      "sha256": "6fe2edc2c6cc563e9e5d82aa26abd3e7c58c60ca5b50c369bf83c9302ac13cd2",
+      "url": "https://github.com/NVIDIA/Isaac-GR00T/blob/e5749287857afd97b78f1147166137de29746392/gr00t/model/modules/qwen3_backbone.py#L149"
+    },
+    "profiling_default": {
+      "path": "gr00t/configs/training/training_config.py",
+      "line": 118,
+      "symbol": "TrainingConfig.enable_profiling=False",
+      "sha256": "53b7a9a5169b418065ed1f5d0116f3cf890bfce4533b0ab4b029fb6d8ec4d0cc",
+      "url": "https://github.com/NVIDIA/Isaac-GR00T/blob/e5749287857afd97b78f1147166137de29746392/gr00t/configs/training/training_config.py#L118"
+    },
+    "optional_profiling": {
+      "path": "gr00t/experiment/experiment.py",
+      "line": 317,
+      "symbol": "Conditional torch.profiler.profile around Trainer.train; no user-provided future or record handle",
+      "sha256": "a5d99f743472896123fe4b79bfc72fde99117f88e02adb086a32f1d0fe5d20d4",
+      "url": "https://github.com/NVIDIA/Isaac-GR00T/blob/e5749287857afd97b78f1147166137de29746392/gr00t/experiment/experiment.py#L317"
+    }
+  },
+  "advisories": [
+    {
+      "cve": "CVE-2025-2149",
+      "reported_severity": "Medium",
+      "severity_source": "Provided nSpect report",
+      "status": "library remains affected, application exposure assessed",
+      "trigger": "Save state_dict() from torch.ao.nn.quantized.Sigmoid(0.1, 5), then load it into Sigmoid(0.5, 10). The empty state dict omits output_scale and output_zero_point, so the new module retains 0.5 and 10.",
+      "torch_source": "torch/ao/nn/quantized/modules/activation.py:Sigmoid",
+      "observed_result": "Both reviewed CPU versions retain the incorrect destination quantization parameters after load_state_dict.",
+      "application_assessment": "The GR00T policy uses BF16 inference and the reviewed GR00T model/training sources contain no quantized Sigmoid usage. Its checkpoint path does not instantiate the affected module.",
+      "exposure_not_demonstrated": true,
+      "upstream_status": "Issue 147818 remains open; no upstream fix was established during this review.",
+      "references": [
+        "https://github.com/pytorch/pytorch/issues/147818",
+        "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2025/2xxx/CVE-2025-2149.json"
+      ],
+      "remaining_fix_scope": "A versioned quantized-Sigmoid state serialization fix is needed in Torch. Legacy empty state dictionaries lack the original parameters and cannot be repaired automatically."
+    },
+    {
+      "cve": "CVE-2025-2148",
+      "reported_severity": "Low",
+      "severity_source": "Provided nSpect report",
+      "status": "library remains affected, application exposure assessed",
+      "trigger": "Directly call torch.ops.profiler._call_end_callbacks_on_jit_fut(torch.tensor(0), None). The native callback helper dereferences the null Future at fut->then.",
+      "torch_source": "torch/csrc/autograd/record_function_ops.cpp:_call_end_callbacks_on_fut",
+      "observed_result": "Both reviewed CPU versions exited with SIGSEGV in disposable subprocesses with core dumps disabled.",
+      "application_assessment": "No direct call to the affected private operator or request mapping that supplies external future/record-handle inputs was identified in PGFR or pinned GR00T inference/training code. Optional GR00T training profiling is disabled by default; when enabled, it uses torch.profiler.profile around Trainer.train.",
+      "exposure_not_demonstrated": true,
+      "upstream_status": "Issue 147722 remains open; no upstream fix was established during this review.",
+      "references": [
+        "https://github.com/pytorch/pytorch/issues/147722",
+        "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2025/2xxx/CVE-2025-2148.json"
+      ],
+      "remaining_fix_scope": "A native null-Future validation fix requires a matched Torch/libtorch rebuild and separate CUDA/extension qualification; no rebuild is included."
+    }
+  ],
+  "limitations": [
+    "Absence of a direct call in the reviewed code is not proof that every indirect library path or custom model is unaffected.",
+    "Anyone able to execute arbitrary Python in the process can invoke the affected Torch APIs directly.",
+    "Reassess when changing GR00T revisions, checkpoint architecture or quantization, exposing new profiler/RPC inputs, or receiving an upstream fix.",
+    "CVE-2026-4538 is handled separately by the documented process-scoped weights-only loading mitigation; that control does not fix these two findings."
+  ]
+}

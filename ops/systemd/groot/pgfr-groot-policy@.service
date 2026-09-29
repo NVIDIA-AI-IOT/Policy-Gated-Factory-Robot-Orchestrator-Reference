@@ -12,6 +12,9 @@ Type=simple
 WorkingDirectory=__PGFR_HOME__/groot_shadow/Isaac-GR00T
 EnvironmentFile=__PGFR_HOME__/.config/pgfr-spine/groot/%i.env
 Environment=PYTHONUNBUFFERED=1
+# Reject unsafe pickle fallback, including torch.export.load archives.
+Environment=TORCH_FORCE_WEIGHTS_ONLY_LOAD=1
+UnsetEnvironment=TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD
 Environment=NO_ALBUMENTATIONS_UPDATE=1
 Environment=HF_HUB_OFFLINE=1
 Environment=TRANSFORMERS_OFFLINE=1

@@ -74,6 +74,12 @@ for name in install_deps.sh pyproject.toml uv.lock; do
   install -m 0644 "$THOR/$name" "$tmp/scripts/deployment/thor/$name"
 done
 chmod 0755 "$tmp/scripts/deployment/thor/install_deps.sh"
+# Keep dependency security patches with the prepared checkout. Build immutable
+# local wheels before publishing it; frozen sync resolves only these artifacts.
+cp -R "$REPO/reference/groot/security" "$tmp/scripts/deployment/security"
+python3 "$tmp/scripts/deployment/security/build_security_wheels.py" \
+  --manifest "$tmp/scripts/deployment/security/manifest.json" \
+  --output-dir "$tmp/scripts/deployment/thor/wheels/security"
 actual_patch="$(git -C "$tmp" diff --binary "$REVISION" -- gr00t | sha256sum | cut -d' ' -f1)"
 [ "$actual_patch" = "$PATCH_SHA256" ] || fail "prepared GR00T source differs from the pinned patch"
 mv -T "$tmp" "$DEST"

@@ -5,7 +5,7 @@
 CI uses:
 
 - Ubuntu 24.04;
-- Python 3.12.3;
+- Python 3.12.3 (and Python 3.10 for training dependency regressions);
 - Node.js 22.22.3; and
 - uv 0.11.32.
 
@@ -72,6 +72,11 @@ and strict Mypy for all PGFR Spine source and tests:
 uv run --frozen --project pgfr-spine ruff check pgfr-spine skills ops/validate-packages.py
 (cd pgfr-spine && uv run --frozen mypy)
 ```
+
+Model dependency security checks run on CPU against both the Thor and
+workstation training baselines. Rebuild the hash-pinned wheels before checking
+the Thor lock; see [security patch validation](reference/groot/security/README.md)
+and the `model-dependency-security` CI job for the complete commands.
 
 Build and validate all seven Python distributions with:
 

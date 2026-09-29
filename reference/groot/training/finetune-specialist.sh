@@ -30,6 +30,9 @@ esac
 }
 
 EXPERIMENT_NAME="droid15_dual_${COLOR}_expert168_droid1f_steps1000"
+# Keep checkpoint loading restricted even if a library requests unsafe pickle.
+export TORCH_FORCE_WEIGHTS_ONLY_LOAD=1
+unset TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD
 exec "$PYTHON" gr00t/experiment/launch_finetune.py \
   --base_model_path "$BASE_MODEL_PATH" \
   --dataset_path "$DATASET_PATH" \

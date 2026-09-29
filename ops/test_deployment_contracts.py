@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -93,6 +94,29 @@ def test_python_lock_identities_exactly_match_third_party_notices() -> None:
     )
     assert heading is not None
     assert int(heading.group(1)) == len(lock_identities)
+
+
+def test_model_security_manifests_match_installer_locks_and_assets() -> None:
+    security = ROOT / "reference/groot/security"
+    lock = tomllib.loads(text("reference/groot/thor/uv.lock"))
+    packages = {package["name"]: package for package in lock["package"]}
+    for filename in ("manifest.json", "manifest-training.json"):
+        manifest = json.loads((security / filename).read_text())
+        assets = []
+        for entry in manifest["packages"]:
+            assets.extend((entry["patch"], entry["notice"]))
+            if filename == "manifest.json":
+                package = packages[entry["name"]]
+                assert package["version"] == entry["version"]
+                assert package["source"] == {"path": "wheels/security/" + entry["wheel"]["filename"]}
+                assert package["wheels"] == [{
+                    "filename": entry["wheel"]["filename"],
+                    "hash": "sha256:" + entry["wheel"]["sha256"],
+                }]
+        if "training_project" in manifest:
+            assets.append(manifest["training_project"]["patch"])
+        for asset in assets:
+            assert hashlib.sha256((security / asset["path"]).read_bytes()).hexdigest() == asset["sha256"]
 
 
 def test_canonical_guide_installs_before_starting() -> None:
@@ -389,6 +413,9 @@ printf '51ca0f19912b264a1e5091e94e45ea8bb0d719a0fefacb9fb1e7b44bef1e98f5  -\\n'
     ]
     assert (destination / "scripts" / "deployment" / "thor" / "uv.lock").is_file()
     assert not (destination / "scripts" / "deployment" / "thor" / "Dockerfile").exists()
+    security = destination / "scripts" / "deployment" / "security"
+    assert (security / "manifest.json").is_file()
+    assert (security / "build_security_wheels.py").is_file()
     assert not any(destination.glob(".groot-source.*"))
 
 
@@ -513,6 +540,57 @@ def test_mutating_deployment_tools_call_the_legacy_guard() -> None:
         assert "pgfr_refuse_active_legacy_units" in text(relative)
     for relative in container_guarded:
         assert "pgfr_refuse_active_legacy_containers" in text(relative)
+
+
+def test_floor_bootstrap_selects_locked_ros_image_dependencies(tmp_path: Path) -> None:
+    """Exercise floor setup without invoking uv, ROS, or a host package manager."""
+    project = tomllib.loads(text("pgfr-spine/pyproject.toml"))
+    assert set(project["project"]["optional-dependencies"]["ros"]) == {
+        "numpy==1.26.4", "Pillow==12.3.0"
+    }
+    lock = tomllib.loads(text("pgfr-spine/uv.lock"))
+    packages = {package["name"]: package for package in lock["package"]}
+    assert packages["numpy"]["version"] == "1.26.4"
+    assert packages["pillow"]["version"] == "12.3.0"
+    spine = packages["policy-gated-factory-robot-orchestrator-reference"]
+    assert {entry["name"] for entry in spine["optional-dependencies"]["ros"]} == {
+        "numpy", "pillow"
+    }
+
+    repo = tmp_path / "repo"
+    floor = repo / "pgfr-spine"
+    floor.mkdir(parents=True)
+    log = tmp_path / "uv-calls.jsonl"
+    fake_uv = tmp_path / "uv"
+    fake_uv.write_text(
+        f"#!{sys.executable}\n"
+        "import json, os, pathlib, sys\n"
+        "with open(os.environ['PGFR_TEST_UV_LOG'], 'a') as stream:\n"
+        "    stream.write(json.dumps({'argv': sys.argv[1:], 'venv': os.environ.get('VIRTUAL_ENV')}) + '\\n')\n"
+        "if sys.argv[1] == 'venv':\n"
+        "    env = pathlib.Path(sys.argv[-1])\n"
+        "    env.mkdir()\n"
+        "    (env / 'pyvenv.cfg').write_text('include-system-site-packages = true\\n')\n"
+    )
+    fake_uv.chmod(0o755)
+    source = text("ops/bootstrap-brain.sh")
+    function = source[source.index("sync_floor_project() {") : source.index("\nrender() {")]
+    # The second call also checks the existing ROS-enabled environment path.
+    subprocess.run(
+        ["/bin/bash", "-c", "set -euo pipefail\n" + function
+         + "\nsync_floor_project\nsync_floor_project\n"],
+        env={"PATH": "/usr/bin:/bin", "REPO": str(repo), "UV_BIN": str(fake_uv),
+             "PGFR_TEST_UV_LOG": str(log)},
+        check=True, text=True, capture_output=True,
+    )
+    calls = [json.loads(line) for line in log.read_text().splitlines()]
+    assert calls[0]["argv"] == [
+        "venv", "--python", "python3.12", "--system-site-packages", str(floor / ".venv")
+    ]
+    assert calls[1:] == [{
+        "argv": ["sync", "--active", "--frozen", "--extra", "ros", "--project", str(floor)],
+        "venv": str(floor / ".venv"),
+    }] * 2
 
 
 def test_brain_bootstrap_seeds_one_shared_openclaw_gateway_token() -> None:

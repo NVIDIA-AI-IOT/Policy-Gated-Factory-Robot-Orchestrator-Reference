@@ -86,6 +86,8 @@ require_text() {
 
 require_line "$POLICY_UNIT" "WorkingDirectory=$PGFR_USER_HOME/groot_shadow/Isaac-GR00T"
 require_line "$POLICY_UNIT" "EnvironmentFile=$PGFR_USER_HOME/.config/pgfr-spine/groot/%i.env"
+require_line "$POLICY_UNIT" "Environment=TORCH_FORCE_WEIGHTS_ONLY_LOAD=1"
+require_line "$POLICY_UNIT" "UnsetEnvironment=TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"
 require_text "$POLICY_UNIT" "ExecStart=$PGFR_USER_HOME/groot_shadow/Isaac-GR00T/.venv/bin/python gr00t/eval/run_gr00t_server.py"
 require_text "$POLICY_UNIT" "--host 127.0.0.1"
 require_text "$POLICY_UNIT" '--port ${POLICY_PORT} --model-path ${MODEL_PATH}'

@@ -147,7 +147,11 @@ def main():
         "checkpoint": str(output / f"checkpoint-{args.max_steps}"),
         "validation": "Input metadata only; no behavioral qualification implied",
     }, indent=2) + "\n")
-    subprocess.run(command, cwd=groot_root, check=True)
+    environment = os.environ.copy()
+    # Keep checkpoint loading restricted even if a library requests unsafe pickle.
+    environment["TORCH_FORCE_WEIGHTS_ONLY_LOAD"] = "1"
+    environment.pop("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", None)
+    subprocess.run(command, cwd=groot_root, env=environment, check=True)
 
 
 if __name__ == "__main__":

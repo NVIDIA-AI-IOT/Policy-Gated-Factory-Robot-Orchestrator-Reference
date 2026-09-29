@@ -100,7 +100,7 @@ sync_floor_project() {
   elif ! grep -q '^include-system-site-packages = true$' "$project/.venv/pyvenv.cfg"; then
     fail "$project/.venv does not expose system ROS packages; move it aside and rerun --install"
   fi
-  VIRTUAL_ENV="$project/.venv" "$UV_BIN" sync --active --frozen --project "$project"
+  VIRTUAL_ENV="$project/.venv" "$UV_BIN" sync --active --frozen --extra ros --project "$project"
 }
 
 render() {

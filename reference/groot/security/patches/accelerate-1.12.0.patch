@@ -1,0 +1,106 @@
+--- a/accelerate/__init__.py
++++ b/accelerate/__init__.py
+@@ -11,7 +11,9 @@
+ # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ # See the License for the specific language governing permissions and
+ # limitations under the License.
+-__version__ = "1.12.0"
++#
++# PGFR security changes, 2026-09-27. See NOTICE-PGFR for changes and provenance.
++__version__ = "1.12.0+pgfr.security1"
+ 
+ from .accelerator import Accelerator
+ from .big_modeling import (
+--- a/accelerate/utils/modeling.py
++++ b/accelerate/utils/modeling.py
+@@ -11,12 +11,15 @@
+ # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ # See the License for the specific language governing permissions and
+ # limitations under the License.
++#
++# PGFR security changes, 2026-09-27. See NOTICE-PGFR for changes and provenance.
+ 
+ import contextlib
+ import gc
+ import inspect
+ import json
+ import logging
++import ntpath
+ import os
+ import re
+ import shutil
+@@ -1785,6 +1788,62 @@
+     return state_dict
+ 
+ 
++def _resolve_checkpoint_shards(index, checkpoint_folder):
++    """Validate shard paths and file types before opening checkpoint weights.
++
++    Accept ordinary contained files and the Hugging Face Hub's content-addressed
++    snapshot-to-blob symlinks. The checkpoint/cache must not be writable by an
++    untrusted process while loading; this check is not a filesystem sandbox.
++    """
++    if not isinstance(index, dict):
++        raise ValueError("The checkpoint index must be a JSON object.")
++    weight_map = index.get("weight_map", index)
++    if not isinstance(weight_map, dict) or not weight_map:
++        raise ValueError("The checkpoint weight_map must be a non-empty JSON object.")
++    for shard in weight_map.values():
++        if not isinstance(shard, str) or not shard or "\0" in shard:
++            raise ValueError("Every checkpoint shard name must be a non-empty string.")
++
++    checkpoint_folder = os.path.realpath(checkpoint_folder)
++    snapshot_folder = checkpoint_folder
++    blob_folder = None
++    while True:
++        snapshot_parent = os.path.dirname(snapshot_folder)
++        if os.path.basename(snapshot_parent) == "snapshots" and re.fullmatch(
++            r"[0-9a-f]{40}", os.path.basename(snapshot_folder)
++        ):
++            blob_folder = os.path.join(os.path.dirname(snapshot_parent), "blobs")
++            break
++        if snapshot_parent == snapshot_folder:
++            break
++        snapshot_folder = snapshot_parent
++
++    checkpoint_files = []
++    for shard in sorted(set(weight_map.values())):
++        if (
++            ntpath.splitdrive(shard)[0]
++            or os.path.isabs(shard)
++            or "\\" in shard
++            or ".." in shard.split("/")
++        ):
++            raise ValueError(f"Unsafe checkpoint shard path: {shard!r}")
++        candidate = os.path.join(checkpoint_folder, shard)
++        resolved = os.path.realpath(candidate)
++        contained = os.path.commonpath([checkpoint_folder, resolved]) == checkpoint_folder
++        hub_blob = (
++            blob_folder is not None
++            and os.path.islink(candidate)
++            and os.path.dirname(resolved) == blob_folder
++            and re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", os.path.basename(resolved))
++        )
++        if not contained and not hub_blob:
++            raise ValueError(f"Checkpoint shard escapes its directory: {shard!r}")
++        if not os.path.isfile(candidate):
++            raise ValueError(f"Checkpoint shard must be a regular file: {shard!r}")
++        checkpoint_files.append(candidate)
++    return checkpoint_files
++
++
+ def load_checkpoint_in_model(
+     model: nn.Module,
+     checkpoint: Union[str, os.PathLike],
+@@ -1909,10 +1968,7 @@
+         with open(index_filename) as f:
+             index = json.loads(f.read())
+ 
+-        if "weight_map" in index:
+-            index = index["weight_map"]
+-        checkpoint_files = sorted(list(set(index.values())))
+-        checkpoint_files = [os.path.join(checkpoint_folder, f) for f in checkpoint_files]
++        checkpoint_files = _resolve_checkpoint_shards(index, checkpoint_folder)
+ 
+     # Logic for missing/unexepected keys goes here.
+ 

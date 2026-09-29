@@ -53,6 +53,9 @@ docker-compose.override.yml
 docker-compose.extra.yml
 docker-compose.sandbox.yml
 
+# Locally rebuilt third-party security wheels (source patches are tracked).
+/reference/groot/thor/wheels/security/
+
 # Local runs, downloaded archives, and scratch evidence
 /runs/
 /data/rtt.jsonl

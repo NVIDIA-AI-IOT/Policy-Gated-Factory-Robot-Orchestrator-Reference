@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "packages": [
+    {
+      "name": "accelerate",
+      "base_version": "1.12.0",
+      "version": "1.12.0+pgfr.security1",
+      "upstream": {
+        "filename": "accelerate-1.12.0-py3-none-any.whl",
+        "url": "https://files.pythonhosted.org/packages/9f/d2/c581486aa6c4fbd7394c23c47b83fa1a919d34194e16944241daf9e762dd/accelerate-1.12.0-py3-none-any.whl",
+        "sha256": "3e2091cd341423207e2f084a6654b1efcd250dc326f2a37d6dde446e07cabb11"
+      },
+      "patch": {
+        "path": "patches/accelerate-1.12.0.patch",
+        "sha256": "a060aa43ea5b56d718d503d8ce5919578a7c76e2add485853b6e6fcf9738a3b7",
+        "files": {
+          "accelerate/__init__.py": {
+            "before": "0da668fb3b65d0810aa84b418d4cf68cb4fea914025ebeb3f242ce940d6efab3",
+            "after": "11922a410560fa577c83b7d25e3048d204d6e8c86f5dee558b1febd5308f36b9"
+          },
+          "accelerate/utils/modeling.py": {
+            "before": "421a88fba25d6a50791fb54ea52e7eefd3beb678d1a131055176c09a87e820d6",
+            "after": "1060c8859575e4d8f30c46620b532893bcd5d65e2546510fb7f6f9fceb9d9c0f"
+          }
+        }
+      },
+      "notice": {
+        "path": "notices/accelerate.txt",
+        "sha256": "503fab3ad522d5886890f6cfa898d538833ef0cb1d2622a0ff444b74d350fa8e"
+      },
+      "wheel": {
+        "filename": "accelerate-1.12.0+pgfr.security1-py3-none-any.whl",
+        "sha256": "b3daca411a10bc647f1cef63ac16e28534f6ef00a6de752487a67590169d0a50"
+      }
+    },
+    {
+      "name": "transformers",
+      "base_version": "4.57.6",
+      "version": "4.57.6+pgfr.security1",
+      "upstream": {
+        "filename": "transformers-4.57.6-py3-none-any.whl",
+        "url": "https://files.pythonhosted.org/packages/03/b8/e484ef633af3887baeeb4b6ad12743363af7cce68ae51e938e00aaa0529d/transformers-4.57.6-py3-none-any.whl",
+        "sha256": "4c9e9de11333ddfe5114bc872c9f370509198acf0b87a832a0ab9458e2bd0550"
+      },
+      "patch": {
+        "path": "patches/transformers-4.57.6.patch",
+        "sha256": "f0ddedcfd7c707abc720639bfb9667a83cbb50fdbf5721abcd05e30abe64950c",
+        "files": {
+          "transformers/__init__.py": {
+            "before": "aa8cb54da488cf43ba37b9955bb6c0d84d2000db0306f6a5f1c20b6842482d04",
+            "after": "1e92694015e136dffa55151285e46ad3b5240bab4e15a3866be45adc7b3c7f53"
+          },
+          "transformers/trainer.py": {
+            "before": "c3eac8fa28bda6330fd4dee131e7fe7d9bdc0fa35d9de944fce52cb97b379bab",
+            "after": "c0bb27cf9e22ef3b020f6329d2efd6b5af171c2c15e8556835ad5bb92aa0f3b4"
+          },
+          "transformers/configuration_utils.py": {
+            "before": "08a3889c1b8a73d340a37c93f72346ee0e385e339b7a72a03b5c026d4943baf7",
+            "after": "07d12bebe6a70208a185c56cd58e2cb7758a9b811baf48a0967f6d999b48734e"
+          },
+          "transformers/processing_utils.py": {
+            "before": "6c29de5c3fc674cf21ba6377a39cbafb2ba3e4bc2d1202d4b944f8cf840e6f33",
+            "after": "dc7f78e85363f58ea94b99b2e357c25164e28ed4faea2dc879574b7889080560"
+          },
+          "transformers/tokenization_utils_base.py": {
+            "before": "a2d62f7e5d58f908b3a2d0b24ce6329e1e52c815082cedde29a5c007a23e7e83",
+            "after": "4568fdc472c3f1a8ff5b596ac8792625eaccaaa13bbb21e9d3db18734716bd63"
+          },
+          "transformers/integrations/hub_kernels.py": {
+            "before": "845f33ef26be915f62efa82aaf3695bf26e6e165eb5e49a2542ae4fc69ea154b",
+            "after": "e1c49b3653c5c519e4aaf42c9a9ee73fc819b43c2edf7db2e55512b0878a2e88"
+          },
+          "transformers/models/lightglue/modular_lightglue.py": {
+            "before": "ed6e0f5e178a65cd45506d8e9a4d9ce79593b0139d4d1b563fbc8944610ac65c",
+            "after": "7963c178c900899fa3a45f7b8a759f49eb603a8a696dc6ea3f6f6466138ff4d4"
+          },
+          "transformers/models/lightglue/modeling_lightglue.py": {
+            "before": "2aa47ee7ce82ef28845495275c53366d9d57d4e2676b4b8be7074a5966586843",
+            "after": "895b031cd49c919dd82bc8f63b9cf2f73dfe40ac586ffcf6337dca30abb2ffed"
+          },
+          "transformers/models/lightglue/configuration_lightglue.py": {
+            "before": "8e28c9b208e564467e312640450d64294896ff5554e41f855651c6b71597e1b7",
+            "after": "75da9ddd223c62ff22991edb31e5598f571e115865d40e593a52b0f47f6d1914"
+          },
+          "transformers/models/deprecated/transfo_xl/tokenization_transfo_xl.py": {
+            "before": "3dc50407613f664ac20e2c96871b556870b7a1ae831c40507e36bbd9567ae5b0",
+            "after": "f043829dc7050d000681219caf7bf27124ec2bd1d7fe731e12a5ec4a321095bf"
+          }
+        }
+      },
+      "notice": {
+        "path": "notices/transformers.txt",
+        "sha256": "426b02efad3777f756dee05405f77021fec225ac87c9e80837b432460c6aebc8"
+      },
+      "wheel": {
+        "filename": "transformers-4.57.6+pgfr.security1-py3-none-any.whl",
+        "sha256": "b7caef60e065685358a95a0fd143e255a408bfbf3ea4f1419d5d01e38969a770"
+      }
+    }
+  ]
+}

@@ -25,6 +25,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Keep the camera codec inside the service environment instead of inheriting
+# an unpinned Pillow from the host ROS installation.
+ros = ["numpy==1.26.4", "Pillow==12.3.0"]
 dev = [
   "pytest>=8.0,<9",
   "pytest-asyncio>=0.23,<1",

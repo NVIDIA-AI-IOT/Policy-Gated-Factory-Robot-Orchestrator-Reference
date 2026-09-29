@@ -1,0 +1,332 @@
+--- a/transformers/__init__.py
++++ b/transformers/__init__.py
+@@ -1,3 +1,4 @@
++# PGFR security backport, 2026-09-27. See NOTICE-PGFR for changes and provenance.
+ # Copyright 2020 The HuggingFace Team. All rights reserved.
+ #
+ # Licensed under the Apache License, Version 2.0 (the "License");
+@@ -18,7 +19,7 @@
+ # to defer the actual importing for when the objects are requested. This way `import transformers` provides the names
+ # in the namespace without actually importing anything (and especially none of the backends).
+ 
+-__version__ = "4.57.6"
++__version__ = "4.57.6+pgfr.security1"
+ 
+ from pathlib import Path
+ from typing import TYPE_CHECKING
+--- a/transformers/trainer.py
++++ b/transformers/trainer.py
+@@ -1,3 +1,4 @@
++# PGFR security backport, 2026-09-27. See NOTICE-PGFR for changes and provenance.
+ # Copyright 2020-present the HuggingFace Inc. team.
+ #
+ # Licensed under the Apache License, Version 2.0 (the "License");
+@@ -3252,7 +3253,8 @@
+                 return
+ 
+         with safe_globals():
+-            checkpoint_rng_state = torch.load(rng_file)
++            check_torch_load_is_safe()
++            checkpoint_rng_state = torch.load(rng_file, weights_only=True)
+         random.setstate(checkpoint_rng_state["python"])
+         np.random.set_state(checkpoint_rng_state["numpy"])
+         torch.random.set_rng_state(checkpoint_rng_state["cpu"])
+--- a/transformers/configuration_utils.py
++++ b/transformers/configuration_utils.py
+@@ -1,3 +1,4 @@
++# PGFR security backport, 2026-09-27. See NOTICE-PGFR for changes and provenance.
+ # Copyright 2018 The Google AI Language Team Authors and The HuggingFace Inc. team.
+ # Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
+ #
+@@ -340,11 +341,13 @@
+ 
+         # Additional attributes without default values
+         for key, value in kwargs.items():
+-            try:
+-                setattr(self, key, value)
+-            except AttributeError as err:
+-                logger.error(f"Can't set {key} with value {value} for {self}")
+-                raise err
++            # Backport of a7f8e7ff: internal attention fields must not come from model configs.
++            if key not in ("_attn_implementation_internal", "_experts_implementation_internal"):
++                try:
++                    setattr(self, key, value)
++                except AttributeError as err:
++                    logger.error(f"Can't set {key} with value {value} for {self}")
++                    raise err
+ 
+         # TODO: remove later, deprecated arguments for TF models
+         self.tf_legacy_loss = kwargs.pop("tf_legacy_loss", False)
+--- a/transformers/processing_utils.py
++++ b/transformers/processing_utils.py
+@@ -1,3 +1,4 @@
++# PGFR security backport, 2026-09-27. See NOTICE-PGFR for changes and provenance.
+ # Copyright 2022 The HuggingFace Inc. team.
+ #
+ # Licensed under the Apache License, Version 2.0 (the "License");
+@@ -823,6 +824,9 @@
+                     else:
+                         os.makedirs(chat_template_dir, exist_ok=True)
+                         template_filepath = os.path.join(chat_template_dir, f"{template_name}.jinja")
++                        # Backport of eaaaf849: template names must not escape their directory.
++                        if Path(template_filepath).resolve().parent != Path(chat_template_dir).resolve():
++                            raise ValueError(f"Invalid chat template name: {template_name!r}")
+                         with open(template_filepath, "w", encoding="utf-8") as f:
+                             f.write(template)
+                         logger.info(f"chat template saved in {template_filepath}")
+--- a/transformers/tokenization_utils_base.py
++++ b/transformers/tokenization_utils_base.py
+@@ -1,3 +1,4 @@
++# PGFR security backport, 2026-09-27. See NOTICE-PGFR for changes and provenance.
+ # coding=utf-8
+ # Copyright 2020 The HuggingFace Inc. team.
+ #
+@@ -2574,6 +2575,9 @@
+                 else:
+                     Path(chat_template_dir).mkdir(exist_ok=True)
+                     template_filepath = os.path.join(chat_template_dir, f"{template_name}.jinja")
++                    # Backport of eaaaf849: template names must not escape their directory.
++                    if Path(template_filepath).resolve().parent != Path(chat_template_dir).resolve():
++                        raise ValueError(f"Invalid chat template name: {template_name!r}")
+                     with open(template_filepath, "w", encoding="utf-8") as f:
+                         f.write(template)
+                     logger.info(f"chat template saved in {template_filepath}")
+--- a/transformers/integrations/hub_kernels.py
++++ b/transformers/integrations/hub_kernels.py
+@@ -1,3 +1,4 @@
++# PGFR security backport, 2026-09-27. See NOTICE-PGFR for changes and provenance.
+ # Copyright 2025 The HuggingFace Team. All rights reserved.
+ #
+ # Licensed under the Apache License, Version 2.0 (the "License");
+@@ -16,6 +17,10 @@
+ from typing import Optional, Union
+ 
+ from ..modeling_flash_attention_utils import lazy_import_flash_attention
++from ..utils import logging
++
++
++logger = logging.get_logger(__name__)
+ from .flash_attention import flash_attention_forward
+ 
+ 
+@@ -162,10 +167,20 @@
+ 
+ def is_kernel(attn_implementation: Optional[str]) -> bool:
+     """Check whether `attn_implementation` matches a kernel pattern from the hub."""
+-    return (
+-        attn_implementation is not None
+-        and re.search(r"^[^/:]+/[^/:]+(?:@[^/:]+)?(?::[^/:]+)?$", attn_implementation) is not None
+-    )
++    if attn_implementation is None:
++        return False
++    match_object = re.fullmatch(r"(?:[^/:|\s]+\|)?([^/:|\s]+)/[^/:|\s]+(?:@[^/:|\s]+)?(?::[^/:|\s]+)?", attn_implementation)
++    if match_object is not None:
++        # Backport of a7f8e7ff: prevent implicit execution of arbitrary Hub kernels.
++        repo_id = match_object.group(1)
++        if repo_id != "kernels-community":
++            logger.warning_once(
++                "For security reasons, we currently only accept kernels from the `kernels-community` repository. We "
++                f"will skip kernel from `{repo_id}`"
++            )
++            return False
++        return True
++    return False
+ 
+ 
+ def load_and_register_kernel(attn_implementation: str) -> None:
+--- a/transformers/models/lightglue/modular_lightglue.py
++++ b/transformers/models/lightglue/modular_lightglue.py
+@@ -1,3 +1,4 @@
++# PGFR security backport, 2026-09-27. See NOTICE-PGFR for changes and provenance.
+ # Copyright 2025 The HuggingFace Team. All rights reserved.
+ #
+ # Licensed under the Apache License, Version 2.0 (the "License");
+@@ -84,8 +85,6 @@
+             The dropout ratio for the attention probabilities.
+         attention_bias (`bool`, *optional*, defaults to `True`):
+             Whether to use a bias in the query, key, value and output projection layers during self-attention.
+-        trust_remote_code (`bool`, *optional*, defaults to `False`):
+-            Whether to trust remote code when using other models than SuperPoint as keypoint detector.
+ 
+     Examples:
+         ```python
+@@ -119,14 +118,8 @@
+         hidden_act: str = "gelu",
+         attention_dropout=0.0,
+         attention_bias=True,
+-        trust_remote_code: bool = False,
+         **kwargs,
+     ):
+-        # LightGlue can be used with other models than SuperPoint as keypoint detector
+-        # We provide the trust_remote_code argument to allow the use of other models
+-        # that are not registered in the CONFIG_MAPPING dictionary (for example DISK)
+-        self.trust_remote_code = trust_remote_code
+-
+         if descriptor_dim % num_attention_heads != 0:
+             raise ValueError("descriptor_dim % num_heads is different from zero")
+ 
+@@ -149,14 +142,9 @@
+         # See https://github.com/huggingface/transformers/pull/31718#discussion_r2109733153
+         if isinstance(keypoint_detector_config, dict):
+             keypoint_detector_config["model_type"] = keypoint_detector_config.get("model_type", "superpoint")
+-            if keypoint_detector_config["model_type"] not in CONFIG_MAPPING:
+-                keypoint_detector_config = AutoConfig.from_pretrained(
+-                    keypoint_detector_config["_name_or_path"], trust_remote_code=self.trust_remote_code
+-                )
+-            else:
+-                keypoint_detector_config = CONFIG_MAPPING[keypoint_detector_config["model_type"]](
+-                    **keypoint_detector_config, attn_implementation="eager"
+-                )
++            keypoint_detector_config = CONFIG_MAPPING[keypoint_detector_config["model_type"]](
++                **keypoint_detector_config, attn_implementation="eager"
++            )
+ 
+         if keypoint_detector_config is None:
+             keypoint_detector_config = CONFIG_MAPPING["superpoint"](attn_implementation="eager")
+@@ -663,9 +651,7 @@
+ 
+     def __init__(self, config: LightGlueConfig):
+         super().__init__(config)
+-        self.keypoint_detector = AutoModelForKeypointDetection.from_config(
+-            config.keypoint_detector_config, trust_remote_code=config.trust_remote_code
+-        )
++        self.keypoint_detector = AutoModelForKeypointDetection.from_config(config.keypoint_detector_config)
+ 
+         self.keypoint_detector_descriptor_dim = config.keypoint_detector_config.descriptor_decoder_dim
+         self.descriptor_dim = config.descriptor_dim
+--- a/transformers/models/lightglue/modeling_lightglue.py
++++ b/transformers/models/lightglue/modeling_lightglue.py
+@@ -1,3 +1,4 @@
++# PGFR security backport, 2026-09-27. See NOTICE-PGFR for changes and provenance.
+ #                🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨
+ #           This file was automatically generated from src/transformers/models/lightglue/modular_lightglue.py.
+ #               Do NOT edit this file manually as any edits will be overwritten by the generation of
+@@ -505,9 +506,7 @@
+ 
+     def __init__(self, config: LightGlueConfig):
+         super().__init__(config)
+-        self.keypoint_detector = AutoModelForKeypointDetection.from_config(
+-            config.keypoint_detector_config, trust_remote_code=config.trust_remote_code
+-        )
++        self.keypoint_detector = AutoModelForKeypointDetection.from_config(config.keypoint_detector_config)
+ 
+         self.keypoint_detector_descriptor_dim = config.keypoint_detector_config.descriptor_decoder_dim
+         self.descriptor_dim = config.descriptor_dim
+--- a/transformers/models/lightglue/configuration_lightglue.py
++++ b/transformers/models/lightglue/configuration_lightglue.py
+@@ -1,3 +1,4 @@
++# PGFR security backport, 2026-09-27. See NOTICE-PGFR for changes and provenance.
+ #                🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨
+ #           This file was automatically generated from src/transformers/models/lightglue/modular_lightglue.py.
+ #               Do NOT edit this file manually as any edits will be overwritten by the generation of
+@@ -65,8 +66,6 @@
+             The dropout ratio for the attention probabilities.
+         attention_bias (`bool`, *optional*, defaults to `True`):
+             Whether to use a bias in the query, key, value and output projection layers during self-attention.
+-        trust_remote_code (`bool`, *optional*, defaults to `False`):
+-            Whether to trust remote code when using other models than SuperPoint as keypoint detector.
+ 
+     Examples:
+         ```python
+@@ -100,14 +99,8 @@
+         hidden_act: str = "gelu",
+         attention_dropout=0.0,
+         attention_bias=True,
+-        trust_remote_code: bool = False,
+         **kwargs,
+     ):
+-        # LightGlue can be used with other models than SuperPoint as keypoint detector
+-        # We provide the trust_remote_code argument to allow the use of other models
+-        # that are not registered in the CONFIG_MAPPING dictionary (for example DISK)
+-        self.trust_remote_code = trust_remote_code
+-
+         if descriptor_dim % num_attention_heads != 0:
+             raise ValueError("descriptor_dim % num_heads is different from zero")
+ 
+@@ -130,14 +123,9 @@
+         # See https://github.com/huggingface/transformers/pull/31718#discussion_r2109733153
+         if isinstance(keypoint_detector_config, dict):
+             keypoint_detector_config["model_type"] = keypoint_detector_config.get("model_type", "superpoint")
+-            if keypoint_detector_config["model_type"] not in CONFIG_MAPPING:
+-                keypoint_detector_config = AutoConfig.from_pretrained(
+-                    keypoint_detector_config["_name_or_path"], trust_remote_code=self.trust_remote_code
+-                )
+-            else:
+-                keypoint_detector_config = CONFIG_MAPPING[keypoint_detector_config["model_type"]](
+-                    **keypoint_detector_config, attn_implementation="eager"
+-                )
++            keypoint_detector_config = CONFIG_MAPPING[keypoint_detector_config["model_type"]](
++                **keypoint_detector_config, attn_implementation="eager"
++            )
+ 
+         if keypoint_detector_config is None:
+             keypoint_detector_config = CONFIG_MAPPING["superpoint"](attn_implementation="eager")
+--- a/transformers/models/deprecated/transfo_xl/tokenization_transfo_xl.py
++++ b/transformers/models/deprecated/transfo_xl/tokenization_transfo_xl.py
+@@ -1,3 +1,4 @@
++# PGFR security backport, 2026-09-27. See NOTICE-PGFR for changes and provenance.
+ # coding=utf-8
+ # Copyright 2018 Google AI, Google Brain and Carnegie Mellon University Authors and the HuggingFace Inc. team.
+ # Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
+@@ -34,7 +35,6 @@
+     is_torch_available,
+     logging,
+     requires_backends,
+-    strtobool,
+     torch_only_method,
+ )
+ 
+@@ -201,30 +201,7 @@
+         try:
+             vocab_dict = None
+             if pretrained_vocab_file is not None:
+-                # Priority on pickle files (support PyTorch and TF)
+-                if not strtobool(os.environ.get("TRUST_REMOTE_CODE", "False")):
+-                    raise ValueError(
+-                        "This part uses `pickle.load` which is insecure and will execute arbitrary code that is "
+-                        "potentially malicious. It's recommended to never unpickle data that could have come from an "
+-                        "untrusted source, or that could have been tampered with. If you already verified the pickle "
+-                        "data and decided to use it, you can set the environment variable "
+-                        "`TRUST_REMOTE_CODE` to `True` to allow it."
+-                    )
+-                with open(pretrained_vocab_file, "rb") as f:
+-                    vocab_dict = pickle.load(f)
+-
+-                # Loading a torch-saved transfo-xl vocab dict with pickle results in an integer
+-                # Entering this if statement means that we tried to load a torch-saved file with pickle, and we failed.
+-                # We therefore load it with torch, if it's available.
+-                if isinstance(vocab_dict, int):
+-                    if not is_torch_available():
+-                        raise ImportError(
+-                            "Not trying to load dict with PyTorch as you need to install pytorch to load "
+-                            "from a PyTorch pretrained vocabulary, "
+-                            "or activate it with environment variables USE_TORCH=1 and USE_TF=0."
+-                        )
+-                    check_torch_load_is_safe()
+-                    vocab_dict = torch.load(pretrained_vocab_file, weights_only=True)
++                raise ValueError("Legacy Transformer-XL pickle vocabularies are disabled; use a plain-text vocab_file.")
+ 
+             if vocab_dict is not None:
+                 for key, value in vocab_dict.items():
+@@ -788,18 +765,9 @@
+     if os.path.exists(fn):
+         logger.info("Loading cached dataset...")
+         check_torch_load_is_safe()
+-        corpus = torch.load(fn_pickle, weights_only=True)
+-    elif os.path.exists(fn):
+-        logger.info("Loading cached dataset from pickle...")
+-        if not strtobool(os.environ.get("TRUST_REMOTE_CODE", "False")):
+-            raise ValueError(
+-                "This part uses `pickle.load` which is insecure and will execute arbitrary code that is potentially "
+-                "malicious. It's recommended to never unpickle data that could have come from an untrusted source, or "
+-                "that could have been tampered with. If you already verified the pickle data and decided to use it, "
+-                "you can set the environment variable `TRUST_REMOTE_CODE` to `True` to allow it."
+-            )
+-        with open(fn, "rb") as fp:
+-            corpus = pickle.load(fp)
++        corpus = torch.load(fn, weights_only=True)
++    elif os.path.exists(fn_pickle):
++        raise ValueError("Legacy Transformer-XL pickle corpus caches are disabled; rebuild the corpus from text.")
+     else:
+         logger.info(f"Producing dataset {dataset}...")
+         kwargs = {}

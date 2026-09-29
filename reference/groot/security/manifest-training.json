@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "packages": [
+    {
+      "name": "transformers",
+      "base_version": "4.57.3",
+      "version": "4.57.3+pgfr.security1",
+      "upstream": {
+        "filename": "transformers-4.57.3-py3-none-any.whl",
+        "url": "https://files.pythonhosted.org/packages/6a/6b/2f416568b3c4c91c96e5a365d164f8a4a4a88030aa8ab4644181fdadce97/transformers-4.57.3-py3-none-any.whl",
+        "sha256": "c77d353a4851b1880191603d36acb313411d3577f6e2897814f333841f7003f4"
+      },
+      "patch": {
+        "path": "patches/transformers-4.57.3.patch",
+        "sha256": "f592c230ca6aa5e621ece4830b0e2af2cf5e0e08c6bd0064373ca03a2173e3c4",
+        "files": {
+          "transformers/__init__.py": {
+            "before": "7eb0743ed843f24c1d4e8b8daf4b18249cb81403b4571a70c00be0a4c0a67bd4",
+            "after": "680a5b5c447875690c527b80c0065fc05ce3c1485c7070b2d3cb1dd7dcb256e5"
+          },
+          "transformers/configuration_utils.py": {
+            "before": "08a3889c1b8a73d340a37c93f72346ee0e385e339b7a72a03b5c026d4943baf7",
+            "after": "07d12bebe6a70208a185c56cd58e2cb7758a9b811baf48a0967f6d999b48734e"
+          },
+          "transformers/integrations/hub_kernels.py": {
+            "before": "845f33ef26be915f62efa82aaf3695bf26e6e165eb5e49a2542ae4fc69ea154b",
+            "after": "e1c49b3653c5c519e4aaf42c9a9ee73fc819b43c2edf7db2e55512b0878a2e88"
+          },
+          "transformers/models/deprecated/transfo_xl/tokenization_transfo_xl.py": {
+            "before": "3dc50407613f664ac20e2c96871b556870b7a1ae831c40507e36bbd9567ae5b0",
+            "after": "f043829dc7050d000681219caf7bf27124ec2bd1d7fe731e12a5ec4a321095bf"
+          },
+          "transformers/models/lightglue/configuration_lightglue.py": {
+            "before": "8e28c9b208e564467e312640450d64294896ff5554e41f855651c6b71597e1b7",
+            "after": "75da9ddd223c62ff22991edb31e5598f571e115865d40e593a52b0f47f6d1914"
+          },
+          "transformers/models/lightglue/modeling_lightglue.py": {
+            "before": "2aa47ee7ce82ef28845495275c53366d9d57d4e2676b4b8be7074a5966586843",
+            "after": "895b031cd49c919dd82bc8f63b9cf2f73dfe40ac586ffcf6337dca30abb2ffed"
+          },
+          "transformers/models/lightglue/modular_lightglue.py": {
+            "before": "ed6e0f5e178a65cd45506d8e9a4d9ce79593b0139d4d1b563fbc8944610ac65c",
+            "after": "7963c178c900899fa3a45f7b8a759f49eb603a8a696dc6ea3f6f6466138ff4d4"
+          },
+          "transformers/processing_utils.py": {
+            "before": "6c29de5c3fc674cf21ba6377a39cbafb2ba3e4bc2d1202d4b944f8cf840e6f33",
+            "after": "dc7f78e85363f58ea94b99b2e357c25164e28ed4faea2dc879574b7889080560"
+          },
+          "transformers/tokenization_utils_base.py": {
+            "before": "d9d46a3012baf4636dd5213043a5b983d975cac3cd99dc8cee074b8a9fee2b91",
+            "after": "b6aaa49a696da84652b270d585738cc197652032b43afb5f1611d7ce3e706a6d"
+          },
+          "transformers/trainer.py": {
+            "before": "c3eac8fa28bda6330fd4dee131e7fe7d9bdc0fa35d9de944fce52cb97b379bab",
+            "after": "c0bb27cf9e22ef3b020f6329d2efd6b5af171c2c15e8556835ad5bb92aa0f3b4"
+          }
+        }
+      },
+      "notice": {
+        "path": "notices/transformers-training.txt",
+        "sha256": "7aa72d46b164b6656b5590778408dffc51c9be20d58518b9aac14c2937326faa"
+      },
+      "wheel": {
+        "filename": "transformers-4.57.3+pgfr.security1-py3-none-any.whl",
+        "sha256": "61a2477b5033fb131fafbdffccd7bf8c111acf8f1602ce98b90f3085a78721a5"
+      }
+    },
+    {
+      "name": "accelerate",
+      "base_version": "1.13.0",
+      "version": "1.13.0+pgfr.security1",
+      "upstream": {
+        "filename": "accelerate-1.13.0-py3-none-any.whl",
+        "url": "https://files.pythonhosted.org/packages/7e/46/02ac5e262d4af18054b3e922b2baedbb2a03289ee792162de60a865defc5/accelerate-1.13.0-py3-none-any.whl",
+        "sha256": "cf1a3efb96c18f7b152eb0fa7490f3710b19c3f395699358f08decca2b8b62e0"
+      },
+      "patch": {
+        "path": "patches/accelerate-1.13.0.patch",
+        "sha256": "d78b1b95217b57e6a184de117f35c44ce2daac1ae8bbf5d219c5c3e63dc1f114",
+        "files": {
+          "accelerate/__init__.py": {
+            "before": "0c660c26c21ded4c52f0e0300ae84664b7d0ff93fb26c942660b503d9c61b33e",
+            "after": "4faeb44901f9850cf811b00da0fa1c45eebda3a18252c463008dc10b1b959156"
+          },
+          "accelerate/utils/modeling.py": {
+            "before": "d6052abc0625740115176a4d2dfc0861a189a2dba94443c09cc8500254b57e2e",
+            "after": "72a726244fc5d33dd39b7032745b6d496b3e3594f802a85a84e128b2658d8c69"
+          }
+        }
+      },
+      "notice": {
+        "path": "notices/accelerate-training.txt",
+        "sha256": "257c59dc557e09092c7b879fc9c0da853b18ce45c2ded33e107fd9d01bf22bf1"
+      },
+      "wheel": {
+        "filename": "accelerate-1.13.0+pgfr.security1-py3-none-any.whl",
+        "sha256": "8a21bb52843fffaa93e00d484d3af733eea42dcce3664be9b805cfe167c0308b"
+      }
+    }
+  ],
+  "training_project": {
+    "repository": "https://github.com/NVIDIA/Isaac-GR00T",
+    "revision": "e5749287857afd97b78f1147166137de29746392",
+    "patch": {
+      "path": "patches/training-e574-dependencies.patch",
+      "sha256": "68228b623808097bf5ac51da2911115814e4eb42c04feb78377920ce0cea553a",
+      "files": {
+        "pyproject.toml": {
+          "before": "84fdc66c9c475fad2bc8b17fe5216321ecaeb801b81bcc9f3d780c21c54d5c12",
+          "after": "47a9d5c0b6c3edf42460908a98c7123722540c55a8659c67fa9ea8aef8dd8fa9"
+        },
+        "uv.lock": {
+          "before": "ead64d978b395a8d010fcc7e109a64c47fe57c7cd2091629b3b7d422857d9904",
+          "after": "ca6d18ebede785a62ccd9ad7a814cdc8213baaffde9d022ed649a590f097c79d"
+        }
+      }
+    },
+    "installed_versions": {
+      "transformers": "4.57.3+pgfr.security1",
+      "accelerate": "1.13.0+pgfr.security1",
+      "aiohttp": "3.14.3",
+      "onnx": "1.23.0",
+      "pillow": "12.3.0",
+      "torch": "2.7.1+cu128",
+      "torchvision": "0.22.1+cu128",
+      "triton": "3.3.1",
+      "wandb": "0.30.0",
+      "click": "8.2.1",
+      "opentelemetry-api": "1.43.0",
+      "opentelemetry-sdk": "1.43.0",
+      "opentelemetry-exporter-otlp-proto-http": "1.43.0"
+    },
+    "absent_packages": [
+      "gitpython",
+      "gitdb",
+      "smmap"
+    ]
+  }
+}
