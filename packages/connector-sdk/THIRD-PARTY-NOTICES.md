@@ -444,7 +444,7 @@ any redistributed native bundles remains a separate review item.
 | npm | [pretty-ms](https://www.npmjs.com/package/pretty-ms/v/9.3.0) | <code>9.3.0</code> | MIT |
 | npm | [process-nextick-args](https://www.npmjs.com/package/process-nextick-args/v/2.0.1) | <code>2.0.1</code> | MIT |
 | npm | [protobufjs](https://www.npmjs.com/package/protobufjs/v/7.6.6) | <code>7.6.6</code> | BSD-3-Clause |
-| npm | [proxy-addr](https://www.npmjs.com/package/proxy-addr/v/2.0.7) | <code>2.0.7</code> | MIT |
+| npm | [proxy-addr](https://www.npmjs.com/package/proxy-addr/v/2.0.8) | <code>2.0.8</code> | MIT |
 | npm | [qrcode](https://www.npmjs.com/package/qrcode/v/1.5.4) | <code>1.5.4</code> | MIT |
 | npm | [qs](https://www.npmjs.com/package/qs/v/6.16.0) | <code>6.16.0</code> | BSD-3-Clause |
 | npm | [quickjs-wasi](https://www.npmjs.com/package/quickjs-wasi/v/3.5.0) | <code>3.5.0</code> | MIT |
