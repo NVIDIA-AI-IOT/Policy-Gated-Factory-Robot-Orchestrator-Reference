@@ -109,6 +109,28 @@ rejects missing or stale copies.
 - TypeScript integration work uses the pinned OpenClaw dependency and the
   plugin under [`plugins/openclaw/`](plugins/openclaw/).
 
+## Source attribution
+
+Preserve existing third-party copyright, license, and attribution notices.
+For NVIDIA-authored source, use the following headers in the file's comment
+syntax, with the applicable copyright year or year range:
+
+```text
+SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+SPDX-License-Identifier: Apache-2.0
+```
+
+Use the SPDX-only shorthand only for NVIDIA-authored files. Externally authored
+contributions must retain their actual copyright owner and full applicable
+license notices; do not relabel them as NVIDIA-authored. When adding copied or
+vendored code, include its original full license and required notices, preserve
+its existing source notices, and record its origin and terms in the root
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
+
+NVIDIA maintainers must complete applicable organizational IP and release
+reviews for ongoing changes. DCO sign-offs and passing CI do not replace
+required approvals.
+
 ## Developer Certificate of Origin
 
 Contributions must be certified under the [Developer Certificate of Origin 1.1](DCO.txt).

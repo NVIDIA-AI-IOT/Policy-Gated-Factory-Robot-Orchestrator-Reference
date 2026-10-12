@@ -33,6 +33,41 @@ The scene captures used a temporary viewing camera; existing model cameras and
 simulation play state were preserved, and the temporary camera was removed.
 See the [scene guide](ISAAC-SIM-SCENE.md) for the component descriptions.
 
+## Project video and preview
+
+`docs/videos/pgfr-project-video.mp4` is a prerecorded media **data file** for
+the README. It contains H.264 Main-profile video (1280×720, 30 fps, yuv420p)
+and AAC-LC audio (48 kHz, stereo), with a duration of 62.20 seconds. It contains
+no FFmpeg executable, encoder implementation, or shared library. The robot
+services and dataset pipeline do not use this documentation video as an input.
+A viewer's browser or media player decodes it.
+
+The file was supplied by the project owner and copied unchanged. Its container
+metadata identifies `https://clipchamp.com` as the encoder application. That
+tag does not establish the original recorder, export settings, encoder build,
+or rights to the recording and audio. Rights to publish the recording and audio
+need owner confirmation. The unrecorded export/build details are evidence gaps;
+they are not, by themselves, findings of a licensing violation. Any request for
+additional technical evidence should be tied to the release scope and the OSRB
+reviewer's questions.
+
+The GIF preview is a separate media data file with no audio. The retained
+preparation record identifies ImageIO-FFmpeg `0.6.0`'s Linux x86-64
+`7.0.2-static` executable for the preview conversion. Its bytes match the
+executable bundled in the published PyPI wheel; the historical download
+source was not recorded.
+That executable identifies John Van Sickle's static build, reports GPL-3.0-or-later,
+and has `--enable-gpl` and `--enable-version3`, without `--enable-nonfree`.
+It is a different build from the NVIDIA FFmpeg 8 executable installed on Thor.
+The original conversion command was not retained; the recorded conversion
+settings and resulting GIF metadata are listed above.
+
+The [codec inventory](codec-inventory.json) records the media hashes and the
+identified tool's hash, configuration, license report, and compiled codecs.
+[Third-party notices](../THIRD-PARTY-NOTICES.md#codec-use-and-build-evidence)
+separately describe training and runtime codec software. Treating the MP4 and
+GIF as data files does not settle content rights or codec/patent review.
+
 ## Remotely referenced NVIDIA Isaac assets
 
 The two USDA files are text compositions. They do not embed the following

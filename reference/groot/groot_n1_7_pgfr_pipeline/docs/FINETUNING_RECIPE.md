@@ -112,7 +112,13 @@ is an example path, not an assumption that the installed build is suitable:
 export PGFR_FFMPEG_BIN=/usr/bin/ffmpeg
 "$GROOT_PYTHON" "$PIPELINE/pipeline/conversion/ffmpeg_contract.py" \
   --ffmpeg "$PGFR_FFMPEG_BIN" > "$TRAIN_PROVENANCE/ffmpeg.json"
+"$PGFR_FFMPEG_BIN" -hide_banner -encoders > "$TRAIN_PROVENANCE/ffmpeg-encoders.txt" 2>&1
+"$PGFR_FFMPEG_BIN" -hide_banner -decoders > "$TRAIN_PROVENANCE/ffmpeg-decoders.txt" 2>&1
 ```
+
+The encoder/decoder lists record the capabilities compiled into this exact
+executable for codec review. They do not show which codecs a training run used
+or describe the separate libraries loaded by TorchCodec.
 
 The check inspects the reported build/license and performs a tiny CPU RGB
 scale → libx264/yuv420p → MP4 encode through pipes. It writes no dataset files.

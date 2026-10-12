@@ -15,8 +15,9 @@ complete.
   binary payload is redistributed by this repository.
 - **Redistributed binaries** require their own license, notice, export, codec,
   and security review. In particular, packaged NumPy/SciPy native libraries
-  and FFmpeg native libraries remain explicit review items. The observed
-  nonfree system FFmpeg build is not a binary supplied by this release.
+  and FFmpeg native libraries remain explicit review items. The FFmpeg builds
+  used or found on the development hosts are identified below; source-only
+  distribution does not remove the need to review their use.
 - <code>AND</code> and <code>OR</code> retain their normal SPDX meanings.
   Where an upstream lockfile offered a choice and this distribution selected
   one branch, that selection is stated explicitly.
@@ -46,6 +47,23 @@ installed virtual environments, package caches, and container exports are
 excluded from public artifacts. Redistribution of excluded artifacts requires
 a separate release review. Source, dependency, asset, and codec review remains
 required for release.
+
+## Included upstream licenses
+
+The following full license texts accompany source material copied or modified
+in this repository. Paths are relative to the source repository. Package
+dependencies retrieved during installation retain the licenses and notices
+in their own distributions; the inventory below also lists their terms.
+
+| Source material | Included full license | Attribution and modification records |
+|---|---|---|
+| Isaac-GR00T integration patches and platform configuration | `reference/groot/LICENSE.NVIDIA-ISAAC-GROOT` (Apache-2.0) | Pinned revision and patch paths in `reference/groot/README.md` and `deploy/reproducible-demo.yaml`; retain upstream file headers when applying patches |
+| Hugging Face Transformers patches | `reference/groot/security/licenses/transformers-LICENSE` (Apache-2.0) | `reference/groot/security/notices/transformers.txt` and `transformers-training.txt` |
+| Hugging Face Accelerate patches | `reference/groot/security/licenses/accelerate-LICENSE` (Apache-2.0) | `reference/groot/security/notices/accelerate.txt` and `accelerate-training.txt` |
+
+The security wheel builder retains the upstream wheel's license files and
+adds the corresponding modification notice. These upstream notices must not
+be replaced by a NVIDIA-only copyright header.
 
 ## Upstream source and model prerequisites
 
@@ -91,9 +109,10 @@ lock; the inventory below lists the six standalone lockfiles in this repository.
 | Brain-host packages | <code>ca-certificates</code>, <code>curl</code>, <code>git-lfs</code>, <code>gnupg</code>, Node.js 22.22.3, ROS 2 Jazzy base/Fast DDS, CUDA 13 CUPTI/math runtimes | Retrieved from Ubuntu, NodeSource, ROS, and NVIDIA package repositories; retain package-provided copyright/license files |
 | Thor GR00T system packages | NVPL BLAS/LAPACK, CUDA development/runtime packages, FFmpeg 6 compatibility runtimes, Git LFS | Native host installation from upstream; does not request the unversioned FFmpeg CLI package; retain package-provided copyright/license files and NVIDIA SDK terms where applicable |
 | TorchCodec Thor runtime artifact | <code>torchcodec-0.10.0a0-cp312-cp312-linux_aarch64.whl</code>, SHA-256 <code>1421de7e6248cc33398c16b2d7ba5ada4bf5c2a38af7cc44a003f3b0c36eb314</code> | [BSD-3-Clause](https://github.com/meta-pytorch/torchcodec/blob/main/LICENSE); Git LFS path <code>scripts/deployment/thor/wheels/</code> at pinned Isaac-GR00T revision <code>e5749287857afd97b78f1147166137de29746392</code>; installed only as an explicit post-sync overlay |
-| Observed development-host FFmpeg executable | NVIDIA <code>7:8.0.1-nvidia</code>; FFmpeg 8 with GPL, nonfree, and libx264 enabled | Reports nonfree/unredistributable; not supplied by this source release or requested by its Thor installer. This finding concerns redistribution, not a determination about prior internal use. [FFmpeg licensing](https://ffmpeg.org/doxygen/trunk/md_LICENSE.html) |
+| Observed Thor FFmpeg executable | NVIDIA APT <code>7:8.0.1-nvidia</code>, arm64; <code>https://repo.download.nvidia.com/jetson/ffmpeg</code>, <code>r39.2/main</code> | FFmpeg 8 with GPL, nonfree, and libx264 enabled; reports nonfree/unredistributable. Installed on the development/test host, not committed to this repository or requested by its current Thor installer. See the build evidence below and [FFmpeg licensing](https://ffmpeg.org/doxygen/trunk/md_LICENSE.html). |
 | Thor FFmpeg 6 decoder libraries | Observed Ubuntu <code>7:6.1.1-3ubuntu5</code>: <code>libavcodec60</code>, <code>libavformat60</code>, <code>libavutil58</code>, <code>libavfilter9</code>, <code>libswscale7</code>, <code>libswresample4</code> | Identified as GPL-2.0-or-later; retrieved by the user for the pinned TorchCodec native adapters. Separate from the observed FFmpeg 8 executable. Retain upstream notices; any binary redistribution requires corresponding-source and linkage review. |
-| OpenCV bundled video libraries | Observed <code>opencv-python-headless==4.11.0.86</code> wheel includes FFmpeg 5 libraries, loaded by the GR00T policy processes | Bundled FFmpeg identified as LGPL-2.1-or-later; headless OpenCV is not FFmpeg-free. Runtime retrieval only; preserve [bundled third-party notices](https://github.com/opencv/opencv-python/blob/86/LICENSE-3RD-PARTY.txt). Identifying the license is not complete binary redistribution clearance. |
+| OpenCV bundled video libraries | PyPI <code>opencv-python-headless==4.11.0.86</code>, Linux aarch64 wheel; bundled FFmpeg <code>5.1.6</code> | Bundled FFmpeg reports LGPL-2.1-or-later and is loaded by the observed GR00T policy processes. Headless OpenCV is not FFmpeg-free; preserve [bundled third-party notices](https://github.com/opencv/opencv-python/blob/86/LICENSE-3RD-PARTY.txt). Identifying the license is not complete binary redistribution clearance. |
+| Project-video preview preparation tool | PyPI <code>imageio-ffmpeg==0.6.0</code>, Linux x86-64; bundled FFmpeg <code>7.0.2-static</code> | ImageIO wrapper is BSD-2-Clause; this FFmpeg executable reports GPL-3.0-or-later, with no nonfree flag. Used for documentation media preparation, not a project runtime dependency; only the resulting GIF is committed. |
 | Dataset conversion and H.264 | User-selected FFmpeg executable with CPU <code>scale</code>, <code>libx264</code>, and MP4 support | Separate local training prerequisite. Preflight rejects a reported nonfree build and checks required encoding behavior; GPL is not rejected. H.264/ARB review remains open for project media and codec use. [FFmpeg legal guidance](https://ffmpeg.org/legal.html) |
 | Remotely referenced Isaac 6.0 assets | Seven HTTPS assets referenced by two ASCII USDA compositions | NVIDIA Isaac asset terms; per-path provenance and rights state in the source repository's <code>docs/ASSET-PROVENANCE.md</code>; owner/OSRB confirmation pending |
 
@@ -109,6 +128,52 @@ loaded by a process. They do not qualify a fresh installation, infer executed
 codec functions from process maps, or clear a future environment/container
 export. Complete source/build provenance of the custom TorchCodec wheel and
 any redistributed native bundles remains a separate review item.
+
+## Codec use and build evidence
+
+`docs/codec-inventory.json` in the source repository records the 2026-10-09
+read-only inspection: exact build identities, package origins, binary hashes,
+configuration and license reports, and complete compiled encoder/decoder name
+lists for each inspected FFmpeg build. Those lists are capabilities reported
+by the binaries, not a claim that every codec is used or works on the host's
+hardware. Changing an executable, OS package, or wheel requires a new inventory.
+
+| Project path | Required media operations | Build or selection |
+|---|---|---|
+| README project video | Browser/player playback of H.264 Main video and AAC-LC audio from MP4 | The committed MP4 is a data file, not codec software. Its metadata names Clipchamp; the original encoder build is not recorded. Publication rights require owner confirmation. |
+| README animated preview | H.264 video decoding, scaling/palette conversion, GIF encoding; no output audio | Retained preparation record identifies ImageIO-FFmpeg 0.6.0 / FFmpeg 7.0.2-static on x86-64. |
+| Dataset conversion | Decode captured JPEG frames, scale them, encode H.264 with `libx264` into MP4; no audio input | Operator-selected CPU FFmpeg executable. `ffmpeg_contract.py` checks its configuration/license and rejects reported nonfree builds before creating a dataset. Ubuntu package selection and provenance commands are in `reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md`. |
+| Training video loading | Decode the converted H.264 MP4 videos into tensors | TorchCodec and compatible shared FFmpeg libraries in the actual training environment. Selecting the conversion executable does not select these libraries. The x86 training decoder must be checked separately. |
+| Thor TorchCodec compatibility libraries | H.264 decoder available; the libraries also expose the other codecs listed in the inventory | Six Ubuntu `7:6.1.1-3ubuntu5` FFmpeg 6 packages from `ports.ubuntu.com/ubuntu-ports`, `noble/universe`; `libavcodec` reports GPL-2.0-or-later. The pinned Thor wheel's native adapter links this ABI. |
+| Thor OpenCV dependency | Image processing; bundled video capability includes H.264/AAC decoding and the other codecs in the inventory | OpenCV 4.11.0.86 bundles FFmpeg 5.1.6 (`libavcodec` 59.37.100), reporting LGPL-2.1-or-later. Process maps show these libraries loaded, which does not establish that a video decoder was called. |
+
+The Thor `/usr/bin/ffmpeg` inspected for this review belongs to NVIDIA package
+`7:8.0.1-nvidia`, with executable SHA-256
+`3e74c1741e7e990aa3ae47f774a74baa2df57e27b08b1e0f3846d0d861e181c7`.
+APT identifies the binary package at
+`https://repo.download.nvidia.com/jetson/ffmpeg/pool/main/f/ffmpeg/ffmpeg_8.0.1-nvidia_arm64.deb`.
+It reports `--enable-gpl --enable-nonfree --enable-libx264` among its build
+options and a nonfree/unredistributable license status. These findings identify
+the installed binary and its repository; they do not establish who installed
+it, the exact modified source/build recipe, or which earlier tests invoked it.
+The separate `7:8.0.1-nvidia1` APT candidate was not the installed build.
+The public NVIDIA source index listed that newer candidate only; the exact
+installed version's source descriptor returned HTTP 404. Candidate source
+must not be presented as matching the installed binary.
+
+The Git source tree and the seven project Python distributions contain no
+FFmpeg executable or native FFmpeg libraries. CI builds project packages for
+validation and does not publish them. The Thor installer requests the six
+versioned FFmpeg 6 compatibility libraries, not the unversioned `ffmpeg`
+package. The dataset converter rejects the inspected nonfree executable.
+These are distribution and implementation facts, not legal approval of the
+runtime dependencies or project media. The inventory discloses gaps in the
+exact source/build records for the custom TorchCodec wheel and NVIDIA FFmpeg
+binary. Those gaps do not themselves establish a license violation or a
+requirement to replace the working runtime. OSRB should assess whether further
+evidence is needed for this source release; redistribution of either binary
+would require a separate assessment of its terms and supporting evidence.
+No host runtime was replaced as part of this documentation audit.
 
 ## npm dependency inventory (431 identities)
 
