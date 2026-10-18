@@ -11,40 +11,6 @@
   ],
   "media": [
     {
-      "repository_path": "docs/videos/pgfr-project-video.mp4",
-      "artifact_kind": "media_data_file",
-      "size_bytes": 20700409,
-      "sha256": "5ee24a28a81fd993120ecca59a0c478cb821bd0c525baab486d1c4ae23efb7f4",
-      "contains_codec_implementation": false,
-      "container": "MP4",
-      "duration_seconds": 62.2,
-      "video": {
-        "codec": "h264",
-        "profile": "Main",
-        "codec_tag": "avc1",
-        "width": 1280,
-        "height": 720,
-        "frame_rate": "30/1",
-        "pixel_format": "yuv420p",
-        "scan": "progressive"
-      },
-      "audio": {
-        "codec": "aac",
-        "profile": "LC",
-        "codec_tag": "mp4a",
-        "sample_rate_hz": 48000,
-        "channels": 2,
-        "channel_layout": "stereo"
-      },
-      "container_encoder_tag": "https://clipchamp.com",
-      "metadata_evidence": "Current local FFmpeg media probe, 2026-10-09.",
-      "origin_documentation": "Supplied by project owner as PGFR-demo-3xspeed.mp4 and copied without modification; see docs/ASSET-PROVENANCE.md.",
-      "unknowns": [
-        "Original H.264/AAC implementation, encoder build, and exact encoding command are not established by the Clipchamp container tag.",
-        "Media ownership/distribution and codec review remain separate from identifying the data format."
-      ]
-    },
-    {
       "repository_path": "docs/images/pgfr-project-video-preview.gif",
       "artifact_kind": "media_data_file",
       "size_bytes": 9598395,
@@ -60,10 +26,10 @@
       ],
       "loop_count": 0,
       "audio": null,
-      "derived_from": "docs/videos/pgfr-project-video.mp4",
+      "derived_from": "Owner-supplied PGFR-demo-3xspeed.mp4 recording (historical input; not included in the current source release).",
       "metadata_evidence": "Current GIF block parsing and SHA-256; retained prior metadata agrees.",
       "preparation_tool_build_id": "gif_preparation_ffmpeg7",
-      "origin_documentation": "Project asset inventory records a 2026-09-14 FFmpeg 7.0.2 conversion at 10 fps, 128-color palette, Bayer dithering.",
+      "origin_documentation": "Project asset inventory records a 2026-09-14 conversion of the owner-supplied recording with FFmpeg 7.0.2 at 10 fps, 128-color palette, Bayer dithering.",
       "historical_tool_association": "Retained GIF preparation workspace records the exact executable path and source/GIF metadata. That executable was re-probed and hashed on 2026-10-09; the original encoding command/build log was not retained in the reviewed evidence."
     }
   ],
@@ -3296,9 +3262,10 @@
     "media_inspection": "<ffmpeg> -hide_banner -nostdin -i <media-file> -f null -t 0 -; parse GIF image descriptors, loop extension, and graphic-control delays."
   },
   "unresolved_review_items": [
-    "Original project-video H.264/AAC implementation/build and media distribution rights.",
+    "Distribution rights for the retained GIF preview, including its recorded Console and NVIDIA Isaac scene content, remain pending owner/OSRB confirmation.",
     "Exact matching modified source/build provenance for the NVIDIA FFmpeg 8 package if it ever becomes part of a distributable artifact.",
     "Exact TorchCodec LFS wheel source/build attestation; its BSD wrapper metadata does not clear the linked FFmpeg libraries.",
     "Any future binary/environment/container redistribution requires review of the actual artifacts and their source/notice obligations."
-  ]
+  ],
+  "media_scope_updated_on": "2026-10-18"
 }

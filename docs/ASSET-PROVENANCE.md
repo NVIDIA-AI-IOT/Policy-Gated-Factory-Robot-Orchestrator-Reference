@@ -1,7 +1,7 @@
 # Asset provenance
 
 This inventory covers the architecture diagram, dashboard screenshot, four Isaac Sim
-scene captures, the supplied project video and its preview, and two USD composition files in
+scene captures, the GIF project preview, and two USD composition files in
 the Policy-Gated Factory Robot Orchestrator Reference release tree, plus the seven
 distinct NVIDIA Isaac 6.0 assets referenced remotely by the USD compositions.
 
@@ -21,8 +21,7 @@ Unless an item has a separately established grant, its rights status below is
 | <code>docs/images/isaac-sim/sorting-stations.jpg</code> | JPEG; 1920x1080; RGB; quality 90, 4:4:4 | 374,020 | <code>09e2ed28906d02518a4eaa3618a5bd5e8a7d286821de2304414130c05e080b6f</code> | Captured 2026-09-13 from the running Isaac Sim 6.0.0-dev2 reference scene using a temporary viewing camera; no retouching. | pending owner/OSRB confirmation; rendered NVIDIA Isaac scene assets |
 | <code>docs/images/isaac-sim/left-arm-closeup.jpg</code> | JPEG; 1600x1280; RGB; quality 90, 4:4:4 | 241,347 | <code>54f12b29c6d4de5d4715e49bb77317eb17c57eb484ac68651fd5a448d9b3b018</code> | Captured 2026-09-14 from the running Isaac Sim 6.0.0-dev2 reference scene using a temporary viewing camera; no retouching. | pending owner/OSRB confirmation; rendered NVIDIA Isaac scene assets |
 | <code>docs/images/isaac-sim/objects-and-totes.jpg</code> | JPEG; 1920x1080; RGB; quality 90, 4:4:4 | 349,031 | <code>f75874924a13474c39e77bc7af34b5ab37f02f6482c5b52ac6b8b6eefd837946</code> | Captured 2026-09-13 from the running Isaac Sim 6.0.0-dev2 reference scene using a temporary viewing camera; no retouching. | pending owner/OSRB confirmation; rendered NVIDIA Isaac scene assets |
-| <code>docs/videos/pgfr-project-video.mp4</code> | MP4; H.264 video, AAC audio; 1280x720; 30 fps; 62.2 s | 20,700,409 | <code>5ee24a28a81fd993120ecca59a0c478cb821bd0c525baab486d1c4ae23efb7f4</code> | Supplied by the project owner on 2026-09-14 as PGFR-demo-3xspeed.mp4; 3× speed per the supplied recording; copied without modification. Recording date not established. | pending owner/OSRB confirmation; recorded Console and NVIDIA Isaac scene assets |
-| <code>docs/images/pgfr-project-video-preview.gif</code> | GIF; 800x450; 10 fps; 622 frames; 62.2 s; looping; no audio | 9,598,395 | <code>ede7b608ca8d3984453cd426f5e04276cb694a28a0b4e87995cf65fcea6243fd</code> | Derived 2026-09-14 from the supplied project video with FFmpeg 7.0.2. Full duration and playback speed preserved; downscaled, sampled at 10 fps, and palette-encoded with 128 colors and Bayer dithering. No generated content. | pending owner/OSRB confirmation; recorded Console and NVIDIA Isaac scene assets |
+| <code>docs/images/pgfr-project-video-preview.gif</code> | GIF; 800x450; 10 fps; 622 frames; 62.2 s; looping; no audio | 9,598,395 | <code>ede7b608ca8d3984453cd426f5e04276cb694a28a0b4e87995cf65fcea6243fd</code> | Derived 2026-09-14 from an owner-supplied recording with FFmpeg 7.0.2. The source recording is not included in the current release. Full duration and playback speed preserved; downscaled, sampled at 10 fps, and palette-encoded with 128 colors and Bayer dithering. No generated content. | pending owner/OSRB confirmation; recorded Console and NVIDIA Isaac scene assets |
 | <code>reference/isaac-cell/deployment/our_factory.usda</code> | ASCII USDA scene composition; remotely references Isaac assets | 98,335 | <code>1a5605cacb0568e08989472c5b2a80be2f8de021837512fbfd577ebca5a39381</code> | <code>a98a5e3679b8ba923fd787832b15cd87a4b280c8</code>; 2026-06-21; <code>mmallick@nvidia.com</code> | pending owner/OSRB confirmation |
 | <code>reference/isaac-cell/our_factory.usda</code> | ASCII USDA scene composition; remotely references Isaac assets | 79,943 | <code>beb82c9da4ce1d101f751649c23c637f932a559530b010de3ba7baaeb404fb7f</code> | <code>a98a5e3679b8ba923fd787832b15cd87a4b280c8</code>; 2026-06-21; <code>mmallick@nvidia.com</code> | pending owner/OSRB confirmation |
 
@@ -33,26 +32,17 @@ The scene captures used a temporary viewing camera; existing model cameras and
 simulation play state were preserved, and the temporary camera was removed.
 See the [scene guide](ISAAC-SIM-SCENE.md) for the component descriptions.
 
-## Project video and preview
+## Project preview
 
-`docs/videos/pgfr-project-video.mp4` is a prerecorded media **data file** for
-the README. It contains H.264 Main-profile video (1280×720, 30 fps, yuv420p)
-and AAC-LC audio (48 kHz, stereo), with a duration of 62.20 seconds. It contains
-no FFmpeg executable, encoder implementation, or shared library. The robot
-services and dataset pipeline do not use this documentation video as an input.
-A viewer's browser or media player decodes it.
+`docs/images/pgfr-project-video-preview.gif` is a media **data file** for the
+README, with no audio or embedded codec implementation. It was converted on
+2026-09-14 from the owner-supplied `PGFR-demo-3xspeed.mp4` recording. That
+recording is a historical input and is not included in the current release.
+The existing GIF bytes are unchanged. Rights to publish the preview and its
+recorded Console and NVIDIA Isaac scene content remain pending owner/OSRB
+confirmation.
 
-The file was supplied by the project owner and copied unchanged. Its container
-metadata identifies `https://clipchamp.com` as the encoder application. That
-tag does not establish the original recorder, export settings, encoder build,
-or rights to the recording and audio. Rights to publish the recording and audio
-need owner confirmation. The unrecorded export/build details are evidence gaps;
-they are not, by themselves, findings of a licensing violation. Any request for
-additional technical evidence should be tied to the release scope and the OSRB
-reviewer's questions.
-
-The GIF preview is a separate media data file with no audio. The retained
-preparation record identifies ImageIO-FFmpeg `0.6.0`'s Linux x86-64
+The retained preparation record identifies ImageIO-FFmpeg `0.6.0`'s Linux x86-64
 `7.0.2-static` executable for the preview conversion. Its bytes match the
 executable bundled in the published PyPI wheel; the historical download
 source was not recorded.
@@ -62,11 +52,12 @@ It is a different build from the NVIDIA FFmpeg 8 executable installed on Thor.
 The original conversion command was not retained; the recorded conversion
 settings and resulting GIF metadata are listed above.
 
-The [codec inventory](codec-inventory.json) records the media hashes and the
+The [codec inventory](codec-inventory.json) records the GIF hash and the
 identified tool's hash, configuration, license report, and compiled codecs.
 [Third-party notices](../THIRD-PARTY-NOTICES.md#codec-use-and-build-evidence)
-separately describe training and runtime codec software. Treating the MP4 and
-GIF as data files does not settle content rights or codec/patent review.
+separately describe training and runtime codec software. Removing the source
+recording does not change those dependencies or settle the preview's content
+rights or codec/patent review.
 
 ## Remotely referenced NVIDIA Isaac assets
 

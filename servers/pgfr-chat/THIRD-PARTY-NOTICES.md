@@ -41,7 +41,7 @@ No container image, OS package, model weight, dataset payload, FFmpeg binary,
 or remote Isaac asset binary is embedded in this source-tree inventory unless
 a separately listed tracked file says otherwise.
 
-The architecture diagram, screenshots, and project video are listed in
+The architecture diagram, screenshots, and project GIF are listed in
 `docs/ASSET-PROVENANCE.md` in the source repository. Other runtime recordings,
 installed virtual environments, package caches, and container exports are
 excluded from public artifacts. Redistribution of excluded artifacts requires
@@ -112,8 +112,8 @@ lock; the inventory below lists the six standalone lockfiles in this repository.
 | Observed Thor FFmpeg executable | NVIDIA APT <code>7:8.0.1-nvidia</code>, arm64; <code>https://repo.download.nvidia.com/jetson/ffmpeg</code>, <code>r39.2/main</code> | FFmpeg 8 with GPL, nonfree, and libx264 enabled; reports nonfree/unredistributable. Installed on the development/test host, not committed to this repository or requested by its current Thor installer. See the build evidence below and [FFmpeg licensing](https://ffmpeg.org/doxygen/trunk/md_LICENSE.html). |
 | Thor FFmpeg 6 decoder libraries | Observed Ubuntu <code>7:6.1.1-3ubuntu5</code>: <code>libavcodec60</code>, <code>libavformat60</code>, <code>libavutil58</code>, <code>libavfilter9</code>, <code>libswscale7</code>, <code>libswresample4</code> | Identified as GPL-2.0-or-later; retrieved by the user for the pinned TorchCodec native adapters. Separate from the observed FFmpeg 8 executable. Retain upstream notices; any binary redistribution requires corresponding-source and linkage review. |
 | OpenCV bundled video libraries | PyPI <code>opencv-python-headless==4.11.0.86</code>, Linux aarch64 wheel; bundled FFmpeg <code>5.1.6</code> | Bundled FFmpeg reports LGPL-2.1-or-later and is loaded by the observed GR00T policy processes. Headless OpenCV is not FFmpeg-free; preserve [bundled third-party notices](https://github.com/opencv/opencv-python/blob/86/LICENSE-3RD-PARTY.txt). Identifying the license is not complete binary redistribution clearance. |
-| Project-video preview preparation tool | PyPI <code>imageio-ffmpeg==0.6.0</code>, Linux x86-64; bundled FFmpeg <code>7.0.2-static</code> | ImageIO wrapper is BSD-2-Clause; this FFmpeg executable reports GPL-3.0-or-later, with no nonfree flag. Used for documentation media preparation, not a project runtime dependency; only the resulting GIF is committed. |
-| Dataset conversion and H.264 | User-selected FFmpeg executable with CPU <code>scale</code>, <code>libx264</code>, and MP4 support | Separate local training prerequisite. Preflight rejects a reported nonfree build and checks required encoding behavior; GPL is not rejected. H.264/ARB review remains open for project media and codec use. [FFmpeg legal guidance](https://ffmpeg.org/legal.html) |
+| Project GIF preparation tool | PyPI <code>imageio-ffmpeg==0.6.0</code>, Linux x86-64; bundled FFmpeg <code>7.0.2-static</code> | ImageIO wrapper is BSD-2-Clause; this FFmpeg executable reports GPL-3.0-or-later, with no nonfree flag. Used for documentation media preparation, not a project runtime dependency; only the resulting GIF is committed. |
+| Dataset conversion and H.264 | User-selected FFmpeg executable with CPU <code>scale</code>, <code>libx264</code>, and MP4 support | Separate local training prerequisite. Preflight rejects a reported nonfree build and checks required encoding behavior; GPL is not rejected. H.264/ARB review remains open for training codec use and the historical GIF preparation. [FFmpeg legal guidance](https://ffmpeg.org/legal.html) |
 | Remotely referenced Isaac 6.0 assets | Seven HTTPS assets referenced by two ASCII USDA compositions | NVIDIA Isaac asset terms; per-path provenance and rights state in the source repository's <code>docs/ASSET-PROVENANCE.md</code>; owner/OSRB confirmation pending |
 
 The release uses official Isaac Sim images pulled directly by the operator,
@@ -140,8 +140,8 @@ hardware. Changing an executable, OS package, or wheel requires a new inventory.
 
 | Project path | Required media operations | Build or selection |
 |---|---|---|
-| README project video | Browser/player playback of H.264 Main video and AAC-LC audio from MP4 | The committed MP4 is a data file, not codec software. Its metadata names Clipchamp; the original encoder build is not recorded. Publication rights require owner confirmation. |
-| README animated preview | H.264 video decoding, scaling/palette conversion, GIF encoding; no output audio | Retained preparation record identifies ImageIO-FFmpeg 0.6.0 / FFmpeg 7.0.2-static on x86-64. |
+| README project GIF | Browser display of an animated GIF; no audio | Only the GIF is included in the current tree. Publication rights for the recording and rendered scene content require owner confirmation. |
+| Historical GIF preparation | H.264 source-video decoding, scaling/palette conversion, GIF encoding; no output audio | Retained preparation record identifies ImageIO-FFmpeg 0.6.0 / FFmpeg 7.0.2-static on x86-64. The source video is not included in the current tree. |
 | Dataset conversion | Decode captured JPEG frames, scale them, encode H.264 with `libx264` into MP4; no audio input | Operator-selected CPU FFmpeg executable. `ffmpeg_contract.py` checks its configuration/license and rejects reported nonfree builds before creating a dataset. Ubuntu package selection and provenance commands are in `reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md`. |
 | Training video loading | Decode the converted H.264 MP4 videos into tensors | TorchCodec and compatible shared FFmpeg libraries in the actual training environment. Selecting the conversion executable does not select these libraries. The x86 training decoder must be checked separately. |
 | Thor TorchCodec compatibility libraries | H.264 decoder available; the libraries also expose the other codecs listed in the inventory | Six Ubuntu `7:6.1.1-3ubuntu5` FFmpeg 6 packages from `ports.ubuntu.com/ubuntu-ports`, `noble/universe`; `libavcodec` reports GPL-2.0-or-later. The pinned Thor wheel's native adapter links this ABI. |

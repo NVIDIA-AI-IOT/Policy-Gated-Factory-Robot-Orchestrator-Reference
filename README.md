@@ -16,14 +16,12 @@ Use the supplied scene or [adapt it to your own robots and tasks](#adapt-the-ref
 The release includes source, dataset-creation tools, and a GR00T fine-tuning recipe. You supply your own demonstration dataset and fine-tuned checkpoint.
 Start with [dataset creation](reference/groot/groot_n1_7_pgfr_pipeline/docs/DATASET_CREATION.md) and [training](reference/groot/groot_n1_7_pgfr_pipeline/docs/FINETUNING_RECIPE.md).
 
-## Project video
+## Project walkthrough
 
 Object sorting and tote delivery through the Orchestration Console
 (**3× playback**).
 
-[![Project video showing the Orchestration Console and Isaac Sim at 3× speed](docs/images/pgfr-project-video-preview.gif)](docs/videos/pgfr-project-video.mp4)
-
-[Watch the project video](docs/videos/pgfr-project-video.mp4)
+![Project walkthrough showing the Orchestration Console and Isaac Sim at 3× speed](docs/images/pgfr-project-video-preview.gif)
 
 ## Architecture
 
@@ -235,3 +233,28 @@ This project is licensed under the [Apache License 2.0](LICENSE). See
 [NOTICE](NOTICE), [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md), and
 [ASSET-PROVENANCE.md](docs/ASSET-PROVENANCE.md) for attribution and asset
 provenance.
+
+### Nested license files
+
+The following ten nested license files apply to the indicated components.
+The seven project packages carry copies of the root Apache-2.0 license. The
+three upstream license files retain the terms and notices for the upstream
+source represented by this repository's integration and security patches.
+
+| Component | License file | License |
+|---|---|---|
+| PGFR Spine | [pgfr-spine/LICENSE](pgfr-spine/LICENSE) | Apache-2.0 |
+| PGFR Console | [pgfr-console/LICENSE](pgfr-console/LICENSE) | Apache-2.0 |
+| Connector SDK | [packages/connector-sdk/LICENSE](packages/connector-sdk/LICENSE) | Apache-2.0 |
+| Conformance kit | [packages/conformance-kit/LICENSE](packages/conformance-kit/LICENSE) | Apache-2.0 |
+| PGFR Chat | [servers/pgfr-chat/LICENSE](servers/pgfr-chat/LICENSE) | Apache-2.0 |
+| PGFR Workflows | [servers/pgfr-workflows/LICENSE](servers/pgfr-workflows/LICENSE) | Apache-2.0 |
+| MCP server | [servers/policy-gated-factory-robot-orchestrator-reference-mcp/LICENSE](servers/policy-gated-factory-robot-orchestrator-reference-mcp/LICENSE) | Apache-2.0 |
+| NVIDIA Isaac-GR00T integration patches and platform configuration | [reference/groot/LICENSE.NVIDIA-ISAAC-GROOT](reference/groot/LICENSE.NVIDIA-ISAAC-GROOT) | Apache-2.0 |
+| Hugging Face Transformers security patches | [reference/groot/security/licenses/transformers-LICENSE](reference/groot/security/licenses/transformers-LICENSE) | Apache-2.0 |
+| Hugging Face Accelerate security patches | [reference/groot/security/licenses/accelerate-LICENSE](reference/groot/security/licenses/accelerate-LICENSE) | Apache-2.0 |
+
+These source licenses do not grant rights to separately retrieved models,
+containers, native libraries, or scene assets. Their terms are recorded in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md); media and scene provenance is
+recorded in [ASSET-PROVENANCE.md](docs/ASSET-PROVENANCE.md).
