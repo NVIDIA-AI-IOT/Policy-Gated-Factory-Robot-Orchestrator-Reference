@@ -96,6 +96,29 @@ def test_python_lock_identities_exactly_match_third_party_notices() -> None:
     assert int(heading.group(1)) == len(lock_identities)
 
 
+
+def test_training_dependencies_are_disclosed_and_ci_uses_the_declared_python() -> None:
+    manifest = json.loads(text("reference/groot/security/manifest-training.json"))["training_project"]
+    notice = text("THIRD-PARTY-NOTICES.md")
+    rows = re.findall(
+        r"^\| (python|training-python) \| \[([^]]+)]\([^)]*\) \| <code>([^<]+)</code> \|",
+        notice, flags=re.MULTILINE,
+    )
+    identities = {(name, version) for _, name, version in rows}
+    assert len(rows) == len(identities), "Training supplement must not duplicate the main inventory"
+    assert set(manifest["installed_versions"].items()) <= identities
+    training_rows = [row for row in rows if row[0] == "training-python"]
+    heading = re.search(
+        r"^## Workstation training dependency supplement \((\d+) external identities\)$",
+        notice, re.MULTILINE,
+    )
+    assert heading is not None
+    assert int(heading.group(1)) == len(training_rows)
+    workflow = yaml.safe_load(text(".github/workflows/ci.yml"))
+    profiles = workflow["jobs"]["model-dependency-security"]["strategy"]["matrix"]["include"]
+    training_profile, = [profile for profile in profiles if profile["profile"] == "training"]
+    assert training_profile["python"] == manifest["python_version"]
+
 def test_model_security_manifests_match_installer_locks_and_assets() -> None:
     security = ROOT / "reference/groot/security"
     lock = tomllib.loads(text("reference/groot/thor/uv.lock"))
@@ -546,12 +569,12 @@ def test_floor_bootstrap_selects_locked_ros_image_dependencies(tmp_path: Path) -
     """Exercise floor setup without invoking uv, ROS, or a host package manager."""
     project = tomllib.loads(text("pgfr-spine/pyproject.toml"))
     assert set(project["project"]["optional-dependencies"]["ros"]) == {
-        "numpy==1.26.4", "Pillow==12.3.0"
+        "numpy==1.26.4", "Pillow==13.0.0"
     }
     lock = tomllib.loads(text("pgfr-spine/uv.lock"))
     packages = {package["name"]: package for package in lock["package"]}
     assert packages["numpy"]["version"] == "1.26.4"
-    assert packages["pillow"]["version"] == "12.3.0"
+    assert packages["pillow"]["version"] == "13.0.0"
     spine = packages["policy-gated-factory-robot-orchestrator-reference"]
     assert {entry["name"] for entry in spine["optional-dependencies"]["ros"]} == {
         "numpy", "pillow"

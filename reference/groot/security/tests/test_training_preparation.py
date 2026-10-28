@@ -7,6 +7,7 @@ from __future__ import annotations
 import difflib
 import importlib.util
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -107,6 +108,25 @@ class TrainingPreparationTests(unittest.TestCase):
                 training.prepare(self.checkout, self.root, self.manifest, None, False)
         build.assert_not_called()
         self.assert_original()
+
+    def test_wrong_interpreter_refused_before_dependency_verification(self):
+        interpreter = self.checkout / ".venv" / "bin" / "python"
+        interpreter.parent.mkdir(parents=True)
+        interpreter.symlink_to(sys.executable)
+        manifest = {"training_project": {
+            "python_version": "0.0",
+            "installed_versions": {"deliberately-missing-package": "1.0"},
+        }}
+        run = subprocess.run
+
+        def capture(*args, **kwargs):
+            return run(*args, **kwargs, capture_output=True)
+
+        with patch.object(training.subprocess, "run", side_effect=capture):
+            with self.assertRaises(subprocess.CalledProcessError) as raised:
+                training.verify_installed(self.checkout, manifest)
+        self.assertIn("Unexpected training Python:", raised.exception.stderr)
+        self.assertNotIn("PackageNotFoundError", raised.exception.stderr)
 
 
 if __name__ == "__main__":

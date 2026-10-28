@@ -103,37 +103,50 @@
     "revision": "e5749287857afd97b78f1147166137de29746392",
     "patch": {
       "path": "patches/training-e574-dependencies.patch",
-      "sha256": "68228b623808097bf5ac51da2911115814e4eb42c04feb78377920ce0cea553a",
+      "sha256": "f1a432c3e5e9937517a106bcc984cea74ad609f183c2c7c89da1cb18b27412d0",
       "files": {
         "pyproject.toml": {
           "before": "84fdc66c9c475fad2bc8b17fe5216321ecaeb801b81bcc9f3d780c21c54d5c12",
-          "after": "47a9d5c0b6c3edf42460908a98c7123722540c55a8659c67fa9ea8aef8dd8fa9"
+          "after": "fb66e9df6e2b8657bb6c0c74f002cc3a08b64f4d08601f665d00d53f96c3d184"
         },
         "uv.lock": {
           "before": "ead64d978b395a8d010fcc7e109a64c47fe57c7cd2091629b3b7d422857d9904",
-          "after": "ca6d18ebede785a62ccd9ad7a814cdc8213baaffde9d022ed649a590f097c79d"
+          "after": "adf36815eff0610d85b34f635d1e6467567c994caa8750233a858638c7a9fd0d"
         }
       }
     },
     "installed_versions": {
       "transformers": "4.57.3+pgfr.security1",
       "accelerate": "1.13.0+pgfr.security1",
-      "aiohttp": "3.14.3",
+      "aiohttp": "3.14.5",
       "onnx": "1.23.0",
-      "pillow": "12.3.0",
+      "pillow": "13.0.0",
       "torch": "2.7.1+cu128",
       "torchvision": "0.22.1+cu128",
       "triton": "3.3.1",
       "wandb": "0.30.0",
-      "click": "8.2.1",
-      "opentelemetry-api": "1.43.0",
-      "opentelemetry-sdk": "1.43.0",
-      "opentelemetry-exporter-otlp-proto-http": "1.43.0"
+      "click": "8.3.3",
+      "opentelemetry-api": "1.45.1",
+      "opentelemetry-sdk": "1.45.1",
+      "opentelemetry-exporter-otlp-proto-http": "1.45.1",
+      "certifi": "2026.10.23",
+      "urllib3": "2.8.0",
+      "filelock": "4.2.4",
+      "datasets": "5.0.1",
+      "fsspec": "2026.6.0",
+      "opentelemetry-exporter-http-transport": "0.66b1",
+      "opentelemetry-exporter-otlp-common": "0.66b1",
+      "torchcodec": "0.4.0",
+      "flash-attn": "2.7.4.post1",
+      "deepspeed": "0.17.6"
     },
     "absent_packages": [
       "gitpython",
       "gitdb",
-      "smmap"
-    ]
+      "smmap",
+      "pre-commit",
+      "virtualenv"
+    ],
+    "python_version": "3.11"
   }
 }

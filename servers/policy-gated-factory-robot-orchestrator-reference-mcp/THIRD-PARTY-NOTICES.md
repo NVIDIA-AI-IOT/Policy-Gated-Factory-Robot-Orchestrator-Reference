@@ -22,8 +22,10 @@ complete.
   Where an upstream lockfile offered a choice and this distribution selected
   one branch, that selection is stated explicitly.
 
-The dependency tables are derived from the committed
+The npm and main Python dependency tables are derived from the committed
 <code>package-lock.json</code> and six committed <code>uv.lock</code> files.
+The separate workstation training supplement lists additional identities
+from the hash-verified patched upstream training lock.
 Package links are the attribution and license-detail entry points; installed
 distributions remain authoritative for complete copyright and license text.
 
@@ -96,6 +98,7 @@ its CI do not publish the generated wheels. Patch scope and provenance are
 recorded in `reference/groot/security/README.md` and the modification notices.
 The training setup applies a separate patch to the pinned upstream training
 lock; the inventory below lists the six standalone lockfiles in this repository.
+Additional training-only identities appear in the separate supplement below.
 
 ## Containers, system packages, codecs, and remote assets
 
@@ -175,7 +178,7 @@ evidence is needed for this source release; redistribution of either binary
 would require a separate assessment of its terms and supporting evidence.
 No host runtime was replaced as part of this documentation audit.
 
-## npm dependency inventory (431 identities)
+## npm dependency inventory (429 identities)
 
 | Ecosystem | Package | Version | Declared or selected license |
 |---|---|---:|---|
@@ -219,7 +222,7 @@ No host runtime was replaced as part of this documentation audit.
 | npm | [@lydell/node-pty-win32-arm64](https://www.npmjs.com/package/@lydell/node-pty-win32-arm64/v/1.2.0-beta.15) | <code>1.2.0-beta.15</code> | MIT |
 | npm | [@lydell/node-pty-win32-x64](https://www.npmjs.com/package/@lydell/node-pty-win32-x64/v/1.2.0-beta.15) | <code>1.2.0-beta.15</code> | MIT |
 | npm | [@mistralai/mistralai](https://www.npmjs.com/package/@mistralai/mistralai/v/2.6.4) | <code>2.6.4</code> | Apache-2.0 |
-| npm | [@modelcontextprotocol/sdk](https://www.npmjs.com/package/@modelcontextprotocol/sdk/v/1.30.0) | <code>1.30.0</code> | MIT |
+| npm | [@modelcontextprotocol/sdk](https://www.npmjs.com/package/@modelcontextprotocol/sdk/v/1.32.2) | <code>1.32.2</code> | MIT |
 | npm | [@mozilla/readability](https://www.npmjs.com/package/@mozilla/readability/v/0.6.0) | <code>0.6.0</code> | Apache-2.0 |
 | npm | [@openclaw/ai](https://www.npmjs.com/package/@openclaw/ai/v/2026.9.2) | <code>2026.9.2</code> | MIT |
 | npm | [@openclaw/fs-safe](https://www.npmjs.com/package/@openclaw/fs-safe/v/0.8.1) | <code>0.8.1</code> | MIT |
@@ -232,7 +235,7 @@ No host runtime was replaced as part of this documentation audit.
 | npm | [@openclaw/fs-safe-win32-x64-msvc](https://www.npmjs.com/package/@openclaw/fs-safe-win32-x64-msvc/v/0.8.1) | <code>0.8.1</code> | MIT |
 | npm | [@openclaw/proxyline](https://www.npmjs.com/package/@openclaw/proxyline/v/0.3.7) | <code>0.3.7</code> | MIT |
 | npm | [@opentelemetry/semantic-conventions](https://www.npmjs.com/package/@opentelemetry/semantic-conventions/v/1.43.0) | <code>1.43.0</code> | Apache-2.0 |
-| npm | [@oxc-project/types](https://www.npmjs.com/package/@oxc-project/types/v/0.148.0) | <code>0.148.0</code> | MIT |
+| npm | [@oxc-project/types](https://www.npmjs.com/package/@oxc-project/types/v/0.155.0) | <code>0.155.0</code> | MIT |
 | npm | [@protobufjs/aspromise](https://www.npmjs.com/package/@protobufjs/aspromise/v/1.1.2) | <code>1.1.2</code> | BSD-3-Clause |
 | npm | [@protobufjs/base64](https://www.npmjs.com/package/@protobufjs/base64/v/1.1.2) | <code>1.1.2</code> | BSD-3-Clause |
 | npm | [@protobufjs/codegen](https://www.npmjs.com/package/@protobufjs/codegen/v/2.0.5) | <code>2.0.5</code> | BSD-3-Clause |
@@ -242,21 +245,21 @@ No host runtime was replaced as part of this documentation audit.
 | npm | [@protobufjs/path](https://www.npmjs.com/package/@protobufjs/path/v/1.1.2) | <code>1.1.2</code> | BSD-3-Clause |
 | npm | [@protobufjs/pool](https://www.npmjs.com/package/@protobufjs/pool/v/1.1.0) | <code>1.1.0</code> | BSD-3-Clause |
 | npm | [@protobufjs/utf8](https://www.npmjs.com/package/@protobufjs/utf8/v/1.1.2) | <code>1.1.2</code> | BSD-3-Clause |
-| npm | [@rolldown/binding-android-arm-eabi](https://www.npmjs.com/package/@rolldown/binding-android-arm-eabi/v/1.2.7) | <code>1.2.7</code> | MIT |
-| npm | [@rolldown/binding-android-arm64](https://www.npmjs.com/package/@rolldown/binding-android-arm64/v/1.2.7) | <code>1.2.7</code> | MIT |
-| npm | [@rolldown/binding-darwin-arm64](https://www.npmjs.com/package/@rolldown/binding-darwin-arm64/v/1.2.7) | <code>1.2.7</code> | MIT |
-| npm | [@rolldown/binding-darwin-x64](https://www.npmjs.com/package/@rolldown/binding-darwin-x64/v/1.2.7) | <code>1.2.7</code> | MIT |
-| npm | [@rolldown/binding-freebsd-x64](https://www.npmjs.com/package/@rolldown/binding-freebsd-x64/v/1.2.7) | <code>1.2.7</code> | MIT |
-| npm | [@rolldown/binding-linux-arm-gnueabihf](https://www.npmjs.com/package/@rolldown/binding-linux-arm-gnueabihf/v/1.2.7) | <code>1.2.7</code> | MIT |
-| npm | [@rolldown/binding-linux-arm64-gnu](https://www.npmjs.com/package/@rolldown/binding-linux-arm64-gnu/v/1.2.7) | <code>1.2.7</code> | MIT |
-| npm | [@rolldown/binding-linux-arm64-musl](https://www.npmjs.com/package/@rolldown/binding-linux-arm64-musl/v/1.2.7) | <code>1.2.7</code> | MIT |
-| npm | [@rolldown/binding-linux-ppc64-gnu](https://www.npmjs.com/package/@rolldown/binding-linux-ppc64-gnu/v/1.2.7) | <code>1.2.7</code> | MIT |
-| npm | [@rolldown/binding-linux-s390x-gnu](https://www.npmjs.com/package/@rolldown/binding-linux-s390x-gnu/v/1.2.7) | <code>1.2.7</code> | MIT |
-| npm | [@rolldown/binding-linux-x64-gnu](https://www.npmjs.com/package/@rolldown/binding-linux-x64-gnu/v/1.2.7) | <code>1.2.7</code> | MIT |
-| npm | [@rolldown/binding-linux-x64-musl](https://www.npmjs.com/package/@rolldown/binding-linux-x64-musl/v/1.2.7) | <code>1.2.7</code> | MIT |
-| npm | [@rolldown/binding-openharmony-arm64](https://www.npmjs.com/package/@rolldown/binding-openharmony-arm64/v/1.2.7) | <code>1.2.7</code> | MIT |
-| npm | [@rolldown/binding-win32-arm64-msvc](https://www.npmjs.com/package/@rolldown/binding-win32-arm64-msvc/v/1.2.7) | <code>1.2.7</code> | MIT |
-| npm | [@rolldown/binding-win32-x64-msvc](https://www.npmjs.com/package/@rolldown/binding-win32-x64-msvc/v/1.2.7) | <code>1.2.7</code> | MIT |
+| npm | [@rolldown/binding-android-arm-eabi](https://www.npmjs.com/package/@rolldown/binding-android-arm-eabi/v/1.2.15) | <code>1.2.15</code> | MIT |
+| npm | [@rolldown/binding-android-arm64](https://www.npmjs.com/package/@rolldown/binding-android-arm64/v/1.2.15) | <code>1.2.15</code> | MIT |
+| npm | [@rolldown/binding-darwin-arm64](https://www.npmjs.com/package/@rolldown/binding-darwin-arm64/v/1.2.15) | <code>1.2.15</code> | MIT |
+| npm | [@rolldown/binding-darwin-x64](https://www.npmjs.com/package/@rolldown/binding-darwin-x64/v/1.2.15) | <code>1.2.15</code> | MIT |
+| npm | [@rolldown/binding-freebsd-x64](https://www.npmjs.com/package/@rolldown/binding-freebsd-x64/v/1.2.15) | <code>1.2.15</code> | MIT |
+| npm | [@rolldown/binding-linux-arm-gnueabihf](https://www.npmjs.com/package/@rolldown/binding-linux-arm-gnueabihf/v/1.2.15) | <code>1.2.15</code> | MIT |
+| npm | [@rolldown/binding-linux-arm64-gnu](https://www.npmjs.com/package/@rolldown/binding-linux-arm64-gnu/v/1.2.15) | <code>1.2.15</code> | MIT |
+| npm | [@rolldown/binding-linux-arm64-musl](https://www.npmjs.com/package/@rolldown/binding-linux-arm64-musl/v/1.2.15) | <code>1.2.15</code> | MIT |
+| npm | [@rolldown/binding-linux-ppc64-gnu](https://www.npmjs.com/package/@rolldown/binding-linux-ppc64-gnu/v/1.2.15) | <code>1.2.15</code> | MIT |
+| npm | [@rolldown/binding-linux-s390x-gnu](https://www.npmjs.com/package/@rolldown/binding-linux-s390x-gnu/v/1.2.15) | <code>1.2.15</code> | MIT |
+| npm | [@rolldown/binding-linux-x64-gnu](https://www.npmjs.com/package/@rolldown/binding-linux-x64-gnu/v/1.2.15) | <code>1.2.15</code> | MIT |
+| npm | [@rolldown/binding-linux-x64-musl](https://www.npmjs.com/package/@rolldown/binding-linux-x64-musl/v/1.2.15) | <code>1.2.15</code> | MIT |
+| npm | [@rolldown/binding-openharmony-arm64](https://www.npmjs.com/package/@rolldown/binding-openharmony-arm64/v/1.2.15) | <code>1.2.15</code> | MIT |
+| npm | [@rolldown/binding-win32-arm64-msvc](https://www.npmjs.com/package/@rolldown/binding-win32-arm64-msvc/v/1.2.15) | <code>1.2.15</code> | MIT |
+| npm | [@rolldown/binding-win32-x64-msvc](https://www.npmjs.com/package/@rolldown/binding-win32-x64-msvc/v/1.2.15) | <code>1.2.15</code> | MIT |
 | npm | [@rolldown/pluginutils](https://www.npmjs.com/package/@rolldown/pluginutils/v/1.0.1) | <code>1.0.1</code> | MIT |
 | npm | [@sec-ant/readable-stream](https://www.npmjs.com/package/@sec-ant/readable-stream/v/0.4.1) | <code>0.4.1</code> | MIT |
 | npm | [@silvia-odwyer/photon-node](https://www.npmjs.com/package/@silvia-odwyer/photon-node/v/0.3.4) | <code>0.3.4</code> | Apache-2.0 |
@@ -286,8 +289,8 @@ No host runtime was replaced as part of this documentation audit.
 | npm | [@ubjs/node-linux-x64-musl](https://www.npmjs.com/package/@ubjs/node-linux-x64-musl/v/0.31.0-3) | <code>0.31.0-3</code> | MPL-2.0 |
 | npm | [@ubjs/node-win32-arm64-msvc](https://www.npmjs.com/package/@ubjs/node-win32-arm64-msvc/v/0.31.0-3) | <code>0.31.0-3</code> | MPL-2.0 |
 | npm | [@ubjs/node-win32-x64-msvc](https://www.npmjs.com/package/@ubjs/node-win32-x64-msvc/v/0.31.0-3) | <code>0.31.0-3</code> | MPL-2.0 |
-| npm | [@vitest/mocker](https://www.npmjs.com/package/@vitest/mocker/v/5.0.0) | <code>5.0.0</code> | MIT |
-| npm | [@vitest/spy](https://www.npmjs.com/package/@vitest/spy/v/5.0.0) | <code>5.0.0</code> | MIT |
+| npm | [@vitest/mocker](https://www.npmjs.com/package/@vitest/mocker/v/5.0.5) | <code>5.0.5</code> | MIT |
+| npm | [@vitest/spy](https://www.npmjs.com/package/@vitest/spy/v/5.0.5) | <code>5.0.5</code> | MIT |
 | npm | [abort-controller](https://www.npmjs.com/package/abort-controller/v/3.0.0) | <code>3.0.0</code> | MIT |
 | npm | [accepts](https://www.npmjs.com/package/accepts/v/2.0.0) | <code>2.0.0</code> | MIT |
 | npm | [acorn](https://www.npmjs.com/package/acorn/v/8.18.0) | <code>8.18.0</code> | MIT |
@@ -302,17 +305,17 @@ No host runtime was replaced as part of this documentation audit.
 | npm | [base64-js](https://www.npmjs.com/package/base64-js/v/1.5.1) | <code>1.5.1</code> | MIT |
 | npm | [bignumber.js](https://www.npmjs.com/package/bignumber.js/v/9.3.1) | <code>9.3.1</code> | MIT |
 | npm | [bn.js](https://www.npmjs.com/package/bn.js/v/4.12.5) | <code>4.12.5</code> | MIT |
-| npm | [body-parser](https://www.npmjs.com/package/body-parser/v/2.3.0) | <code>2.3.0</code> | MIT |
+| npm | [body-parser](https://www.npmjs.com/package/body-parser/v/2.4.0) | <code>2.4.0</code> | MIT |
 | npm | [boolbase](https://www.npmjs.com/package/boolbase/v/2.0.0) | <code>2.0.0</code> | ISC |
 | npm | [bottleneck](https://www.npmjs.com/package/bottleneck/v/2.19.5) | <code>2.19.5</code> | MIT |
-| npm | [brace-expansion](https://www.npmjs.com/package/brace-expansion/v/5.0.9) | <code>5.0.9</code> | MIT |
+| npm | [brace-expansion](https://www.npmjs.com/package/brace-expansion/v/5.0.12) | <code>5.0.12</code> | MIT |
 | npm | [buffer-equal-constant-time](https://www.npmjs.com/package/buffer-equal-constant-time/v/1.0.1) | <code>1.0.1</code> | BSD-3-Clause |
 | npm | [buffer-from](https://www.npmjs.com/package/buffer-from/v/1.1.2) | <code>1.1.2</code> | MIT |
 | npm | [bytes](https://www.npmjs.com/package/bytes/v/3.1.2) | <code>3.1.2</code> | MIT |
 | npm | [call-bind-apply-helpers](https://www.npmjs.com/package/call-bind-apply-helpers/v/1.0.2) | <code>1.0.2</code> | MIT |
 | npm | [call-bound](https://www.npmjs.com/package/call-bound/v/1.0.4) | <code>1.0.4</code> | MIT |
 | npm | [camelcase](https://www.npmjs.com/package/camelcase/v/5.3.1) | <code>5.3.1</code> | MIT |
-| npm | [chai](https://www.npmjs.com/package/chai/v/6.2.2) | <code>6.2.2</code> | MIT |
+| npm | [chai](https://www.npmjs.com/package/chai/v/6.3.0) | <code>6.3.0</code> | MIT |
 | npm | [chalk](https://www.npmjs.com/package/chalk/v/6.0.0) | <code>6.0.0</code> | MIT |
 | npm | [chokidar](https://www.npmjs.com/package/chokidar/v/5.0.0) | <code>5.0.0</code> | MIT |
 | npm | [chownr](https://www.npmjs.com/package/chownr/v/3.0.0) | <code>3.0.0</code> | BlueOak-1.0.0 |
@@ -378,7 +381,7 @@ No host runtime was replaced as part of this documentation audit.
 | npm | [fast-sha256](https://www.npmjs.com/package/fast-sha256/v/1.3.0) | <code>1.3.0</code> | Unlicense |
 | npm | [fast-string-truncated-width](https://www.npmjs.com/package/fast-string-truncated-width/v/3.0.3) | <code>3.0.3</code> | MIT |
 | npm | [fast-string-width](https://www.npmjs.com/package/fast-string-width/v/3.0.2) | <code>3.0.2</code> | MIT |
-| npm | [fast-uri](https://www.npmjs.com/package/fast-uri/v/3.1.8) | <code>3.1.8</code> | BSD-3-Clause |
+| npm | [fast-uri](https://www.npmjs.com/package/fast-uri/v/3.1.9) | <code>3.1.9</code> | BSD-3-Clause |
 | npm | [fast-wrap-ansi](https://www.npmjs.com/package/fast-wrap-ansi/v/0.2.2) | <code>0.2.2</code> | MIT |
 | npm | [fdir](https://www.npmjs.com/package/fdir/v/6.5.0) | <code>6.5.0</code> | MIT |
 | npm | [fetch-blob](https://www.npmjs.com/package/fetch-blob/v/3.2.0) | <code>3.2.0</code> | MIT |
@@ -405,7 +408,7 @@ No host runtime was replaced as part of this documentation audit.
 | npm | [has-symbols](https://www.npmjs.com/package/has-symbols/v/1.1.0) | <code>1.1.0</code> | MIT |
 | npm | [hasown](https://www.npmjs.com/package/hasown/v/2.0.4) | <code>2.0.4</code> | MIT |
 | npm | [highlight.js](https://www.npmjs.com/package/highlight.js/v/11.12.0) | <code>11.12.0</code> | BSD-3-Clause |
-| npm | [hono](https://www.npmjs.com/package/hono/v/4.13.7) | <code>4.13.7</code> | MIT |
+| npm | [hono](https://www.npmjs.com/package/hono/v/4.13.14) | <code>4.13.14</code> | MIT |
 | npm | [hosted-git-info](https://www.npmjs.com/package/hosted-git-info/v/10.1.1) | <code>10.1.1</code> | ISC |
 | npm | [html-escaper](https://www.npmjs.com/package/html-escaper/v/3.0.3) | <code>3.0.3</code> | MIT |
 | npm | [htmlparser2](https://www.npmjs.com/package/htmlparser2/v/10.1.0) | <code>10.1.0</code> | MIT |
@@ -418,7 +421,7 @@ No host runtime was replaced as part of this documentation audit.
 | npm | [ignore](https://www.npmjs.com/package/ignore/v/7.0.6) | <code>7.0.6</code> | MIT |
 | npm | [immediate](https://www.npmjs.com/package/immediate/v/3.0.6) | <code>3.0.6</code> | MIT |
 | npm | [inherits](https://www.npmjs.com/package/inherits/v/2.0.4) | <code>2.0.4</code> | ISC |
-| npm | [ip-address](https://www.npmjs.com/package/ip-address/v/10.7.0) | <code>10.7.0</code> | MIT |
+| npm | [ip-address](https://www.npmjs.com/package/ip-address/v/10.7.5) | <code>10.7.5</code> | MIT |
 | npm | [ipaddr.js](https://www.npmjs.com/package/ipaddr.js/v/1.9.1) | <code>1.9.1</code> | MIT |
 | npm | [is-fullwidth-code-point](https://www.npmjs.com/package/is-fullwidth-code-point/v/3.0.0) | <code>3.0.0</code> | MIT |
 | npm | [is-plain-obj](https://www.npmjs.com/package/is-plain-obj/v/4.1.0) | <code>4.1.0</code> | MIT |
@@ -456,7 +459,7 @@ No host runtime was replaced as part of this documentation audit.
 | npm | [locate-path](https://www.npmjs.com/package/locate-path/v/5.0.0) | <code>5.0.0</code> | MIT |
 | npm | [long](https://www.npmjs.com/package/long/v/5.3.2) | <code>5.3.2</code> | Apache-2.0 |
 | npm | [lru-cache](https://www.npmjs.com/package/lru-cache/v/11.5.2) | <code>11.5.2</code> | BlueOak-1.0.0 |
-| npm | [magic-string](https://www.npmjs.com/package/magic-string/v/1.2.3) | <code>1.2.3</code> | MIT |
+| npm | [magic-string](https://www.npmjs.com/package/magic-string/v/1.4.5) | <code>1.4.5</code> | MIT |
 | npm | [marked](https://www.npmjs.com/package/marked/v/18.0.5) | <code>18.0.5</code> | MIT |
 | npm | [math-intrinsics](https://www.npmjs.com/package/math-intrinsics/v/1.1.0) | <code>1.1.0</code> | MIT |
 | npm | [media-typer](https://www.npmjs.com/package/media-typer/v/1.1.1) | <code>1.1.1</code> | MIT |
@@ -469,7 +472,7 @@ No host runtime was replaced as part of this documentation audit.
 | npm | [minipass](https://www.npmjs.com/package/minipass/v/7.1.3) | <code>7.1.3</code> | BlueOak-1.0.0 |
 | npm | [minizlib](https://www.npmjs.com/package/minizlib/v/3.1.0) | <code>3.1.0</code> | MIT |
 | npm | [ms](https://www.npmjs.com/package/ms/v/2.1.3) | <code>2.1.3</code> | MIT |
-| npm | [nanoid](https://www.npmjs.com/package/nanoid/v/3.3.18) | <code>3.3.18</code> | MIT |
+| npm | [nanoid](https://www.npmjs.com/package/nanoid/v/3.3.20) | <code>3.3.20</code> | MIT |
 | npm | [negotiator](https://www.npmjs.com/package/negotiator/v/1.1.0) | <code>1.1.0</code> | MIT |
 | npm | [node-addon-api](https://www.npmjs.com/package/node-addon-api/v/8.9.2) | <code>8.9.2</code> | MIT |
 | npm | [node-domexception](https://www.npmjs.com/package/node-domexception/v/1.0.0) | <code>1.0.0</code> | MIT |
@@ -481,7 +484,7 @@ No host runtime was replaced as part of this documentation audit.
 | npm | [nth-check](https://www.npmjs.com/package/nth-check/v/3.0.1) | <code>3.0.1</code> | BSD-2-Clause |
 | npm | [object-assign](https://www.npmjs.com/package/object-assign/v/4.1.1) | <code>4.1.1</code> | MIT |
 | npm | [object-inspect](https://www.npmjs.com/package/object-inspect/v/1.13.4) | <code>1.13.4</code> | MIT |
-| npm | [obug](https://www.npmjs.com/package/obug/v/2.2.1) | <code>2.2.1</code> | MIT |
+| npm | [obug](https://www.npmjs.com/package/obug/v/3.0.0) | <code>3.0.0</code> | MIT |
 | npm | [on-finished](https://www.npmjs.com/package/on-finished/v/2.4.1) | <code>2.4.1</code> | MIT |
 | npm | [once](https://www.npmjs.com/package/once/v/1.4.0) | <code>1.4.0</code> | ISC |
 | npm | [openai](https://www.npmjs.com/package/openai/v/7.5.0) | <code>7.5.0</code> | Apache-2.0 |
@@ -505,13 +508,13 @@ No host runtime was replaced as part of this documentation audit.
 | npm | [pkce-challenge](https://www.npmjs.com/package/pkce-challenge/v/5.0.1) | <code>5.0.1</code> | MIT |
 | npm | [playwright-core](https://www.npmjs.com/package/playwright-core/v/1.62.1) | <code>1.62.1</code> | Apache-2.0 |
 | npm | [pngjs](https://www.npmjs.com/package/pngjs/v/5.0.0) | <code>5.0.0</code> | MIT |
-| npm | [postcss](https://www.npmjs.com/package/postcss/v/8.5.28) | <code>8.5.28</code> | MIT |
+| npm | [postcss](https://www.npmjs.com/package/postcss/v/8.5.32) | <code>8.5.32</code> | MIT |
 | npm | [pretty-ms](https://www.npmjs.com/package/pretty-ms/v/9.3.0) | <code>9.3.0</code> | MIT |
 | npm | [process-nextick-args](https://www.npmjs.com/package/process-nextick-args/v/2.0.1) | <code>2.0.1</code> | MIT |
 | npm | [protobufjs](https://www.npmjs.com/package/protobufjs/v/7.6.6) | <code>7.6.6</code> | BSD-3-Clause |
 | npm | [proxy-addr](https://www.npmjs.com/package/proxy-addr/v/2.0.8) | <code>2.0.8</code> | MIT |
 | npm | [qrcode](https://www.npmjs.com/package/qrcode/v/1.5.4) | <code>1.5.4</code> | MIT |
-| npm | [qs](https://www.npmjs.com/package/qs/v/6.16.0) | <code>6.16.0</code> | BSD-3-Clause |
+| npm | [qs](https://www.npmjs.com/package/qs/v/6.17.0) | <code>6.17.0</code> | BSD-3-Clause |
 | npm | [quickjs-wasi](https://www.npmjs.com/package/quickjs-wasi/v/3.5.0) | <code>3.5.0</code> | MIT |
 | npm | [range-parser](https://www.npmjs.com/package/range-parser/v/1.3.0) | <code>1.3.0</code> | MIT |
 | npm | [rastermill](https://www.npmjs.com/package/rastermill/v/0.3.2) | <code>0.3.2</code> | MIT |
@@ -522,7 +525,7 @@ No host runtime was replaced as part of this documentation audit.
 | npm | [require-from-string](https://www.npmjs.com/package/require-from-string/v/2.0.2) | <code>2.0.2</code> | MIT |
 | npm | [require-main-filename](https://www.npmjs.com/package/require-main-filename/v/2.0.0) | <code>2.0.0</code> | ISC |
 | npm | [retry](https://www.npmjs.com/package/retry/v/0.13.1) | <code>0.13.1</code> | MIT |
-| npm | [rolldown](https://www.npmjs.com/package/rolldown/v/1.2.7) | <code>1.2.7</code> | MIT |
+| npm | [rolldown](https://www.npmjs.com/package/rolldown/v/1.2.15) | <code>1.2.15</code> | MIT |
 | npm | [router](https://www.npmjs.com/package/router/v/2.2.0) | <code>2.2.0</code> | MIT |
 | npm | [safe-buffer](https://www.npmjs.com/package/safe-buffer/v/5.1.2) | <code>5.1.2</code> | MIT |
 | npm | [safe-buffer](https://www.npmjs.com/package/safe-buffer/v/5.2.1) | <code>5.2.1</code> | MIT |
@@ -539,11 +542,10 @@ No host runtime was replaced as part of this documentation audit.
 | npm | [side-channel-list](https://www.npmjs.com/package/side-channel-list/v/1.0.1) | <code>1.0.1</code> | MIT |
 | npm | [side-channel-map](https://www.npmjs.com/package/side-channel-map/v/1.0.1) | <code>1.0.1</code> | MIT |
 | npm | [side-channel-weakmap](https://www.npmjs.com/package/side-channel-weakmap/v/1.0.2) | <code>1.0.2</code> | MIT |
-| npm | [siginfo](https://www.npmjs.com/package/siginfo/v/2.0.0) | <code>2.0.0</code> | ISC |
 | npm | [signal-exit](https://www.npmjs.com/package/signal-exit/v/4.1.0) | <code>4.1.0</code> | ISC |
 | npm | [sisteransi](https://www.npmjs.com/package/sisteransi/v/1.0.5) | <code>1.0.5</code> | MIT |
 | npm | [source-map](https://www.npmjs.com/package/source-map/v/0.6.1) | <code>0.6.1</code> | BSD-3-Clause |
-| npm | [source-map-js](https://www.npmjs.com/package/source-map-js/v/1.2.1) | <code>1.2.1</code> | BSD-3-Clause |
+| npm | [source-map-js](https://www.npmjs.com/package/source-map-js/v/1.2.2) | <code>1.2.2</code> | BSD-3-Clause |
 | npm | [source-map-support](https://www.npmjs.com/package/source-map-support/v/0.5.21) | <code>0.5.21</code> | MIT |
 | npm | [sqlite-vec](https://www.npmjs.com/package/sqlite-vec/v/0.1.9) | <code>0.1.9</code> | MIT OR Apache-2.0 (lockfile: MIT OR Apache) |
 | npm | [sqlite-vec-darwin-arm64](https://www.npmjs.com/package/sqlite-vec-darwin-arm64/v/0.1.9) | <code>0.1.9</code> | MIT OR Apache-2.0 (lockfile: MIT OR Apache) |
@@ -551,18 +553,17 @@ No host runtime was replaced as part of this documentation audit.
 | npm | [sqlite-vec-linux-arm64](https://www.npmjs.com/package/sqlite-vec-linux-arm64/v/0.1.9) | <code>0.1.9</code> | MIT OR Apache-2.0 (lockfile: MIT OR Apache) |
 | npm | [sqlite-vec-linux-x64](https://www.npmjs.com/package/sqlite-vec-linux-x64/v/0.1.9) | <code>0.1.9</code> | MIT OR Apache-2.0 (lockfile: MIT OR Apache) |
 | npm | [sqlite-vec-windows-x64](https://www.npmjs.com/package/sqlite-vec-windows-x64/v/0.1.9) | <code>0.1.9</code> | MIT OR Apache-2.0 (lockfile: MIT OR Apache) |
-| npm | [stackback](https://www.npmjs.com/package/stackback/v/0.0.2) | <code>0.0.2</code> | MIT |
 | npm | [standardwebhooks](https://www.npmjs.com/package/standardwebhooks/v/1.1.1) | <code>1.1.1</code> | MIT |
 | npm | [statuses](https://www.npmjs.com/package/statuses/v/2.0.2) | <code>2.0.2</code> | MIT |
-| npm | [std-env](https://www.npmjs.com/package/std-env/v/4.2.0) | <code>4.2.0</code> | MIT |
+| npm | [std-env](https://www.npmjs.com/package/std-env/v/4.3.0) | <code>4.3.0</code> | MIT |
 | npm | [string-width](https://www.npmjs.com/package/string-width/v/4.2.3) | <code>4.2.3</code> | MIT |
 | npm | [string_decoder](https://www.npmjs.com/package/string_decoder/v/1.1.1) | <code>1.1.1</code> | MIT |
 | npm | [strip-ansi](https://www.npmjs.com/package/strip-ansi/v/6.0.1) | <code>6.0.1</code> | MIT |
 | npm | [strip-final-newline](https://www.npmjs.com/package/strip-final-newline/v/4.0.0) | <code>4.0.0</code> | MIT |
 | npm | [strtok3](https://www.npmjs.com/package/strtok3/v/10.3.5) | <code>10.3.5</code> | MIT |
 | npm | [tar](https://www.npmjs.com/package/tar/v/7.5.22) | <code>7.5.22</code> | BlueOak-1.0.0 |
-| npm | [tinybench](https://www.npmjs.com/package/tinybench/v/6.1.4) | <code>6.1.4</code> | MIT |
-| npm | [tinyexec](https://www.npmjs.com/package/tinyexec/v/1.3.0) | <code>1.3.0</code> | MIT |
+| npm | [tinybench](https://www.npmjs.com/package/tinybench/v/6.2.2) | <code>6.2.2</code> | MIT |
+| npm | [tinyexec](https://www.npmjs.com/package/tinyexec/v/1.3.1) | <code>1.3.1</code> | MIT |
 | npm | [tinyglobby](https://www.npmjs.com/package/tinyglobby/v/0.2.17) | <code>0.2.17</code> | MIT |
 | npm | [toidentifier](https://www.npmjs.com/package/toidentifier/v/1.0.1) | <code>1.0.1</code> | MIT |
 | npm | [token-types](https://www.npmjs.com/package/token-types/v/6.1.2) | <code>6.1.2</code> | MIT |
@@ -577,14 +578,14 @@ No host runtime was replaced as part of this documentation audit.
 | npm | [typescript](https://www.npmjs.com/package/typescript/v/6.0.3) | <code>6.0.3</code> | Apache-2.0 |
 | npm | [uhyphen](https://www.npmjs.com/package/uhyphen/v/0.2.0) | <code>0.2.0</code> | ISC |
 | npm | [uint8array-extras](https://www.npmjs.com/package/uint8array-extras/v/1.5.0) | <code>1.5.0</code> | MIT |
-| npm | [undici](https://www.npmjs.com/package/undici/v/8.10.2) | <code>8.10.2</code> | MIT |
+| npm | [undici](https://www.npmjs.com/package/undici/v/8.12.3) | <code>8.12.3</code> | MIT |
 | npm | [undici-types](https://www.npmjs.com/package/undici-types/v/8.9.0) | <code>8.9.0</code> | MIT |
 | npm | [unicorn-magic](https://www.npmjs.com/package/unicorn-magic/v/0.3.0) | <code>0.3.0</code> | MIT |
 | npm | [unpipe](https://www.npmjs.com/package/unpipe/v/1.0.0) | <code>1.0.0</code> | MIT |
 | npm | [util-deprecate](https://www.npmjs.com/package/util-deprecate/v/1.0.2) | <code>1.0.2</code> | MIT |
 | npm | [vary](https://www.npmjs.com/package/vary/v/1.1.2) | <code>1.1.2</code> | MIT |
-| npm | [vite](https://www.npmjs.com/package/vite/v/8.2.2) | <code>8.2.2</code> | MIT |
-| npm | [vitest](https://www.npmjs.com/package/vitest/v/5.0.0) | <code>5.0.0</code> | MIT |
+| npm | [vite](https://www.npmjs.com/package/vite/v/8.3.5) | <code>8.3.5</code> | MIT |
+| npm | [vitest](https://www.npmjs.com/package/vitest/v/5.0.5) | <code>5.0.5</code> | MIT |
 | npm | [web-push](https://www.npmjs.com/package/web-push/v/3.6.7) | <code>3.6.7</code> | MPL-2.0 |
 | npm | [web-streams-polyfill](https://www.npmjs.com/package/web-streams-polyfill/v/3.3.3) | <code>3.3.3</code> | MIT |
 | npm | [web-tree-sitter](https://www.npmjs.com/package/web-tree-sitter/v/0.26.13) | <code>0.26.13</code> | MIT |
@@ -593,7 +594,7 @@ No host runtime was replaced as part of this documentation audit.
 | npm | [which](https://www.npmjs.com/package/which/v/2.0.2) | <code>2.0.2</code> | ISC |
 | npm | [which-command](https://www.npmjs.com/package/which-command/v/0.1.0) | <code>0.1.0</code> | MIT |
 | npm | [which-module](https://www.npmjs.com/package/which-module/v/2.0.1) | <code>2.0.1</code> | ISC |
-| npm | [why-is-node-running](https://www.npmjs.com/package/why-is-node-running/v/2.3.0) | <code>2.3.0</code> | MIT |
+| npm | [why-is-node-running](https://www.npmjs.com/package/why-is-node-running/v/3.2.1) | <code>3.2.1</code> | MIT |
 | npm | [wrap-ansi](https://www.npmjs.com/package/wrap-ansi/v/6.2.0) | <code>6.2.0</code> | MIT |
 | npm | [wrap-ansi](https://www.npmjs.com/package/wrap-ansi/v/7.0.0) | <code>7.0.0</code> | MIT |
 | npm | [wrappy](https://www.npmjs.com/package/wrappy/v/1.0.2) | <code>1.0.2</code> | ISC |
@@ -608,10 +609,10 @@ No host runtime was replaced as part of this documentation audit.
 | npm | [yargs-parser](https://www.npmjs.com/package/yargs-parser/v/21.1.1) | <code>21.1.1</code> | ISC |
 | npm | [yocto-queue](https://www.npmjs.com/package/yocto-queue/v/1.2.2) | <code>1.2.2</code> | MIT |
 | npm | [yoctocolors](https://www.npmjs.com/package/yoctocolors/v/2.2.0) | <code>2.2.0</code> | MIT |
-| npm | [zod](https://www.npmjs.com/package/zod/v/4.4.3) | <code>4.4.3</code> | MIT |
+| npm | [zod](https://www.npmjs.com/package/zod/v/4.6.7) | <code>4.6.7</code> | MIT |
 | npm | [zod-to-json-schema](https://www.npmjs.com/package/zod-to-json-schema/v/3.25.2) | <code>3.25.2</code> | ISC |
 
-## Python dependency inventory (207 external identities)
+## Python dependency inventory (199 external identities)
 
 The six editable projects are not duplicated in this table: five are
 first-party Policy-Gated Factory Robot Orchestrator Reference packages, and editable <code>gr00t</code> is
@@ -622,7 +623,7 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [accelerate](https://pypi.org/project/accelerate/1.12.0/) | <code>1.12.0+pgfr.security1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [aiohappyeyeballs](https://pypi.org/project/aiohappyeyeballs/2.6.1/) | <code>2.6.1</code> | PSF-2.0 | [PyPI](https://pypi.org/) |
 | python | [aiohappyeyeballs](https://pypi.org/project/aiohappyeyeballs/2.7.1/) | <code>2.7.1</code> | PSF-2.0 | [PyPI](https://pypi.org/) |
-| python | [aiohttp](https://pypi.org/project/aiohttp/3.14.3/) | <code>3.14.3</code> | Apache-2.0 AND MIT | [PyPI](https://pypi.org/) |
+| python | [aiohttp](https://pypi.org/project/aiohttp/3.14.5/) | <code>3.14.5</code> | Apache-2.0 AND MIT | [PyPI](https://pypi.org/) |
 | python | [aiosignal](https://pypi.org/project/aiosignal/1.4.0/) | <code>1.4.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [albucore](https://pypi.org/project/albucore/0.0.17/) | <code>0.0.17</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [albumentations](https://pypi.org/project/albumentations/1.4.18/) | <code>1.4.18</code> | MIT | [PyPI](https://pypi.org/) |
@@ -639,14 +640,11 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [attrs](https://pypi.org/project/attrs/26.1.0/) | <code>26.1.0</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [backports-asyncio-runner](https://pypi.org/project/backports-asyncio-runner/1.2.0/) | <code>1.2.0</code> | PSF-2.0 | [PyPI](https://pypi.org/) |
 | python | [build](https://pypi.org/project/build/1.4.0/) | <code>1.4.0</code> | MIT | [PyPI](https://pypi.org/) |
-| python | [certifi](https://pypi.org/project/certifi/2026.1.4/) | <code>2026.1.4</code> | MPL-2.0 | [PyPI](https://pypi.org/) |
-| python | [certifi](https://pypi.org/project/certifi/2026.6.17/) | <code>2026.6.17</code> | MPL-2.0 | [PyPI](https://pypi.org/) |
-| python | [certifi](https://pypi.org/project/certifi/2026.7.22/) | <code>2026.7.22</code> | MPL-2.0 | [PyPI](https://pypi.org/) |
+| python | [certifi](https://pypi.org/project/certifi/2026.10.23/) | <code>2026.10.23</code> | MPL-2.0 | [PyPI](https://pypi.org/) |
 | python | [cffi](https://pypi.org/project/cffi/2.0.0/) | <code>2.0.0</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [cffi](https://pypi.org/project/cffi/2.1.0/) | <code>2.1.0</code> | MIT-0 | [PyPI](https://pypi.org/) |
-| python | [cfgv](https://pypi.org/project/cfgv/3.5.0/) | <code>3.5.0</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [charset-normalizer](https://pypi.org/project/charset-normalizer/3.4.4/) | <code>3.4.4</code> | MIT | [PyPI](https://pypi.org/) |
-| python | [click](https://pypi.org/project/click/8.2.1/) | <code>8.2.1</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
+| python | [click](https://pypi.org/project/click/8.3.3/) | <code>8.3.3</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [click](https://pypi.org/project/click/8.4.2/) | <code>8.4.2</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [cloudpickle](https://pypi.org/project/cloudpickle/3.1.2/) | <code>3.1.2</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [colorama](https://pypi.org/project/colorama/0.4.6/) | <code>0.4.6</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
@@ -654,11 +652,10 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [cryptography](https://pypi.org/project/cryptography/50.0.0/) | <code>50.0.0</code> | Apache-2.0 OR BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [cuda-toolkit](https://pypi.nvidia.com/) | <code>13.1.1</code> | NVIDIA SDK terms | [NVIDIA Python index](https://pypi.nvidia.com/) |
 | python | [cycler](https://pypi.org/project/cycler/0.12.1/) | <code>0.12.1</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
-| python | [datasets](https://pypi.org/project/datasets/3.6.0/) | <code>3.6.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [datasets](https://pypi.org/project/datasets/5.0.1/) | <code>5.0.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [decorator](https://pypi.org/project/decorator/5.2.1/) | <code>5.2.1</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [diffusers](https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple/) | <code>0.36.0.dev0</code> | Apache-2.0 | [Jetson AI Lab index](https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple/) |
 | python | [dill](https://pypi.org/project/dill/0.3.8/) | <code>0.3.8</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
-| python | [distlib](https://pypi.org/project/distlib/0.4.0/) | <code>0.4.0</code> | PSF-2.0 | [PyPI](https://pypi.org/) |
 | python | [distro](https://pypi.org/project/distro/1.9.0/) | <code>1.9.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [dm-tree](https://pypi.org/project/dm-tree/0.1.8/) | <code>0.1.8</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [docstring-parser](https://pypi.org/project/docstring-parser/0.17.0/) | <code>0.17.0</code> | MIT | [PyPI](https://pypi.org/) |
@@ -669,11 +666,11 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [executing](https://pypi.org/project/executing/2.2.1/) | <code>2.2.1</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [farama-notifications](https://pypi.org/project/farama-notifications/0.0.4/) | <code>0.0.4</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [fastapi](https://pypi.org/project/fastapi/0.139.0/) | <code>0.139.0</code> | MIT | [PyPI](https://pypi.org/) |
-| python | [filelock](https://pypi.org/project/filelock/3.21.2/) | <code>3.21.2</code> | Unlicense | [PyPI](https://pypi.org/) |
+| python | [filelock](https://pypi.org/project/filelock/4.2.4/) | <code>4.2.4</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [flash-attn](https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple/) | <code>2.8.4</code> | BSD-3-Clause | [Jetson AI Lab index](https://pypi.jetson-ai-lab.io/sbsa/cu130/+simple/) |
 | python | [fonttools](https://pypi.org/project/fonttools/4.61.1/) | <code>4.61.1</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [frozenlist](https://pypi.org/project/frozenlist/1.8.0/) | <code>1.8.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
-| python | [fsspec](https://pypi.org/project/fsspec/2025.3.0/) | <code>2025.3.0</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
+| python | [fsspec](https://pypi.org/project/fsspec/2026.6.0/) | <code>2026.6.0</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [googleapis-common-protos](https://pypi.org/project/googleapis-common-protos/1.75.4/) | <code>1.75.4</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [gymnasium](https://pypi.org/project/gymnasium/1.2.2/) | <code>1.2.2</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [h11](https://pypi.org/project/h11/0.16.0/) | <code>0.16.0</code> | MIT | [PyPI](https://pypi.org/) |
@@ -682,7 +679,6 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [httpx](https://pypi.org/project/httpx/0.28.1/) | <code>0.28.1</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [httpx-sse](https://pypi.org/project/httpx-sse/0.4.3/) | <code>0.4.3</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [huggingface-hub](https://pypi.org/project/huggingface-hub/0.36.2/) | <code>0.36.2</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
-| python | [identify](https://pypi.org/project/identify/2.6.16/) | <code>2.6.16</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [idna](https://pypi.org/project/idna/3.18/) | <code>3.18</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [imageio](https://pypi.org/project/imageio/2.37.2/) | <code>2.37.2</code> | BSD-2-Clause | [PyPI](https://pypi.org/) |
 | python | [importlib-metadata](https://pypi.org/project/importlib-metadata/8.7.1/) | <code>8.7.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
@@ -714,7 +710,6 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [mypy](https://pypi.org/project/mypy/1.20.2/) | <code>1.20.2</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [mypy-extensions](https://pypi.org/project/mypy-extensions/1.1.0/) | <code>1.1.0</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [networkx](https://pypi.org/project/networkx/3.4.2/) | <code>3.4.2</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
-| python | [nodeenv](https://pypi.org/project/nodeenv/1.10.0/) | <code>1.10.0</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [numpy](https://pypi.org/project/numpy/1.26.4/) | <code>1.26.4</code> | BSD-3-Clause; bundled components require binary review | [PyPI](https://pypi.org/) |
 | python | [nvidia-cublas](https://pypi.nvidia.com/) | <code>13.2.1.1</code> | NVIDIA SDK terms | [NVIDIA Python index](https://pypi.nvidia.com/) |
 | python | [nvidia-cudnn-cu13](https://pypi.nvidia.com/) | <code>9.19.1.2</code> | NVIDIA SDK terms | [NVIDIA Python index](https://pypi.nvidia.com/) |
@@ -724,12 +719,14 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [onnx-ir](https://pypi.org/project/onnx-ir/0.2.0/) | <code>0.2.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [onnxscript](https://pypi.org/project/onnxscript/0.6.2/) | <code>0.6.2</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [opencv-python-headless](https://pypi.org/project/opencv-python-headless/4.11.0.86/) | <code>4.11.0.86</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
-| python | [opentelemetry-api](https://pypi.org/project/opentelemetry-api/1.43.0/) | <code>1.43.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
-| python | [opentelemetry-exporter-otlp-proto-common](https://pypi.org/project/opentelemetry-exporter-otlp-proto-common/1.43.0/) | <code>1.43.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
-| python | [opentelemetry-exporter-otlp-proto-http](https://pypi.org/project/opentelemetry-exporter-otlp-proto-http/1.43.0/) | <code>1.43.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
-| python | [opentelemetry-proto](https://pypi.org/project/opentelemetry-proto/1.43.0/) | <code>1.43.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
-| python | [opentelemetry-sdk](https://pypi.org/project/opentelemetry-sdk/1.43.0/) | <code>1.43.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
-| python | [opentelemetry-semantic-conventions](https://pypi.org/project/opentelemetry-semantic-conventions/0.64b0/) | <code>0.64b0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [opentelemetry-api](https://pypi.org/project/opentelemetry-api/1.45.1/) | <code>1.45.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [opentelemetry-exporter-http-transport](https://pypi.org/project/opentelemetry-exporter-http-transport/0.66b1/) | <code>0.66b1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [opentelemetry-exporter-otlp-common](https://pypi.org/project/opentelemetry-exporter-otlp-common/0.66b1/) | <code>0.66b1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [opentelemetry-exporter-otlp-proto-common](https://pypi.org/project/opentelemetry-exporter-otlp-proto-common/1.45.1/) | <code>1.45.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [opentelemetry-exporter-otlp-proto-http](https://pypi.org/project/opentelemetry-exporter-otlp-proto-http/1.45.1/) | <code>1.45.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [opentelemetry-proto](https://pypi.org/project/opentelemetry-proto/1.45.1/) | <code>1.45.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [opentelemetry-sdk](https://pypi.org/project/opentelemetry-sdk/1.45.1/) | <code>1.45.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [opentelemetry-semantic-conventions](https://pypi.org/project/opentelemetry-semantic-conventions/0.66b1/) | <code>0.66b1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [packaging](https://pypi.org/project/packaging/26.0/) | <code>26.0</code> | Apache-2.0 OR BSD-2-Clause | [PyPI](https://pypi.org/) |
 | python | [packaging](https://pypi.org/project/packaging/26.2/) | <code>26.2</code> | Apache-2.0 OR BSD-2-Clause | [PyPI](https://pypi.org/) |
 | python | [pandas](https://pypi.org/project/pandas/2.2.3/) | <code>2.2.3</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
@@ -738,10 +735,9 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [peft](https://pypi.org/project/peft/0.17.1/) | <code>0.17.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [pexpect](https://pypi.org/project/pexpect/4.9.0/) | <code>4.9.0</code> | ISC | [PyPI](https://pypi.org/) |
 | python | [pfzy](https://pypi.org/project/pfzy/0.3.4/) | <code>0.3.4</code> | MIT | [PyPI](https://pypi.org/) |
-| python | [pillow](https://pypi.org/project/pillow/12.3.0/) | <code>12.3.0</code> | MIT-CMU | [PyPI](https://pypi.org/) |
+| python | [pillow](https://pypi.org/project/pillow/13.0.0/) | <code>13.0.0</code> | MIT-CMU | [PyPI](https://pypi.org/) |
 | python | [platformdirs](https://pypi.org/project/platformdirs/4.7.0/) | <code>4.7.0</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [pluggy](https://pypi.org/project/pluggy/1.6.0/) | <code>1.6.0</code> | MIT | [PyPI](https://pypi.org/) |
-| python | [pre-commit](https://pypi.org/project/pre-commit/4.5.1/) | <code>4.5.1</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [prompt-toolkit](https://pypi.org/project/prompt-toolkit/3.0.52/) | <code>3.0.52</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [propcache](https://pypi.org/project/propcache/0.4.1/) | <code>0.4.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [propcache](https://pypi.org/project/propcache/0.5.2/) | <code>0.5.2</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
@@ -815,19 +811,117 @@ covered by the pinned Isaac-GR00T source notice above.
 | python | [typing-inspection](https://pypi.org/project/typing-inspection/0.4.2/) | <code>0.4.2</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [tyro](https://pypi.org/project/tyro/0.9.17/) | <code>0.9.17</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [tzdata](https://pypi.org/project/tzdata/2025.3/) | <code>2025.3</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
-| python | [urllib3](https://pypi.org/project/urllib3/2.7.0/) | <code>2.7.0</code> | MIT | [PyPI](https://pypi.org/) |
+| python | [urllib3](https://pypi.org/project/urllib3/2.8.0/) | <code>2.8.0</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [uvicorn](https://pypi.org/project/uvicorn/0.51.0/) | <code>0.51.0</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
 | python | [uvicorn](https://pypi.org/project/uvicorn/0.52.1/) | <code>0.52.1</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
-| python | [virtualenv](https://pypi.org/project/virtualenv/20.36.1/) | <code>20.36.1</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [wandb](https://pypi.org/project/wandb/0.30.0/) | <code>0.30.0</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [wcwidth](https://pypi.org/project/wcwidth/0.6.0/) | <code>0.6.0</code> | MIT | [PyPI](https://pypi.org/) |
 | python | [xxhash](https://pypi.org/project/xxhash/3.6.0/) | <code>3.6.0</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
-| python | [yarl](https://pypi.org/project/yarl/1.22.0/) | <code>1.22.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
-| python | [yarl](https://pypi.org/project/yarl/1.24.2/) | <code>1.24.2</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
-| python | [yarl](https://pypi.org/project/yarl/1.24.5/) | <code>1.24.5</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| python | [yarl](https://pypi.org/project/yarl/1.25.1/) | <code>1.25.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
 | python | [zipp](https://pypi.org/project/zipp/3.23.0/) | <code>3.23.0</code> | MIT | [PyPI](https://pypi.org/) |
 
+## Workstation training dependency supplement (63 external identities)
+
+These additional identities come from the upstream training lock after applying
+<code>reference/groot/security/patches/training-e574-dependencies.patch</code>.
+The exact resulting lock hash is recorded in
+<code>reference/groot/security/manifest-training.json</code>. Together, the
+main Python table and this supplement cover all 175 external identities in
+that patched lock; the 112 identities already listed above are not repeated.
+The editable Isaac-GR00T project is covered by its source attribution above.
+The lock includes optional development dependencies; listing an identity does
+not mean every optional dependency is installed by the training command.
+
+Rows identify project-level terms and retrieval sources. Installed package
+licenses and notices remain authoritative for bundled components. Native
+wheels and any redistributed environment still require binary-content review;
+listing NVIDIA SDK terms or an open-source license is not release approval.
+
+| Ecosystem | Package | Version | License / terms | Source |
+|---|---|---:|---|---|
+| training-python | [absl-py](https://pypi.org/project/absl-py/2.4.0/) | <code>2.4.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| training-python | [accelerate](https://pypi.org/project/accelerate/1.13.0/) | <code>1.13.0+pgfr.security1</code> | Apache-2.0 | Locally patched PyPI wheel; modification notice above |
+| training-python | [boto3](https://pypi.org/project/boto3/1.42.70/) | <code>1.42.70</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| training-python | [botocore](https://pypi.org/project/botocore/1.42.70/) | <code>1.42.70</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| training-python | [charset-normalizer](https://pypi.org/project/charset-normalizer/3.4.6/) | <code>3.4.6</code> | MIT | [PyPI](https://pypi.org/) |
+| training-python | [coverage](https://pypi.org/project/coverage/7.14.1/) | <code>7.14.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| training-python | [cryptography](https://pypi.org/project/cryptography/48.0.0/) | <code>48.0.0</code> | Apache-2.0 OR BSD-3-Clause | [PyPI](https://pypi.org/) |
+| training-python | [deepspeed](https://pypi.org/project/deepspeed/0.17.6/) | <code>0.17.6</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| training-python | [diffusers](https://pypi.org/project/diffusers/0.35.1/) | <code>0.35.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| training-python | [dm-tree](https://pypi.org/project/dm-tree/0.1.9/) | <code>0.1.9</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| training-python | [execnet](https://pypi.org/project/execnet/2.1.2/) | <code>2.1.2</code> | MIT | [PyPI](https://pypi.org/) |
+| training-python | [flash-attn](https://github.com/Dao-AILab/flash-attention/releases/tag/v2.7.4.post1) | <code>2.7.4.post1</code> | BSD-3-Clause | [Pinned upstream release wheel](https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.7cxx11abiTRUE-cp311-cp311-linux_x86_64.whl) |
+| training-python | [fonttools](https://pypi.org/project/fonttools/4.62.1/) | <code>4.62.1</code> | MIT | [PyPI](https://pypi.org/) |
+| training-python | [hf-xet](https://pypi.org/project/hf-xet/1.4.2/) | <code>1.4.2</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| training-python | [hjson](https://pypi.org/project/hjson/3.1.0/) | <code>3.1.0</code> | MIT OR AFL-2.1 | [PyPI](https://pypi.org/) |
+| training-python | [idna](https://pypi.org/project/idna/3.11/) | <code>3.11</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
+| training-python | [imageio](https://pypi.org/project/imageio/2.37.3/) | <code>2.37.3</code> | BSD-2-Clause | [PyPI](https://pypi.org/) |
+| training-python | [jmespath](https://pypi.org/project/jmespath/1.1.0/) | <code>1.1.0</code> | MIT | [PyPI](https://pypi.org/) |
+| training-python | [kiwisolver](https://pypi.org/project/kiwisolver/1.5.0/) | <code>1.5.0</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
+| training-python | [lazy-loader](https://pypi.org/project/lazy-loader/0.5/) | <code>0.5</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
+| training-python | [msgpack](https://pypi.org/project/msgpack/1.1.0/) | <code>1.1.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| training-python | [ninja](https://pypi.org/project/ninja/1.13.0/) | <code>1.13.0</code> | Apache-2.0 AND BSD-2-Clause | [PyPI](https://pypi.org/) |
+| training-python | [nvidia-cublas-cu12](https://pypi.org/project/nvidia-cublas-cu12/12.8.3.14/) | <code>12.8.3.14</code> | [NVIDIA CUDA EULA](https://docs.nvidia.com/cuda/archive/12.8.1/eula/index.html) | [PyPI](https://pypi.org/) |
+| training-python | [nvidia-cuda-cupti-cu12](https://pypi.org/project/nvidia-cuda-cupti-cu12/12.8.57/) | <code>12.8.57</code> | [NVIDIA CUDA EULA](https://docs.nvidia.com/cuda/archive/12.8.1/eula/index.html) | [PyPI](https://pypi.org/) |
+| training-python | [nvidia-cuda-nvrtc-cu12](https://pypi.org/project/nvidia-cuda-nvrtc-cu12/12.8.61/) | <code>12.8.61</code> | [NVIDIA CUDA EULA](https://docs.nvidia.com/cuda/archive/12.8.1/eula/index.html) | [PyPI](https://pypi.org/) |
+| training-python | [nvidia-cuda-runtime-cu12](https://pypi.org/project/nvidia-cuda-runtime-cu12/12.8.57/) | <code>12.8.57</code> | [NVIDIA CUDA EULA](https://docs.nvidia.com/cuda/archive/12.8.1/eula/index.html) | [PyPI](https://pypi.org/) |
+| training-python | [nvidia-cudnn-cu12](https://pypi.org/project/nvidia-cudnn-cu12/9.7.1.26/) | <code>9.7.1.26</code> | [NVIDIA cuDNN SDK terms](https://docs.nvidia.com/deeplearning/cudnn/backend/v9.7.1/reference/eula.html) | [PyPI](https://pypi.org/) |
+| training-python | [nvidia-cufft-cu12](https://pypi.org/project/nvidia-cufft-cu12/11.3.3.41/) | <code>11.3.3.41</code> | [NVIDIA CUDA EULA](https://docs.nvidia.com/cuda/archive/12.8.1/eula/index.html) | [PyPI](https://pypi.org/) |
+| training-python | [nvidia-cufile-cu12](https://pypi.org/project/nvidia-cufile-cu12/1.13.0.11/) | <code>1.13.0.11</code> | [NVIDIA CUDA EULA](https://docs.nvidia.com/cuda/archive/12.8.1/eula/index.html) | [PyPI](https://pypi.org/) |
+| training-python | [nvidia-curand-cu12](https://pypi.org/project/nvidia-curand-cu12/10.3.9.55/) | <code>10.3.9.55</code> | [NVIDIA CUDA EULA](https://docs.nvidia.com/cuda/archive/12.8.1/eula/index.html) | [PyPI](https://pypi.org/) |
+| training-python | [nvidia-cusolver-cu12](https://pypi.org/project/nvidia-cusolver-cu12/11.7.2.55/) | <code>11.7.2.55</code> | [NVIDIA CUDA EULA](https://docs.nvidia.com/cuda/archive/12.8.1/eula/index.html) | [PyPI](https://pypi.org/) |
+| training-python | [nvidia-cusparse-cu12](https://pypi.org/project/nvidia-cusparse-cu12/12.5.7.53/) | <code>12.5.7.53</code> | [NVIDIA CUDA EULA](https://docs.nvidia.com/cuda/archive/12.8.1/eula/index.html) | [PyPI](https://pypi.org/) |
+| training-python | [nvidia-cusparselt-cu12](https://pypi.org/project/nvidia-cusparselt-cu12/0.6.3/) | <code>0.6.3</code> | [NVIDIA cuSPARSELt SDK terms](https://docs.nvidia.com/cuda/cusparselt/license.html) | [PyPI](https://pypi.org/) |
+| training-python | [nvidia-nccl-cu12](https://pypi.org/project/nvidia-nccl-cu12/2.26.2/) | <code>2.26.2</code> | BSD-3-Clause; bundled NVTX retains its own terms | [PyPI](https://pypi.org/) |
+| training-python | [nvidia-nvjitlink-cu12](https://pypi.org/project/nvidia-nvjitlink-cu12/12.8.61/) | <code>12.8.61</code> | [NVIDIA CUDA EULA](https://docs.nvidia.com/cuda/archive/12.8.1/eula/index.html) | [PyPI](https://pypi.org/) |
+| training-python | [nvidia-nvtx-cu12](https://pypi.org/project/nvidia-nvtx-cu12/12.8.55/) | <code>12.8.55</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| training-python | [onnx-ir](https://pypi.org/project/onnx-ir/0.2.1/) | <code>0.2.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| training-python | [onnxscript](https://pypi.org/project/onnxscript/0.7.0/) | <code>0.7.0</code> | MIT | [PyPI](https://pypi.org/) |
+| training-python | [pip-licenses](https://pypi.org/project/pip-licenses/5.5.5/) | <code>5.5.5</code> | MIT | [PyPI](https://pypi.org/) |
+| training-python | [platformdirs](https://pypi.org/project/platformdirs/4.9.4/) | <code>4.9.4</code> | MIT | [PyPI](https://pypi.org/) |
+| training-python | [prettytable](https://pypi.org/project/prettytable/3.17.0/) | <code>3.17.0</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
+| training-python | [py-cpuinfo](https://pypi.org/project/py-cpuinfo/9.0.0/) | <code>9.0.0</code> | MIT | [PyPI](https://pypi.org/) |
+| training-python | [pyarrow](https://pypi.org/project/pyarrow/23.0.1/) | <code>23.0.1</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| training-python | [pytest-cov](https://pypi.org/project/pytest-cov/7.1.0/) | <code>7.1.0</code> | MIT | [PyPI](https://pypi.org/) |
+| training-python | [pytest-xdist](https://pypi.org/project/pytest-xdist/3.8.0/) | <code>3.8.0</code> | MIT | [PyPI](https://pypi.org/) |
+| training-python | [pytz](https://pypi.org/project/pytz/2026.1.post1/) | <code>2026.1.post1</code> | MIT | [PyPI](https://pypi.org/) |
+| training-python | [regex](https://pypi.org/project/regex/2026.2.28/) | <code>2026.2.28</code> | Apache-2.0 AND CNRI-Python | [PyPI](https://pypi.org/) |
+| training-python | [requests](https://pypi.org/project/requests/2.34.2/) | <code>2.34.2</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| training-python | [rich](https://pypi.org/project/rich/14.3.3/) | <code>14.3.3</code> | MIT | [PyPI](https://pypi.org/) |
+| training-python | [ruff](https://pypi.org/project/ruff/0.15.6/) | <code>0.15.6</code> | MIT | [PyPI](https://pypi.org/) |
+| training-python | [s3transfer](https://pypi.org/project/s3transfer/0.16.0/) | <code>0.16.0</code> | Apache-2.0 | [PyPI](https://pypi.org/) |
+| training-python | [setuptools](https://pypi.org/project/setuptools/82.0.1/) | <code>82.0.1</code> | MIT | [PyPI](https://pypi.org/) |
+| training-python | [tensorrt-cu12](https://pypi.org/project/tensorrt-cu12/10.15.1.29/) | <code>10.15.1.29</code> | [NVIDIA TensorRT license terms](https://docs.nvidia.com/deeplearning/tensorrt/latest/reference/sla.html) | [PyPI](https://pypi.org/) |
+| training-python | [tensorrt-cu12-bindings](https://pypi.org/project/tensorrt-cu12-bindings/10.15.1.29/) | <code>10.15.1.29</code> | [NVIDIA TensorRT license terms](https://docs.nvidia.com/deeplearning/tensorrt/latest/reference/sla.html) | [PyPI](https://pypi.org/) |
+| training-python | [tensorrt-cu12-libs](https://pypi.org/project/tensorrt-cu12-libs/10.15.1.29/) | <code>10.15.1.29</code> | [NVIDIA TensorRT license terms](https://docs.nvidia.com/deeplearning/tensorrt/latest/reference/sla.html) | [NVIDIA Python index](https://pypi.nvidia.com/) |
+| training-python | [tomli](https://pypi.org/project/tomli/2.4.0/) | <code>2.4.0</code> | MIT | [PyPI](https://pypi.org/) |
+| training-python | [torch](https://github.com/pytorch/pytorch/releases/tag/v2.7.1) | <code>2.7.1+cu128</code> | BSD-3-Clause | [PyTorch CUDA 12.8 index](https://download.pytorch.org/whl/cu128/) |
+| training-python | [torchcodec](https://pypi.org/project/torchcodec/0.4.0/) | <code>0.4.0</code> | BSD-3-Clause | [PyPI](https://pypi.org/) |
+| training-python | [torchvision](https://github.com/pytorch/vision/releases/tag/v0.22.1) | <code>0.22.1+cu128</code> | BSD-3-Clause | [PyTorch CUDA 12.8 index](https://download.pytorch.org/whl/cu128/) |
+| training-python | [transformers](https://pypi.org/project/transformers/4.57.3/) | <code>4.57.3+pgfr.security1</code> | Apache-2.0 | Locally patched PyPI wheel; modification notice above |
+| training-python | [triton](https://pypi.org/project/triton/3.3.1/) | <code>3.3.1</code> | MIT | [PyTorch CUDA 12.8 index](https://download.pytorch.org/whl/cu128/) |
+| training-python | [typeguard](https://pypi.org/project/typeguard/4.5.1/) | <code>4.5.1</code> | MIT | [PyPI](https://pypi.org/) |
+| training-python | [wrapt](https://pypi.org/project/wrapt/2.1.2/) | <code>2.1.2</code> | BSD-2-Clause | [PyPI](https://pypi.org/) |
+
 ## Python license-resolution notes
+
+- <code>filelock@4.2.4</code> uses MIT, replacing the earlier
+  <code>3.21.2</code> Unlicense terms. Its upstream license states:
+  Copyright (c) 2025 Bernát Gábor and contributors. Retain that copyright
+  and the full MIT license from the retrieved distribution.
+- <code>opentelemetry-exporter-http-transport@0.66b1</code> and
+  <code>opentelemetry-exporter-otlp-common@0.66b1</code> are OpenTelemetry
+  project packages under Apache-2.0. Their upstream wheel license texts and
+  source attribution accompany the distributions.
+- The training <code>hjson@3.1.0</code> license offers MIT or AFL-2.1;
+  the table preserves that choice. <code>ninja@1.13.0</code> includes
+  Apache-2.0 software and BSD-2-Clause rapidhash code. Its source README also
+  identifies the separate logo as CC-BY-4.0; the logo is not copied here.
+- <code>nvidia-nccl-cu12@2.26.2</code> carries a BSD-3-Clause license
+  and a separate NVIDIA NVTX attribution. <code>nvidia-nvtx-cu12@12.8.55</code>
+  carries Apache-2.0. These terms differ from the proprietary CUDA, cuDNN,
+  cuSPARSELt, and TensorRT terms linked in the training supplement; preserve
+  the exact license and third-party notices shipped with each artifact.
 
 - <code>matplotlib-inline@0.2.1</code> is BSD-3-Clause and
   <code>mypy-extensions@1.1.0</code> is MIT, resolved from their official

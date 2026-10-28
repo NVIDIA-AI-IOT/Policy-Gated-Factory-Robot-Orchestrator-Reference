@@ -16,7 +16,7 @@ dependencies = [
     "fastapi>=0.110",
     "uvicorn>=0.29",
     "httpx>=0.27",
-    "aiohttp>=3.14.3,<4",
+    "aiohttp>=3.14.5,<4",
 ]
 
 [project.optional-dependencies]
@@ -30,3 +30,7 @@ packages = ["src/pgfr_chat"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+
+[tool.uv]
+# Retain the reviewed CA bundle floor when resolving transitive HTTP dependencies.
+constraint-dependencies = ["certifi>=2026.10.23"]

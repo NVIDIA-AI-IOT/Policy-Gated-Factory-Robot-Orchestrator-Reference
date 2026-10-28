@@ -14,9 +14,15 @@ so capture, modality configuration, and runtime use matching contracts.
 ## Prepare the pinned x86 training environment
 
 Follow the [pinned NVIDIA installation instructions](https://github.com/NVIDIA/Isaac-GR00T/blob/e5749287857afd97b78f1147166137de29746392/README.md#installation)
-for the workstation CUDA/driver prerequisites. The upstream x86 default uses
-Python 3.10 and CUDA 12.8; the separate Jetson Thor Python 3.12 environment is
-for serving and must not be substituted for this workstation setup.
+for the workstation CUDA/driver prerequisites. This reference uses Python 3.11
+with the existing Torch 2.7.1 / CUDA 12.8 training baseline. Python 3.11 is
+required by the security-fixed Pillow and filelock dependencies. The separate
+Jetson Thor Python 3.12 environment is for serving.
+Training also requires the CUDA 12.8 toolkit, including `nvcc`, for DeepSpeed
+operator checks; the NVIDIA driver alone does not provide it. Set `CUDA_HOME`
+to that toolkit installation and confirm `"$CUDA_HOME/bin/nvcc" --version`
+before installing the training dependencies.
+
 Install Git LFS and uv through your normal system provisioning first. Create a
 new training checkout/virtual environment; keep it separate from the recorder
 and Thor serving environments. Use the pinned source with the dependency

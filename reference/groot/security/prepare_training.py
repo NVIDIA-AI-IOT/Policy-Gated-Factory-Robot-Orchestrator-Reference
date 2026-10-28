@@ -84,6 +84,10 @@ def verify_installed(checkout: Path, manifest: dict) -> None:
     script = r'''
 import hashlib, importlib.metadata, json, pathlib, sys
 manifest = json.loads(sys.stdin.read())
+expected_python = manifest["training_project"]["python_version"]
+actual_python = f"{sys.version_info.major}.{sys.version_info.minor}"
+if actual_python != expected_python:
+    raise SystemExit(f"Unexpected training Python: {actual_python}, expected {expected_python}")
 for name, version in manifest["training_project"]["installed_versions"].items():
     actual = importlib.metadata.version(name)
     if actual != version:
@@ -133,7 +137,7 @@ def main() -> int:
                 raise BuildError("Training preparation requires uv 0.11.32")
         prepare(checkout, root, manifest, args.upstream_dir, args.offline)
         if not args.prepare_only:
-            command = [uv, "sync", "--frozen", "--python", "3.10", "--project", str(checkout)]
+            command = [uv, "sync", "--frozen", "--python", manifest["training_project"]["python_version"], "--project", str(checkout)]
             if args.offline:
                 command.append("--offline")
             environment = dict(os.environ, UV_PROJECT_ENVIRONMENT=str(checkout / ".venv"))

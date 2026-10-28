@@ -42,7 +42,7 @@ unaffected. Four advisory-to-script mappings are inferred from upstream source;
 the evidence records those limits. Regression tests check that the relevant
 scripts and unsafe conversion functions remain absent from the installed packages.
 
-The ROS camera service and dataset recorder select Pillow 12.3.0 explicitly,
+The ROS camera service and dataset recorder select Pillow 13.0.0 explicitly,
 so their installation does not rely on an older system copy.
 
 ## Torch loading policy

@@ -5,7 +5,7 @@
 CI uses:
 
 - Ubuntu 24.04;
-- Python 3.12.3 (and Python 3.10 for training dependency regressions);
+- Python 3.12.3 (and Python 3.11 for training dependency regressions);
 - Node.js 22.22.3; and
 - uv 0.11.32.
 

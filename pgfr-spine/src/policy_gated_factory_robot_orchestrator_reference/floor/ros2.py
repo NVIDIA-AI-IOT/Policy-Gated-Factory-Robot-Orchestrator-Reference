@@ -96,7 +96,7 @@ def _image_to_jpeg(msg: Any, crop: tuple[float, float, float, float] | None = No
         nh = max(28, int(round(ch2 * scale / 28.0)) * 28)
         nw = max(28, int(round(cw2 * scale / 28.0)) * 28)
         img = PILImage.fromarray(arr[..., :3])
-        arr = np.asarray(img.resize((nw, nh), PILImage.BILINEAR))
+        arr = np.asarray(img.resize((nw, nh), PILImage.Resampling.BILINEAR))
     if (msg.encoding or "rgb8").lower().startswith("bgr"):
         arr = arr[:, :, ::-1]
     buf = io.BytesIO()

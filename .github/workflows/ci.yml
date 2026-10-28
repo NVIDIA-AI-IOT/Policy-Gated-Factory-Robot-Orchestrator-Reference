@@ -44,14 +44,20 @@ jobs:
         include:
           - profile: thor
             python: "3.12.3"
+            pyarrow: "23.0.0"
             manifest: manifest.json
             torch: "2.10.0+cpu"
             torchvision: "0.25.0+cpu"
+            pillow: "13.0.0"
+            filelock: "4.2.4"
           - profile: training
-            python: "3.10"
+            python: "3.11"
+            pyarrow: "23.0.1"
             manifest: manifest-training.json
             torch: "2.7.1+cpu"
             torchvision: "0.22.1+cpu"
+            pillow: "13.0.0"
+            filelock: "4.2.4"
     steps:
       - name: Check out source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -81,12 +87,13 @@ jobs:
             "torch==${{ matrix.torch }}" "torchvision==${{ matrix.torchvision }}"
           uv pip install --python "$RUNNER_TEMP/security-tests/bin/python" \
             "$RUNNER_TEMP/security-wheels/"*.whl \
-            pytest==9.0.3 numpy==1.26.4 pillow==12.3.0 sacremoses==0.1.1 \
+            pytest==9.0.3 numpy==1.26.4 "pillow==${{ matrix.pillow }}" "filelock==${{ matrix.filelock }}" sacremoses==0.1.1 \
+            datasets==5.0.1 fsspec==2026.6.0 pandas==2.2.3 "pyarrow==${{ matrix.pyarrow }}" \
             huggingface-hub==0.36.2 tokenizers==0.22.2 safetensors==0.7.0 setuptools==83.0.0 \
-            wandb==0.30.0 click==8.2.1 googleapis-common-protos==1.75.4 \
-            opentelemetry-api==1.43.0 opentelemetry-sdk==1.43.0 \
-            opentelemetry-proto==1.43.0 opentelemetry-exporter-otlp-proto-common==1.43.0 \
-            opentelemetry-exporter-otlp-proto-http==1.43.0 opentelemetry-semantic-conventions==0.64b0
+            wandb==0.30.0 click==8.3.3 googleapis-common-protos==1.75.4 \
+            opentelemetry-api==1.45.1 opentelemetry-sdk==1.45.1 \
+            opentelemetry-proto==1.45.1 opentelemetry-exporter-otlp-proto-common==1.45.1 \
+            opentelemetry-exporter-otlp-proto-http==1.45.1 opentelemetry-semantic-conventions==0.66b1
           uv pip check --python "$RUNNER_TEMP/security-tests/bin/python"
 
       - name: Exercise security boundaries and normal model loading

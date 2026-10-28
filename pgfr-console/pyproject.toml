@@ -30,3 +30,7 @@ packages = ["src/pgfr_console"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+
+[tool.uv]
+# Retain the reviewed CA bundle floor when resolving transitive HTTP dependencies.
+constraint-dependencies = ["certifi>=2026.10.23"]

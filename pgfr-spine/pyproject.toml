@@ -27,7 +27,7 @@ dependencies = [
 [project.optional-dependencies]
 # Keep the camera codec inside the service environment instead of inheriting
 # an unpinned Pillow from the host ROS installation.
-ros = ["numpy==1.26.4", "Pillow==12.3.0"]
+ros = ["numpy==1.26.4", "Pillow==13.0.0"]
 dev = [
   "pytest>=8.0,<9",
   "pytest-asyncio>=0.23,<1",
@@ -67,3 +67,7 @@ ignore = ["E501"]
 python_version = "3.12"
 strict = true
 files = ["src", "tests"]
+
+[tool.uv]
+# Retain the reviewed CA bundle floor when resolving transitive HTTP dependencies.
+constraint-dependencies = ["certifi>=2026.10.23"]

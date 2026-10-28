@@ -22,3 +22,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pgfr_mcp"]
+
+[tool.uv]
+# Retain the reviewed CA bundle floor when resolving transitive HTTP dependencies.
+constraint-dependencies = ["certifi>=2026.10.23"]
