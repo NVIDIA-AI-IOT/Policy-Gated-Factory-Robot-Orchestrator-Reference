@@ -1,20 +1,16 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Swappable model backends — the deliberation host is a connector, not the product.
+"""Model adapters for the Chat tool loop.
 
-A backend takes (messages, tools) and returns one assistant turn: text plus any
-tool calls. That is the whole contract, so any host that speaks it plugs in:
+A backend takes messages and tool definitions and returns an assistant turn
+containing text and optional tool calls.
 
-- ``openai``   — any OpenAI-compatible /v1/chat/completions endpoint: the Cosmos
-                 VLM on Thor, a local vLLM/NIM, or a hosted API. Covers most.
-- ``anthropic`` — Anthropic Messages API: the same brain the OpenClaw gateway
-                 runs (Claude via the NVIDIA NIM provider), in the console's own chat.
-- ``echo``     — a deterministic no-network backend for tests/demos: it emits a
-                 tool call parsed from a ``/tool`` directive, else echoes.
-
-NemoClaw or Claude slot in as another adapter (NIM endpoints are OpenAI-shaped,
-so they use the openai backend directly).
+- ``openai``: OpenAI-compatible ``/v1/chat/completions`` endpoints.
+- ``anthropic``: Anthropic-compatible ``/v1/messages`` endpoints.
+- ``openclaw``: the OpenClaw Gateway, which owns its own tool loop.
+- ``echo``: a deterministic backend for tests; parses ``/tool`` directives or
+  echoes the message without calling a model.
 """
 
 from __future__ import annotations
@@ -242,17 +238,10 @@ class OpenClawBackend(OpenAIBackend):
 
 
 class AnthropicBackend:
-    """Anthropic Messages API — the host the OpenClaw gateway itself runs on.
+    """Anthropic-compatible Messages API adapter for the Chat tool loop.
 
-    Same deliberation brain as the gateway (Claude via the NVIDIA NIM provider
-    declared in openclaw.json), reached through the documented adapter seam
-    instead of embedding the gateway's own UI: the console keeps its CSP, the
-    gateway keeps X-Frame-Options, and the conversation renders in the console's
-    chat surface with the usual tool cards + evidence frames.
-
-    Env: PGFR_CHAT_MODEL_URL (e.g. https://inference-api.nvidia.com),
-    PGFR_CHAT_API_KEY (NVIDIA_NIM_API_KEY), PGFR_CHAT_MODEL (e.g.
-    aws/anthropic/bedrock-claude-opus-4-8).
+    Configure PGFR_CHAT_MODEL_URL, PGFR_CHAT_MODEL, and PGFR_CHAT_API_KEY.
+    NVIDIA_NIM_API_KEY remains a fallback when PGFR_CHAT_API_KEY is unset.
     """
 
     name = "anthropic"

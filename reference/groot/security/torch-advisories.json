@@ -61,7 +61,7 @@
     {
       "cve": "CVE-2025-2149",
       "reported_severity": "Medium",
-      "severity_source": "Provided nSpect report",
+      "severity_source": "Dependency security scan report",
       "status": "library remains affected, application exposure assessed",
       "trigger": "Save state_dict() from torch.ao.nn.quantized.Sigmoid(0.1, 5), then load it into Sigmoid(0.5, 10). The empty state dict omits output_scale and output_zero_point, so the new module retains 0.5 and 10.",
       "torch_source": "torch/ao/nn/quantized/modules/activation.py:Sigmoid",
@@ -78,7 +78,7 @@
     {
       "cve": "CVE-2025-2148",
       "reported_severity": "Low",
-      "severity_source": "Provided nSpect report",
+      "severity_source": "Dependency security scan report",
       "status": "library remains affected, application exposure assessed",
       "trigger": "Directly call torch.ops.profiler._call_end_callbacks_on_jit_fut(torch.tensor(0), None). The native callback helper dereferences the null Future at fut->then.",
       "torch_source": "torch/csrc/autograd/record_function_ops.cpp:_call_end_callbacks_on_fut",

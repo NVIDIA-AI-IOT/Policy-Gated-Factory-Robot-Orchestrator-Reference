@@ -23,8 +23,9 @@ training dataset are supplied.
 
 Use the same Git commit on both hosts and run the [deployment checks](VALIDATION.md)
 with your checkpoint. See [validation coverage](VALIDATION.md#validation-status)
-for tested configurations and known limitations. For an existing installation,
-follow the [upgrade guide](FULL-FORM-RENAME-UPGRADE.md).
+for tested configurations and known limitations. Existing PGFR installations
+with saved paths from an earlier source layout should follow the
+[relay-path update](#update-an-existing-pgfr-relay-path).
 
 ## Requirements
 
@@ -54,6 +55,7 @@ Related procedures:
 - [Remote operator access](REMOTE-ACCESS.md)
 - [Deployment and mission validation](VALIDATION.md)
 - [Standalone Isaac Sim workstation](../ops/ISAAC-SIM-WORKSTATION.md)
+- [Update an existing PGFR relay path](#update-an-existing-pgfr-relay-path)
 
 ## Deployment layout
 
@@ -77,8 +79,7 @@ Use `~/Policy-Gated-Factory-Robot-Orchestrator-Reference` as the checkout on
 both hosts. Full-form package and filesystem names use
 `policy-gated-factory-robot-orchestrator-reference`, or its Python-safe
 underscore form. Project-owned abbreviated service names, environment
-variables, ROS topics, and schemas now use `pgfr-*`, `PGFR_*`, `/pgfr/*`, and `pgfr_*`. This is a
-hard cutover; legacy IC identifiers are not installed as aliases.
+variables, ROS topics, and schemas use `pgfr-*`, `PGFR_*`, `/pgfr/*`, and `pgfr_*`.
 
 <a id="1-prepare-the-brain-host"></a>
 
@@ -167,10 +168,9 @@ frozen sync as a separately checksum-attested platform overlay; it is not a
 registry package resolved by the uv lock. The bootstrap uses repository
 lockfiles and refuses to replace files beneath active PGFR services.
 
-For an installation made before the full-form rename, stop here and follow
-[`FULL-FORM-RENAME-UPGRADE.md`](FULL-FORM-RENAME-UPGRADE.md). The bootstrap
-preserves operator environment files, so reinstalling without migrating old
-paths is not an upgrade.
+The bootstrap preserves operator environment files. If a saved relay path no
+longer exists in the updated checkout, follow the
+[relay-path update](#update-an-existing-pgfr-relay-path) before starting services.
 
 Review the generated files under `~/.config/pgfr-spine/`. The default services
 bind to loopback. Keep that default unless the access profile in
@@ -178,9 +178,8 @@ bind to loopback. Keep that default unless the access profile in
 address.
 
 Configure and test the reasoning endpoint before starting PGFR Chat. Follow
-[`MODEL-PROVIDERS.md`](MODEL-PROVIDERS.md) for the public NVIDIA API Catalog,
-the NVIDIA internal inference endpoint, secret storage, OpenClaw setup, and the
-required completion smoke test.
+[`MODEL-PROVIDERS.md`](MODEL-PROVIDERS.md) for endpoint selection, credential
+storage, OpenClaw setup, and the required completion smoke test.
 
 <a id="2-authenticate-and-fetch-the-brain-host-artifacts"></a>
 
@@ -524,3 +523,30 @@ decision separately to the RTX bridge.
 - Keep policy and relay listeners loopback-only; use the qualified bridge for
   the two-host path.
 - Preserve the local checkpoint checksum manifest, dataset provenance, upstream model revisions, image digests, and source revision when comparing results.
+
+## Update an existing PGFR relay path
+
+Use this procedure when an existing PGFR deployment's saved `RELAY_SCRIPT`
+points to a source path that moved. On Thor, confirm that no mission, reset,
+or model request is in flight. Back up
+`~/.config/pgfr-spine/groot/shared-{left,right}.env`, then stop both relays and
+open their configuration:
+
+```bash
+systemctl --user stop \
+  pgfr-groot-relay@shared-left.service pgfr-groot-relay@shared-right.service
+${EDITOR:-vi} \
+  "$HOME/.config/pgfr-spine/groot/shared-left.env" \
+  "$HOME/.config/pgfr-spine/groot/shared-right.env"
+```
+
+Set each affected `RELAY_SCRIPT` to the existing file
+`<checkout>/reference/groot/relay/native_droid_relay_batch2.py`. Preserve the
+checkout prefix, quoting, and other settings; leave valid custom relay paths
+unchanged. The profile installer refuses differing existing files, so rerunning
+it does not migrate saved paths.
+
+After checking both paths, restart the two relay units, run
+`ops/thor-deploy.sh --check`, and repeat the [deployment checks](VALIDATION.md)
+before resuming missions. Model/cache paths, persistent state, and existing
+copied Isaac mounts do not need to move for this relay-path update.

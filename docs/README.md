@@ -14,7 +14,7 @@
 - [Remote access](REMOTE-ACCESS.md) — connect to Console, Chat, and Isaac Sim.
 - [User services](../ops/systemd/README.md) — service ownership, configuration, and startup.
 - [Deployment validation](VALIDATION.md) — check ROS 2, API contracts, complete missions, and validation status.
-- [Rename upgrade](FULL-FORM-RENAME-UPGRADE.md) — migrate an existing installation from the former names.
+- [Update a relay path](REPRODUCIBLE-DEMO.md#update-an-existing-pgfr-relay-path) — update saved PGFR relay settings after a source-layout change.
 
 ## Create data and train
 
@@ -40,5 +40,5 @@ links the Thor runtime, simulator executor, and pipeline validation instructions
 
 - [Deployment manifest](../deploy/reproducible-demo.yaml) — pinned runtimes, model identities, and ports.
 - [Security](../SECURITY.md) — trust boundaries and reporting.
-- [Asset provenance](ASSET-PROVENANCE.md) and [third-party notices](../THIRD-PARTY-NOTICES.md) — attribution and release review.
-- [Changelog](../CHANGELOG.md) and [license](../LICENSE).
+- [Asset provenance](ASSET-PROVENANCE.md) and [third-party notices](../THIRD-PARTY-NOTICES.md) — asset sources and software licenses.
+- [License](../LICENSE).

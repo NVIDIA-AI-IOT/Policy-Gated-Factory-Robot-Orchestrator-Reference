@@ -64,8 +64,9 @@ The learned-motion profile uses a different Isaac Sim version from the scripted
 baseline. Follow its pinned configuration and validate your checkpoint on the
 matching scene, cameras, and robot configuration.
 
-For an existing installation using the former project names, follow the
-[rename upgrade procedure](docs/FULL-FORM-RENAME-UPGRADE.md) before installing.
+If an existing PGFR installation has saved relay paths from an earlier source
+layout, follow the [relay-path update](docs/REPRODUCIBLE-DEMO.md#update-an-existing-pgfr-relay-path)
+before starting the updated deployment.
 
 ## Open PGFR Console
 

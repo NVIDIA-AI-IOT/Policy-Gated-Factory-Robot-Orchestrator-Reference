@@ -212,13 +212,14 @@ before changing service bind addresses or firewall rules.
 | [Security](SECURITY.md) | Understand access controls and trust boundaries |
 
 See the [documentation index](docs/README.md) for operation, integration, and
-release guides.
+licensing information.
 
 ## Development
 
 Hardware-free checks and package builds are configured in [CI](.github/workflows/ci.yml)
-for Ubuntu 24.04 with Python 3.12.3, Node.js 22.22.3, and uv 0.11.32. See
-[CONTRIBUTING.md](CONTRIBUTING.md) for component test commands and DCO requirements.
+for Ubuntu 24.04 with Python 3.12.3, Node.js 22.22.3, and uv 0.11.32.
+Training dependency checks use Python 3.11. See [CONTRIBUTING.md](CONTRIBUTING.md)
+for component test commands and DCO requirements.
 
 [STRUCTURE.md](STRUCTURE.md) describes the repository layout. The
 [deployment manifest](deploy/reproducible-demo.yaml) records runtime versions,

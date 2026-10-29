@@ -3,11 +3,10 @@
 schema_version: 3
 validated_on: 2026-08-08
 
-# `validated_on` applies to the historical two-host GR00T demo and its
-# `isaac_sim` entry. Later independently qualified or identity-pinned release
-# cohorts are labeled below; adding them does not imply that the historical
-# two-host, Thor, or rename gates were rerun. Tags are retained for readability;
-# pull by digest where the registry permits it.
+# `validated_on` identifies the recorded two-host GR00T baseline and its
+# `isaac_sim` entry. Other profiles have separate dates and validation scopes.
+# Dependency, checkpoint, or profile changes require new acceptance checks.
+# Tags are retained for readability; pull by digest where supported.
 runtime:
   python: "3.12.3"
   node: "22.22.3"
@@ -17,7 +16,7 @@ runtime:
   openclaw: "2026.9.2"  # also frozen in package-lock.json
 
 containers:
-  # Historical GR00T/two-host image; intentionally remains on dev2/X11.
+  # Learned-motion profile recorded with Isaac Sim dev2 and X11.
   isaac_sim:
     tag: nvcr.io/nvidia/isaac-sim:6.0.0-dev2
     digest: sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9

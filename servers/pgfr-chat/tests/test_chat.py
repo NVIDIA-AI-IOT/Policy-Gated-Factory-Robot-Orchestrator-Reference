@@ -249,7 +249,7 @@ class TestBackends:
                     "message": {
                         "content": "",
                         "tool_calls": [{
-                            "id": "internal-call-1",
+                            "id": "provider-call-1",
                             "type": "function",
                             "function": {
                                 "name": "dispatch_task",
@@ -264,7 +264,7 @@ class TestBackends:
         app.router.add_post("/v1/chat/completions", completions)
         server = await aiohttp_server(app)
         api_key = "unit-test-bearer-credential"
-        model = "nvidia/internal-reasoning-model"
+        model = "example/reasoning-model"
         monkeypatch.setenv(
             "PGFR_CHAT_MODEL_URL", str(server.make_url("")).rstrip("/")
         )
@@ -291,7 +291,7 @@ class TestBackends:
         assert out == {
             "content": "",
             "tool_calls": [{
-                "id": "internal-call-1",
+                "id": "provider-call-1",
                 "name": "dispatch_task",
                 "arguments": {"color": "red"},
             }],
@@ -301,8 +301,8 @@ class TestBackends:
         monkeypatch.delenv("PGFR_CHAT_API_KEY", raising=False)
         monkeypatch.setenv("NVIDIA_NIM_API_KEY", "shared-openclaw-key")
         backend = AnthropicBackend(
-            base_url="https://inference-api.nvidia.com",
-            model="aws/anthropic/bedrock-claude-opus-4-8",
+            base_url="https://inference.example.test",
+            model="example/messages-model",
         )
         assert backend.api_key == "shared-openclaw-key"
 

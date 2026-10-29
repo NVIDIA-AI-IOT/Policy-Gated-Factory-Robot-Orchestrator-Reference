@@ -367,9 +367,9 @@ for the reference configurations.
 | Runtime image availability | A fresh registry pull of the pinned 6.0.0-dev2 image is not covered by the recorded validation. |
 
 Run installation acceptance with explicit Isaac Sim license acceptance and the
-native Thor dependency installation. Existing deployments also need the
-[stopped-service upgrade checks](FULL-FORM-RENAME-UPGRADE.md). Other operating
-systems, GPUs, Jetson products, serving topologies, and Chat or agent/model
+native Thor dependency installation. Existing deployments must also verify
+saved service configuration and [relay paths](REPRODUCIBLE-DEMO.md#update-an-existing-pgfr-relay-path).
+Other operating systems, GPUs, Jetson products, serving topologies, and Chat or agent/model
 combinations require acceptance on their own configuration.
 
 Codec preflight checks build identity and features; it does not grant legal
@@ -380,36 +380,18 @@ verification establish performance on the target scene.
 
 <a id="two-host-mission-evidence"></a>
 
-<details>
-<summary>Recorded runs, hardware, and runtime versions</summary>
+These records describe earlier tested configurations, not acceptance of the
+current release. Use the [validation status](#validation-status) and the checks
+above when installing a new revision or checkpoint.
 
-| Date | Configuration | Recorded result |
+| Date | Configuration | Recorded coverage |
 |---|---|---|
-| 2026-08-08 | Two-host GR00T manifest baseline | Historical `validated_on` date in the [deployment manifest](../deploy/reproducible-demo.yaml); it does not cover later dependency changes, the rename, or Isaac Sim 6.0.1. |
-| 2026-09-08 | Jetson AGX Thor and RTX; learned Isaac Sim 6.0.0-dev2 profile | Complete deterministic two-host mission accepted from `c985be23d56eaae5a2beea2f8893387c120a849f` plus then-uncommitted reproducibility fixes on both hosts. Evidence included floor state, journal, simulator logs, and camera frames. |
-| 2026-09-08 | Standalone scripted Isaac Sim 6.0.1 | Run `953020d69491`: compatibility checker, 15 ROS streams, 1280-pixel rack-camera frame, verified pick-and-place (`off=0.017`), reset, and three commands with clean current-run logs. |
-| 2026-09-09 | Hardened standalone scripted Isaac Sim 6.0.1 | Run `d70ed0c3940f`: 15 streams with encoding, row-stride, and payload checks; verified move (`off=0.001`), two resets, and three clean command logs. Attested `ACCEPT_EULA=Y`, telemetry opt-out, and seven Kit privacy/telemetry/crash-reporting arguments. |
+| 2026-08-08 | Two-host GR00T baseline | Baseline date retained in the [deployment manifest](../deploy/reproducible-demo.yaml); later dependency and profile changes require separate acceptance. |
+| 2026-09-08 | Jetson AGX Thor and RTX; Isaac Sim 6.0.0-dev2 with X11 | A complete deterministic two-host mission was recorded for an earlier development snapshot. |
+| 2026-09-08 | Scripted Isaac Sim 6.0.1; run `953020d69491` | Compatibility checks, 15 ROS streams, a camera frame, a verified move, and reset passed. |
+| 2026-09-09 | Scripted Isaac Sim 6.0.1; run `d70ed0c3940f` | ROS payload checks, a verified move, resets, and current-run log checks passed. |
 
-The standalone runs covered cold-online and warm-cache cloud-asset startup;
-they did not qualify the optional five-part local asset pack, a connected
-WebRTC client, Thor/GR00T, or the full two-host workflow.
-
-### Recorded hardware and runtime
-
-| Component | Measured environment |
-|---|---|
-| Jetson control host | NVIDIA Jetson AGX Thor; aarch64 Ubuntu 24.04; L4T 39.2.1; kernel `6.8.12-1021-tegra`; NVIDIA driver `595.78`; CUDA 13.0 and 13.2 runtime packages; Python 3.12.3; ROS 2 Jazzy; Docker 29.7.2 |
-| RTX simulation host | NVIDIA RTX PRO 6000 Blackwell Workstation Edition; x86_64 Ubuntu 24.04; kernel `7.0.0-31-generic`; NVIDIA driver `610.43.02`; Docker 29.8.0; NVIDIA Container Toolkit 1.20.0; local X11 display `:1` |
-| Learned simulator | `nvcr.io/nvidia/isaac-sim:6.0.0-dev2@sha256:c3e7bef5b2bfdb9972807c34195206078372bf8c6cff79716be130a3fe3e9ce9` |
-| Scripted simulator | Official Isaac Sim 6.0.1 amd64 image at `sha256:b1c542b2ecc549b3d1ebb78c25664aa3bacba1709e6ad8e0a68e09426d57dedb` |
-
-The accepted GR00T services ran bare metal from the frozen uv environment at
-`~/groot_shadow/Isaac-GR00T/`, followed by the checksum-attested TorchCodec
-`0.10.0a0` LFS-wheel overlay. This post-lock installation means the final
-environment was not entirely lock-resolved.
-
-The standalone runs used the isolated `ic-isaac-sim-601-validation` container
-without modifying the GR00T container. Its `IC_CELL_UP` marker and `/ic` topics
-are historical evidence identifiers, not current runtime defaults.
-
-</details>
+The scripted runs covered online asset retrieval and a warm cache. They did
+not validate the optional local asset pack, a connected WebRTC client,
+Thor/GR00T, or the full two-host workflow. Their run IDs correspond to the
+scripted-profile records in the deployment manifest.

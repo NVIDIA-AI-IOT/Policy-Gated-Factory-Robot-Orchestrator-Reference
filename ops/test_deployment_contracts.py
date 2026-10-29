@@ -212,10 +212,10 @@ def test_container_pins_match_manifest_and_launchers() -> None:
     assert scripted["qualified_on"].isoformat() == "2026-09-09"
     assert scripted["qualification_run_id"] == "d70ed0c3940f"
     assert scripted["historical_qualification_run_id"] == "953020d69491"
-    for qualification_record in (text("CHANGELOG.md"), text("docs/VALIDATION.md")):
-        assert "2026-09-09" in qualification_record
-        assert "`d70ed0c3940f`" in qualification_record
-        assert "`953020d69491`" in qualification_record
+    qualification_record = text("docs/VALIDATION.md")
+    assert scripted["qualified_on"].isoformat() in qualification_record
+    for run_key in ("qualification_run_id", "historical_qualification_run_id"):
+        assert f"`{scripted[run_key]}`" in qualification_record
     for value in (ros_sidecar["tag"], ros_sidecar["digest"]):
         assert value in scripted_runbook
         assert value in notices

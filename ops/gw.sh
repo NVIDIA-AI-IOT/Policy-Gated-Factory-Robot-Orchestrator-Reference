@@ -38,11 +38,8 @@ if [ -f "$HOME/.openclaw/secrets.env" ]; then
   set +a
 fi
 
-# Journal + evidence frames: the audit trail the console's mission replay and
-# Inspector read. It was only ever set by a hand-made /tmp env file, so any
-# restart that missed that file silently disabled the audit trail (and the
-# frames the chat renders). Pin it here — versioned, survives reboots — while
-# still honoring an explicit override.
+# Persist mission journals and evidence frames across restarts, while
+# honoring an explicitly configured journal directory.
 export PGFR_JOURNAL_DIR="${PGFR_JOURNAL_DIR:-$HOME/pgfr-journal}"
 mkdir -p "$PGFR_JOURNAL_DIR/frames"
 

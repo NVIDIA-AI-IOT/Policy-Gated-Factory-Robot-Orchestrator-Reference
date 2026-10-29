@@ -39,22 +39,19 @@ Use a model ID available to the deployed NVIDIA account. The example does not
 guarantee access for every account. Obtain a hosted-endpoint key using the
 [NVIDIA API Catalog quickstart](https://docs.api.nvidia.com/nim/re/docs/api-quickstart).
 
-### NVIDIA internal inference API
+### Other OpenAI-compatible services
 
-NVIDIA-internal users whose account has access to the OpenAI-compatible
-inference service may use the internal profile. This tuple was validated in
-the 2026-09-08 acceptance run:
+For another provider or a self-hosted model, replace the example hostname and
+model ID with the values for your service:
 
 ```dotenv
 PGFR_CHAT_BACKEND=openai
-PGFR_CHAT_MODEL_URL=https://inference-api.nvidia.com
-PGFR_CHAT_MODEL=azure/openai/gpt-5.6-sol
+PGFR_CHAT_MODEL_URL=https://inference.example.test
+PGFR_CHAT_MODEL=your-tool-calling-model
 ```
 
-The internal model is an environment choice, not a repository-wide pin. Query
-the authenticated `/v1/models` catalog and validate tool calling before
-selecting a different ID. Access to the internal endpoint and its `sk-...`
-credentials is organization specific.
+Query the authenticated `/v1/models` catalog and validate tool calling before
+selecting a model ID.
 
 ## Store credentials
 
@@ -75,9 +72,9 @@ For traditional PGFR Chat, add the credential issued for the selected endpoint:
 PGFR_CHAT_API_KEY=YOUR_SELECTED_ENDPOINT_KEY
 ```
 
-PGFR Chat sends `PGFR_CHAT_API_KEY` unchanged as a Bearer credential. An internal
-`sk-...` value belongs only to `inference-api.nvidia.com` and must not be
-paired with `integrate.api.nvidia.com`.
+PGFR Chat sends `PGFR_CHAT_API_KEY` unchanged as a Bearer credential. Use the
+credential issued for the configured endpoint; key prefixes do not select a
+provider.
 
 For the public NVIDIA profile, the same `nvapi-...` value may also be stored as
 `NVIDIA_API_KEY` for OpenClaw's built-in NVIDIA provider. The hosted-endpoint
@@ -112,9 +109,9 @@ unset NVIDIA_API_KEY PGFR_CHAT_API_KEY OPENCLAW_GATEWAY_TOKEN
 ```
 
 This command configures OpenClaw's built-in public NVIDIA provider.
-Traditional PGFR Chat can use the internal profile independently. Changing
-`PGFR_CHAT_MODEL_URL` does not change OpenClaw; an internal OpenClaw deployment
-requires a separately reviewed custom-provider configuration.
+PGFR Chat and OpenClaw configure providers independently. Changing
+`PGFR_CHAT_MODEL_URL` does not change OpenClaw. Configure other OpenClaw
+providers in the Gateway's own configuration.
 
 ## Test a completion
 

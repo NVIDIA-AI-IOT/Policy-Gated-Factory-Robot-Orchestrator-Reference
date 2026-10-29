@@ -107,9 +107,8 @@ with actuation authority. See the
 
 ## Provider selection
 
-The `openai` adapter accepts any OpenAI-compatible Bearer credential, including
-public NVIDIA `nvapi-...` keys and organization-specific `sk-...` keys. It does
-not route by key prefix: `PGFR_CHAT_MODEL_URL`, `PGFR_CHAT_API_KEY`, and
+The `openai` adapter accepts OpenAI-compatible Bearer credentials. It does not
+route by key prefix: `PGFR_CHAT_MODEL_URL`, `PGFR_CHAT_API_KEY`, and
 `PGFR_CHAT_MODEL` must describe the same provider profile. Configure the URL
 without `/v1`; PGFR Chat appends the versioned paths.
 
@@ -118,9 +117,9 @@ Examples:
 | Profile | `PGFR_CHAT_MODEL_URL` | Example model |
 |---|---|---|
 | Public NVIDIA API Catalog | `https://integrate.api.nvidia.com` | `nvidia/nemotron-3-ultra-550b-a55b` |
-| Authorized NVIDIA internal | `https://inference-api.nvidia.com` | `azure/openai/gpt-5.6-sol` |
+| Other OpenAI-compatible service | `https://inference.example.test` | `your-tool-calling-model` |
 
-The internal profile is available only to authorized NVIDIA accounts. Before
+Replace the example hostname and model ID with your provider's values. Before
 enabling robot tools, verify that the model appears in the authenticated
 catalog, returns a real completion, and supports the required tool calls.
 
